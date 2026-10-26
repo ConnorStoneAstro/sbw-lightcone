@@ -1,8 +1,8 @@
 id: baseline
 description: 'Package defaults: exponential fit, r band, 30 arcsec, d_DLR<=4 on the
   half-light ellipse, extendedness cut, suspect fits kept, MatchesTruth, cleaned DP0.2
-  sample, 1 arcsec reference match, Legacy DR10 for DELIGHT, redshift-swap cosmology
-  propagation'
+  sample, 1 arcsec reference match, Legacy DR10 for DELIGHT, RC SALT3 sample for DP2,
+  redshift-swap cosmology propagation'
 decisions:
   sbw_profile: exponential
   band: r
@@ -13,6 +13,7 @@ decisions:
   exclude_suspect: keep
   truth_match: matches_truth
   dp02_sample_cuts: clean
+  dp2_sample: rc_salt
   reference_match: pos_1arcsec
   delight_catalogue: legacy_dr10
   cosmo_propagation: redshift_swap

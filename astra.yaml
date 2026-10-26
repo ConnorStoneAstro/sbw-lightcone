@@ -69,12 +69,40 @@ inputs:
   # ---- Tier 4: Rubin DP2, no truth ----
   - id: dp2_transients
     type: data
-    source: "data/dp2_transients.csv (copied from ../../edp2_host_association/host_association_sbw.csv: transient_key, transient_ra, transient_dec)"
+    source: "NERSC /global/cfs/cdirs/lsst/groups/TD/SN/EDP2/SN_candidates/{RC_sample,final_sample,parsnip_ddf,RC_lcfit_input_122k}.parquet (file chosen by decision dp2_sample)"
     description: >-
-      7823 transient positions in the Rubin DP2 footprint supplied by a
-      collaborator (18-digit DiaObject-like keys); the exact selection that
-      produced the list is not documented here and must be obtained from the
-      provider before publication. Used for the method-to-method comparison.
+      DP2 SN candidate samples from the EDP2 transient working group (Mi Dai,
+      R. Chen; README and README_RC.md in that directory). RC_sample.parquet:
+      690 objects with a successful SALT3 fit (FITPROB > 0.01, |x1| < 3,
+      |c| < 0.3) after nightly coadd, baseline correction and S/N cuts;
+      final_sample.parquet: Mi Dai's 617 candidates with a SALT fit (overlap of
+      102 with RC); parsnip_ddf.parquet: the 7823 DDF DiaObjects run through
+      ParSNIP (also the set the three collaborator host-association runs
+      cover); RC_lcfit_input_122k.parquet: all 122,465 objects passing the
+      detection, reliability, |b| > 10 and S/N cuts before any fit. A local
+      copy of the parsnip_ddf ids and positions is data/dp2_transients.csv
+      (verified identical id set, 2026-10-26).
+  - id: dp2_parsnip_ddf_sample
+    type: data
+    source: "NERSC /global/cfs/cdirs/lsst/groups/TD/SN/EDP2/SN_candidates/parsnip_ddf.parquet (local copy data/dp2_transients.csv)"
+    description: >-
+      The 7823-object DDF ParSNIP sample, fixed as the cross-method comparison
+      set regardless of dp2_sample, because the collaborator associations below
+      exist only for it.
+  - id: dp2_dlr_legacy_jlee
+    type: data
+    source: "NERSC .../SN_candidates/EDP2_Host_Associations/Host_Association_DLR_J_Lee/host_association_DLR_8k_sample_v261009.csv"
+    description: >-
+      J. Lee's DLR host association of the 7823 DDF sample using DESI Legacy
+      Surveys DR10 Tractor shapes (SHAPE_R, SHAPE_E1/E2, TYPE) with photo-z;
+      columns include ddlr, ddlr_second, n_candidates, has_host (7809 rows).
+  - id: dp2_delight_yjkang
+    type: data
+    source: "NERSC .../SN_candidates/EDP2_Host_Associations/Host_Association_Delight_Prost_YJ_Kang/delight_parsnip_dp2_8k_results.parquet (+ _legacy_dr10_photoz_specz.parquet)"
+    description: >-
+      Y. J. Kang's DELIGHT (and SExtractor) predicted host positions for the
+      7823 DDF sample on image cutouts, with DP2 Object and Legacy DR10
+      counterparts and redshifts in the companion file.
   - id: dp2_object
     type: data
     source: "tap://data.lsst.cloud/api/tap dp2 Object (MultiProFit sersic_* and exponential_* fits) | NERSC HATS object_collection"
@@ -202,7 +230,7 @@ outputs:
     format: parquet
     description: One row per DP2 transient with SBW and DLR hosts, all bands, both MultiProFit fits.
     inputs: [dp2_transients, dp2_object]
-    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, exclude_suspect]
+    decisions: [dp2_sample, sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, exclude_suspect]
   - id: dp2_disagreement_rate
     type: metric
     format: json
@@ -227,6 +255,16 @@ outputs:
     description: Cutout gallery of representative DP2 disagreements on deep_coadd images.
     inputs: [dp2_associations]
     decisions: []
+  - id: dp2_cross_method_agreement
+    type: table
+    format: csv
+    description: >-
+      Pairwise host-agreement matrix on the 7823 DDF sample between SBW,
+      sbw_host's own DLR on DP2 fits, J. Lee's DLR on Legacy DR10 shapes and
+      Y. J. Kang's DELIGHT positions, with hostless rates per method; hosts are
+      matched by position under reference_match.
+    inputs: [dp2_parsnip_ddf_sample, dp2_object, dp2_dlr_legacy_jlee, dp2_delight_yjkang]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, reference_match]
   # ---- Cross-tier summary ----
   - id: summary_table
     type: table
@@ -372,6 +410,18 @@ decisions:
       all:
         label: Keep every SN truth row
         insights: [dc2_hostless_sn_fraction]
+  dp2_sample:
+    label: DP2 transient sample for the real-data tier
+    rationale: >-
+      Objects with a successful SALT3 fit are credible SNe, so the headline
+      disagreement rates are computed on them; the larger samples trade purity
+      for statistics and are available as universes.
+    default: rc_salt
+    options:
+      rc_salt: { label: "RC_sample.parquet: 690 SALT3-fit candidates (R. Chen)" }
+      md_final: { label: "final_sample.parquet: 617 SALT-fit candidates (M. Dai)" }
+      parsnip_ddf: { label: "parsnip_ddf.parquet: 7823 DDF ParSNIP candidates" }
+      rc_all: { label: "RC_lcfit_input_122k.parquet: 122,465 objects with minimal cuts" }
   reference_match:
     label: How a method's chosen host is matched to the reference host position
     rationale: >-

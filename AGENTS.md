@@ -74,11 +74,18 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   Labels are catalogue centroids that can be off by arcseconds, hence the
   `reference_match` decision. Keep the 2% of hosts with no SExtractor
   counterpart; DELIGHT kept them deliberately.
-- **DP2 tier.** `data/dp2_transients.csv` holds 7823 positions supplied by a
-  collaborator (18-digit DiaObject-like keys); the selection behind the list is
-  undocumented and must be obtained from the provider before publication.
-  Candidates come from the DP2 Object table (both MultiProFit fits) over
-  grouped TAP or the NERSC HATS `object_collection` via LSDB.
+- **DP2 tier.** Samples live on NERSC under
+  `/global/cfs/cdirs/lsst/groups/TD/SN/EDP2/SN_candidates/` (EDP2 transient
+  WG; README, README_RC.md). Headline sample is `RC_sample.parquet` (690 with a
+  good SALT3 fit, decision `dp2_sample: rc_salt`); alternatives are Mi Dai's
+  `final_sample.parquet` (617), `parsnip_ddf.parquet` (7823 DDF ParSNIP) and
+  `RC_lcfit_input_122k.parquet` (122k, minimal cuts). The laptop file
+  `data/dp2_transients.csv` is exactly the parsnip_ddf id set (sha256 checked).
+  `EDP2_Host_Associations/` there holds three runs on the 7823 set: J. Lee's
+  DLR on Legacy DR10 Tractor shapes, Y. J. Kang's DELIGHT on cutouts, and
+  Connor's earlier SBW csvs (8k and 122k); `dp2_cross_method_agreement`
+  compares SBW with those. Candidates come from the DP2 Object table (both
+  MultiProFit fits) over grouped TAP or the NERSC HATS `object_collection`.
 - **Compute: NERSC Perlmutter via `lc`, set up 2026-10-26.** Lightcone runs
   `lc` *on the login node* and launches recipes into Slurm allocations from
   `~/.lightcone/compute.yaml` (local compute is refused on login nodes). On
