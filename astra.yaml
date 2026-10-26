@@ -1,0 +1,1821 @@
+# ASTRA Analysis Specification
+
+version: "0.0.14"
+name: "SBW host association performance"
+description: >-
+  Tests the surface-brightness-weighted (SBW) host-association method for
+  transients, as implemented in the sbw_host package, on four tiers of data:
+  DP0.2 (DC2) with true hosts, the DES-SN5YR published hosts, the DELIGHT
+  visually matched host set, and Rubin DP2 real data without any reference.
+  SBW is taken as the framework; the questions are which form of SBW (fitted
+  exponential, free-n Sersic, or deblended image stamps) recovers hosts best,
+  and how SBW relates to the directional-light-radius (DLR) standard
+  (disagreement rate, band dependence, agreement versus d_DLR) rather than
+  which one wins. A cheap propagation of mis-association into a redshift and
+  distance-modulus error uses OpenUniverse2024 truth. Each tier produces an
+  association table, a recovery or disagreement metric, regime-binned figures
+  and a disagreement gallery; a cross-tier summary table collects them.
+
+inputs:
+  # ---- Tier 1: simulation with true hosts (DP0.2 / DC2) ----
+  - id: dp02_sn_truth
+    type: data
+    source: "tap://data.lsst.cloud/api/tap dp02_dc2_catalogs.TruthSummary (truth_type=3) + MatchesTruth"
+    description: >-
+      DC2 supernova truth rows (truth_type = 3) with host_galaxy id, joined to
+      MatchesTruth for the pipeline objectId of the true host. Fetched over the
+      RSP TAP service and cached in data/.
+  - id: dp02_object
+    type: data
+    source: "tap://data.lsst.cloud/api/tap dp02_dc2_catalogs.Object (CModel bulge+disk, HSM moments) | NERSC /global/cfs/cdirs/lsst/shared/rubin/DP0.2 parquet"
+    description: >-
+      DP0.2 Object table rows around each SN: per-band CModel bulge+disk
+      parameters (r_bdReB, r_bdReD, r_bdE1/E2, r_bdFluxB/D), HSM moments,
+      refExtendedness and flags. These are the only pipeline shape fits available
+      for DC2 (no MultiProFit Sersic).
+  - id: dp02_deblended_stamps
+    type: data
+    source: "butler dp02 deepCoadd_deblendedModel / footprints via NERSC or RSP"
+    description: >-
+      Deblender model stamps for candidate hosts, used by the image-level (stamp)
+      form of SBW.
+  # ---- Tier 2: DES-SN5YR confident host matches ----
+  - id: des_sn5yr_hosts
+    type: data
+    source: "https://github.com/des-science/DES-SN5YR (4_DISTANCES_COVMAT/DES-Dovekie_Metadata.csv, 0_DATA/DES-SN5YR_DES/DES-SN5YR_DES_HEAD.FITS.gz)"
+    description: >-
+      1623 DES SNe Ia of the Dovekie cosmology sample (IDSURVEY = 10) with the
+      published HOSTGAL_RA/DEC (DLR-based, visually vetted) host positions.
+  - id: des_dr2_objects
+    type: data
+    source: "tap://datalab.noirlab.edu/tap des_dr2.main (a_image, b_image, theta_j2000, flux_radius, flux_auto)"
+    description: >-
+      DES DR2 SExtractor shape and flux measurements for every object within the
+      search radius of each DES SN; the candidate catalogue for both methods.
+  # ---- Tier 3: DELIGHT visually matched hosts ----
+  - id: delight_hosts
+    type: data
+    source: "DELIGHT (Forster et al. 2022, AJ 164 195) public training set: transient RA/Dec and visually matched host RA/Dec"
+    description: >-
+      Historical transients with hosts matched by eye; no ground truth but a
+      vetted reference. Candidate galaxies must come from a survey with model
+      fits covering these fields (see decision delight_catalogue).
+  - id: delight_candidate_objects
+    type: data
+    source: "DESI Legacy Surveys DR10 Tractor catalogue (shape_r, shape_e1, shape_e2, sersic, flux_*) via NOIRLab Data Lab TAP"
+    description: >-
+      Candidate galaxies with parametric (EXP/DEV/SER) Tractor models around each
+      DELIGHT transient.
+  # ---- Tier 4: Rubin DP2, no truth ----
+  - id: dp2_transients
+    type: data
+    source: "data/dp2_transients.csv (copied from ../../edp2_host_association/host_association_sbw.csv: transient_key, transient_ra, transient_dec)"
+    description: >-
+      7823 transient positions in the Rubin DP2 footprint supplied by a
+      collaborator (18-digit DiaObject-like keys); the exact selection that
+      produced the list is not documented here and must be obtained from the
+      provider before publication. Used for the method-to-method comparison.
+  - id: dp2_object
+    type: data
+    source: "tap://data.lsst.cloud/api/tap dp2 Object (MultiProFit sersic_* and exponential_* fits) | NERSC HATS object_collection"
+    description: >-
+      DP2 Object table rows with both MultiProFit fits, queried per transient
+      region (grouped TAP) or via the LSDB HATS copy at NERSC.
+  # ---- Cosmology propagation: OpenUniverse2024 truth ----
+  - id: ou2024_transient_truth
+    type: data
+    source: "https://portal.nersc.gov/cfs/lsst/DESC_TD_PUBLIC/Roman+DESC/ OU24_TRANSIENT_TRUTH_HEAD.DAT.gz + SNIa HEAD files (SIM_HOSTLIB_GALID, HOSTGAL_* SNANA DLR match)"
+    description: >-
+      OpenUniverse2024 SN Ia truth: true host id and redshift, SNANA's own DLR
+      host match, GALSNSEP, GALSNDDLR. Used to propagate mis-association into a
+      redshift and distance-modulus error. Caveat: SNANA places SNe weighted by
+      host surface brightness, which favours SBW by construction.
+  - id: ou2024_skycatalog
+    type: data
+    source: "s3://nasa-irsa-simulations/openuniverse2024/roman/full/roman_rubin_cats_v1.1.2_faint/ galaxy_<hpix>.parquet (bulge/disk sizes, ellipticities, redshift)"
+    description: >-
+      Truth galaxy profiles and redshifts around each OU2024 SN, giving a
+      noise-free candidate catalogue for the cosmology propagation.
+
+outputs:
+  # ---- Tier 1: DP0.2 ----
+  - id: dp02_associations
+    type: table
+    format: parquet
+    description: >-
+      One row per DP0.2 SN: true host objectId, SBW top host and p_sbw,
+      DLR host and d_dlr, separation, host magnitude and size, per-band results.
+    inputs: [dp02_sn_truth, dp02_object, dp02_deblended_stamps]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, truth_match, dp02_sample_cuts]
+  - id: dp02_recovery
+    type: metric
+    format: json
+    description: Fraction of SNe whose true host is the top-ranked host, per method, with binomial intervals.
+    inputs: [dp02_associations]
+    decisions: []
+  - id: dp02_recovery_vs_ddlr
+    type: figure
+    format: pdf
+    description: Recovery fraction per method and SBW-DLR agreement rate as a function of the true host's d_DLR.
+    inputs: [dp02_associations]
+    decisions: []
+  - id: dp02_recovery_vs_separation
+    type: figure
+    format: pdf
+    description: Recovery fraction per method versus transient-host angular separation.
+    inputs: [dp02_associations]
+    decisions: []
+  - id: dp02_recovery_vs_host_mag
+    type: figure
+    format: pdf
+    description: Recovery fraction per method versus true-host r magnitude (faint-host regime).
+    inputs: [dp02_associations]
+    decisions: []
+  - id: dp02_band_dependence
+    type: figure
+    format: pdf
+    description: SBW recovery and SBW-DLR agreement per band (u g r i z y), and how often the SBW top host changes between bands.
+    inputs: [dp02_associations]
+    decisions: []
+  - id: dp02_profile_sweep
+    type: table
+    format: csv
+    description: >-
+      Recovery fraction for every SBW form (disk-only, bulge+disk, deblended
+      stamps) side by side, independent of the headline sbw_profile choice.
+      This answers "which form of SBW is best" in one table.
+    inputs: [dp02_sn_truth, dp02_object, dp02_deblended_stamps]
+    decisions: [band, search_radius, extendedness_cut, truth_match, dp02_sample_cuts]
+  - id: dp02_hostless_indicator
+    type: figure
+    format: pdf
+    description: Distribution of max frac_light_beyond for true SN positions versus random sky positions (hostless separability).
+    inputs: [dp02_associations, dp02_object]
+    decisions: [sbw_profile, band, search_radius]
+  # ---- Tier 2: DES ----
+  - id: des_associations
+    type: table
+    format: parquet
+    description: One row per DES SN with the published host, SBW top host, DLR host and all metrics.
+    inputs: [des_sn5yr_hosts, des_dr2_objects]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, reference_match]
+  - id: des_recovery
+    type: metric
+    format: json
+    description: Fraction of DES SNe for which each method returns the published host.
+    inputs: [des_associations]
+    decisions: []
+  - id: des_agreement_vs_ddlr
+    type: figure
+    format: pdf
+    description: SBW-DLR agreement and recovery of the published host versus d_DLR and separation.
+    inputs: [des_associations]
+    decisions: []
+  - id: des_disagreement_gallery
+    type: figure
+    format: pdf
+    description: Cutout gallery of DES cases where SBW and DLR pick different hosts, marking the published host.
+    inputs: [des_associations]
+    decisions: []
+  # ---- Tier 3: DELIGHT ----
+  - id: delight_associations
+    type: table
+    format: parquet
+    description: One row per DELIGHT transient with the visually matched host, SBW top host and DLR host.
+    inputs: [delight_hosts, delight_candidate_objects]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, delight_catalogue, reference_match]
+  - id: delight_recovery
+    type: metric
+    format: json
+    description: Fraction of DELIGHT transients for which each method returns the visually matched host.
+    inputs: [delight_associations]
+    decisions: []
+  - id: delight_disagreement_gallery
+    type: figure
+    format: pdf
+    description: Cutout gallery of DELIGHT cases where SBW, DLR and the visual match disagree.
+    inputs: [delight_associations]
+    decisions: []
+  # ---- Tier 4: DP2 ----
+  - id: dp2_associations
+    type: table
+    format: parquet
+    description: One row per DP2 transient with SBW and DLR hosts, all bands, both MultiProFit fits.
+    inputs: [dp2_transients, dp2_object]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, exclude_suspect]
+  - id: dp2_disagreement_rate
+    type: metric
+    format: json
+    description: Fraction of DP2 transients where SBW and DLR pick different hosts, overall and per band.
+    inputs: [dp2_associations]
+    decisions: []
+  - id: dp2_agreement_vs_ddlr
+    type: figure
+    format: pdf
+    description: SBW-DLR agreement versus d_DLR of the DLR host and versus p_sbw of the SBW host.
+    inputs: [dp2_associations]
+    decisions: []
+  - id: dp2_band_consistency
+    type: figure
+    format: pdf
+    description: How often the SBW top host changes with band, and the exponential-versus-Sersic fit agreement.
+    inputs: [dp2_associations]
+    decisions: []
+  - id: dp2_disagreement_gallery
+    type: figure
+    format: pdf
+    description: Cutout gallery of representative DP2 disagreements on deep_coadd images.
+    inputs: [dp2_associations]
+    decisions: []
+  # ---- Cross-tier summary ----
+  - id: summary_table
+    type: table
+    format: csv
+    description: One row per dataset and method with recovery (where a reference exists), disagreement rate and sample size.
+    inputs: [dp02_recovery, des_recovery, delight_recovery, dp2_disagreement_rate]
+    decisions: []
+  # ---- Cosmology propagation ----
+  - id: ou2024_misassociation_dmu
+    type: figure
+    format: pdf
+    description: >-
+      Distribution of the distance-modulus error from adopting the wrong host's
+      redshift, for SBW and DLR applied to the OU2024 truth catalogue.
+    inputs: [ou2024_transient_truth, ou2024_skycatalog]
+    decisions: [sbw_profile, search_radius, dlr_max, cosmo_propagation]
+  - id: ou2024_cosmo_bias
+    type: metric
+    format: json
+    description: Mis-association rate and the resulting bias and scatter in the Hubble residual per method.
+    inputs: [ou2024_misassociation_dmu, ou2024_transient_truth, ou2024_skycatalog]
+    decisions: [sbw_profile, search_radius, dlr_max, cosmo_propagation]
+
+decisions:
+  sbw_profile:
+    label: Form of the host light model used by SBW
+    rationale: >-
+      The core question of the paper. Parametric fits are cheap and available in
+      every catalogue; the deblended stamp form is model-free but depends on the
+      deblender. Exponential is the package default because the free-n fit pins
+      ~3% of galaxies at n ~ 6 whose wings dominate from far away.
+    default: exponential
+    options:
+      exponential:
+        label: Exponential (n = 1) fit; disk-only on DP0.2 CModel
+        insights: [dc2_sn_position_sampled_from_sersic_profile, legacy_tractor_model_set, legacy_single_shape_across_bands]
+      sersic:
+        label: Free-n Sersic fit; bulge+disk composite on DP0.2 CModel
+        insights: [ou2024_hostlib_sb_weighted_placement, ou2024_galaxy_model_bulge_disk_knots, dc2_sn_position_sampled_from_sersic_profile, dc2_galaxy_model_bulge_disk_fixed_sersic, dc2_pipeline_runs_cmodel_photometry, legacy_tractor_model_set, legacy_single_shape_across_bands, qu2024_sim_sn_placement_intensity_weighted, qu2024_sersic_radii_scaled_0p8]
+      stamps:
+        label: Image-level deblended model stamps (sbw_host.stamps)
+        insights: [dc2_random_walk_knots_perturb_disk_profile, delight_catastrophic_failure_mode_large_hosts, delight_nearby_sample_asiago_hecate, legacy_tractor_fails_on_large_galaxies, ghost_gradient_ascent_beats_dlr_12_vs_16_pct, ghost_image_method_fails_in_crowded_large_host_fields]
+  band:
+    label: Band in which surface brightness is evaluated
+    rationale: r is the deepest and best-fit band in Rubin; wavelength dependence is reported as its own output.
+    default: r
+    options:
+      r:
+        label: r
+        insights: [delight_images_ps1_rband_stamps, legacy_coverage_and_depth, legacy_single_shape_across_bands]
+      i: { label: i }
+      g:
+        label: g
+        insights: [legacy_coverage_and_depth]
+      z:
+        label: z
+        insights: [legacy_coverage_and_depth, legacy_z_band_best_image_quality]
+  search_radius:
+    label: Candidate search radius
+    rationale: 30 arcsec captures hosts out to several half-light radii for all but the largest nearby galaxies.
+    default: r30
+    options:
+      r15:
+        label: 15 arcsec (DES-SN5YR data convention)
+        insights: [qu2024_dlr_threshold_4_radius_15arcsec, gupta16_search_radius_30arcsec_loses_few_true_hosts]
+      r30:
+        label: 30 arcsec
+        insights: [sullivan06_candidate_search_radius_10arcsec, ou2024_sne_truth_table_host_id_and_separation, qu2024_dlr_threshold_4_radius_15arcsec, qu2024_sim_matching_10arcsec_10gal, ghost_ps1_30arcsec_cone_search, gupta16_search_radius_30arcsec_loses_few_true_hosts]
+      r60:
+        label: 60 arcsec (covers the whole DELIGHT labelled set)
+        insights: [delight_host_set_assembly]
+  dlr_max:
+    label: Maximum d_DLR for a DLR assignment
+    rationale: Gupta et al. 2016 and DES-SN use 4; beyond it the transient is declared hostless.
+    default: d4
+    options:
+      d4:
+        label: "d_DLR <= 4"
+        insights: [qu2024_dlr_threshold_4_radius_15arcsec, qu2024_hostless_rate_faint_hosts, qu2024_sim_matching_10arcsec_10gal, gupta16_dlr_threshold_4_is_nominal_sdss_choice_not_optimised]
+      d5:
+        label: "d_DLR <= 5"
+        insights: [sullivan06_dlr_isophotal_r3_threshold_r5, sullivan06_hostless_fraction_7pct, ghost_dlr_max_extended_to_5, gupta16_dlr_threshold_4_is_nominal_sdss_choice_not_optimised]
+  dlr_radius:
+    label: Ellipse used for the DLR radius
+    rationale: >-
+      Every published DLR implementation (Sullivan+06, Gupta+16, Qu+24, GHOST)
+      uses a second-moment or Kron ellipse, and Gupta+16 show that fitted
+      half-light radii without a quality cut degrade DLR. The package default
+      is the model half-light ellipse because that is what SBW itself uses and
+      it keeps d_dlr equal to the transient's elliptical radius; the moment
+      ellipse is the literature-faithful alternative, and the DES tier must use
+      it to reproduce the published DES hosts.
+    default: half_light
+    options:
+      half_light:
+        label: Model half-light ellipse (1.386 x reff for MultiProFit)
+        insights: [qu2024_sersic_radii_scaled_0p8]
+      moments:
+        label: "Second-moment (HSM or SExtractor A, B) ellipse"
+        insights: [sullivan06_dlr_ellipse_is_sextractor_moments, sullivan06_dlr_isophotal_r3_threshold_r5, delight_sextractor_ellipse_failures_kept, qu2024_dlr_recipe_sextractor_moments, ghost_dlr_uses_moments_and_kron_radius_best_snr_band, gupta16_dlr_defined_from_sextractor_moment_ellipse, gupta16_fitted_half_light_radius_degrades_dlr_matching]
+  extendedness_cut:
+    label: Point-source rejection
+    rationale: Stars contaminate candidate lists; but faint hosts are sometimes classed as stars (the dominant DES failure mode).
+    default: ext05
+    options:
+      ext05:
+        label: "refExtendedness (or survey equivalent) >= 0.5"
+        insights: [legacy_psf_type_contains_compact_galaxies, ghost_star_cut_is_deliberately_lenient, gupta16_compact_objects_removed_from_candidate_catalogue]
+      none:
+        label: Keep all objects
+        insights: [legacy_psf_type_contains_compact_galaxies]
+  exclude_suspect:
+    label: Drop fits flagged as suspect (deblend-halo phantoms)
+    default: keep
+    options:
+      keep:
+        label: Keep suspect fits in the probabilities
+        insights: [delight_sextractor_ellipse_failures_kept]
+      drop:
+        label: Exclude suspect fits
+        insights: [qu2024_sersic_radii_scaled_0p8]
+  truth_match:
+    label: How the DC2 true host is linked to a pipeline object
+    default: matches_truth
+    options:
+      matches_truth:
+        label: MatchesTruth table
+        insights: [dc2_truth_match_magnitude_within_1arcsec, dc2_truth_table_single_entry_per_galaxy]
+      nearest_1arcsec:
+        label: Nearest Object within 1 arcsec of the truth position
+        insights: [dc2_truth_match_magnitude_within_1arcsec]
+  dp02_sample_cuts:
+    label: DP0.2 SN sample cleaning
+    rationale: >-
+      ~5% of SN truth rows point to an empty host row and ~9% sit > 3 arcsec from
+      the declared host because DC2 sampled positions from very large truth
+      profiles; these are unrecoverable from images.
+    default: clean
+    options:
+      clean:
+        label: Drop empty-host rows and report the > 3 arcsec subset separately
+        insights: [dc2_hostless_sn_fraction, dc2_host_choice_proportional_to_stellar_mass]
+      all:
+        label: Keep every SN truth row
+        insights: [dc2_hostless_sn_fraction]
+  reference_match:
+    label: How a method's chosen host is matched to the reference host position
+    rationale: >-
+      DES HOSTGAL and DELIGHT visual positions are catalogue centroids that can
+      differ from the Rubin, DES DR2 or Legacy object centroid by arcseconds,
+      and by more for large nearby hosts (DELIGHT reports tails of a few
+      arcsec). The tolerance sets what counts as agreement with the reference.
+    default: pos_1arcsec
+    options:
+      pos_1arcsec:
+        label: Same host if centroids agree within 1 arcsec
+      pos_3arcsec:
+        label: Same host if centroids agree within 3 arcsec
+        insights: [delight_visual_vetting_by_twelve_people, delight_catastrophic_failure_mode_large_hosts]
+      frac_semimajor:
+        label: Same host if the reference position lies within 0.5 half-light semi-major axes of the chosen host
+        insights: [delight_catastrophic_failure_mode_large_hosts]
+  delight_catalogue:
+    label: Candidate catalogue for the DELIGHT fields
+    default: legacy_dr10
+    options:
+      legacy_dr10:
+        label: DESI Legacy Surveys DR10 Tractor models
+        insights: [delight_alerce_sample_from_ztf_and_catalogue_positions, delight_visual_vetting_by_twelve_people, legacy_tractor_model_set, legacy_model_type_chosen_by_joint_residual, legacy_coverage_and_depth, legacy_tractor_fails_on_large_galaxies]
+      ps1_stamps:
+        label: Pan-STARRS stacks with the stamp form of SBW
+        insights: [delight_images_ps1_rband_stamps, delight_alerce_sample_from_ztf_and_catalogue_positions]
+  cosmo_propagation:
+    label: How mis-association is propagated to cosmology
+    rationale: Keep it cheap; the full SNANA/BBC route is out of scope.
+    default: redshift_swap
+    options:
+      redshift_swap:
+        label: "Wrong host => wrong redshift; delta mu from the fiducial cosmology"
+        insights: [ou2024_hostlib_sb_weighted_placement, ou2024_host_correlation_known_issue, ou2024_skycatalog_galaxy_truth_columns, ou2024_sne_truth_table_host_id_and_separation, qu2024_wrong_host_to_w_bias, qu2024_mismatch_rate_1p7pct]
+      none: { label: Report the mis-association rate only }
+
+prior_insights:
+  sullivan06_dlr_original_definition:
+    claim: 'The DLR-style host assignment originates here: the SN-galaxy separation is normalised by the
+      galaxy''s apparent size along the SN-galaxy direction (an elliptical radius R), explicitly because
+      the nearest host in arcseconds is sometimes the wrong identification.'
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.1086/506137
+      quote:
+        exact: Instead we use a separation normalized by the apparent size of the galaxy to which the SN
+          is being compared
+        prefix: 'probably not the correct identification. '
+        suffix: ' ( Fig. 1). We calculate the separation of the SN'
+      location:
+        page: 4
+  sullivan06_dlr_ellipse_is_sextractor_moments:
+    claim: The ellipse used for the original directional radius is the SExtractor shape (semimajor rA, semiminor
+      rB, position angle theta), i.e. a second-moment A/B/THETA ellipse, not a model half-light ellipse.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.1086/506137
+      quote:
+        exact: The elliptical shape is determined by SExtractor, defined by semimajor (rA ) and semiminor
+          (rB ) axes together with a position angle
+        prefix: 'to a given host center (xgal , ygal ). '
+        suffix: ', with R given by'
+      location:
+        page: 4
+  sullivan06_dlr_isophotal_r3_threshold_r5:
+    claim: R ~ 3 corresponds to the SExtractor isophotal limit of an object, and only galaxies with R <=
+      5 are considered as candidate hosts; this R <= 5 cut is the origin of the d_DLR <= 5 convention (R
+      is in units of the moment ellipse, so it is not the same physical cut as 5 half-light radii).
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.1086/506137
+      quote:
+        exact: The isophotal limit of a given object corresponds to R
+        prefix: 'is nearest in terms of this parameter. '
+        suffix: 3; we consider only galaxies with R
+      location:
+        page: 4
+    scope: SExtractor A/B moment ellipse on CFHTLS deep stacks; the numerical thresholds are tied to that
+      ellipse definition and detection depth.
+  sullivan06_dlr_assignment_rule_nearest_in_r:
+    claim: 'Host assignment is a hard argmin: candidates are ranked by R and the SN is assigned to the single
+      galaxy with the smallest R, with no probabilistic weighting and no handling of near-ties.'
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.1086/506137
+      quote:
+        exact: the hosts ordered by R, and each SN is assigned to the host that is nearest in terms of this
+          parameter.
+        prefix: 'The value R is determined for every candidate host galaxy, '
+        suffix: ' The isophotal limit of a given object corresponds to R'
+      location:
+        page: 4
+    - id: ev2
+      doi: 10.1086/506137
+      quote:
+        exact: The nearest host in terms of this R-parameter is considered to be the correct host
+        prefix: '5R ellipse overplotted (see x 2.3 for the definition of R). '
+        suffix: ; SNes with no hosts inside 5R are considered
+      location:
+        page: 3
+  sullivan06_candidate_search_radius_10arcsec:
+    claim: The original DLR implementation searched for candidate hosts only within 10 arcsec of the SN
+      position on i-band-detected deep stacks, far smaller than the 30-60 arcsec considered here; at SNLS
+      redshifts (0.2 < z < 0.75) 10 arcsec is still several host radii.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.1086/506137
+      quote:
+        exact: to identify all potential host galaxies within 1000 of the SN position and simultaneously
+          measure photometric information on the host galaxies
+        prefix: 'see Holwerda [2005] for an excellent user guide) '
+        suffix: . SExtractor is used in dual-image mode
+      location:
+        page: 3
+    scope: The '1000' in the extracted text is the PDF rendering of 10 arcsec; SNLS deep-stack depth, 0.2
+      < z < 0.75.
+  sullivan06_hostless_fraction_7pct:
+    claim: For 7% of SNLS SNe Ia no SExtractor galaxy is found with R <= 5; those are treated as hostless
+      and the host flux is replaced by a 3 arcsec aperture at the SN position.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.1086/506137
+      quote:
+        exact: In some cases (7%), no host galaxy is identified by SExtractor with R
+        prefix: 'we consider only galaxies with R  5. '
+        suffix: 5; we then measure the flux and flux error inside a
+      location:
+        page: 4
+    scope: SNLS spectroscopically confirmed SNe Ia on CFHTLS deep stacks; hostless fraction depends on stack
+      depth and redshift range.
+  ou2024_hostlib_sb_weighted_placement:
+    claim: OpenUniverse2024 transients were placed by SNANA using a HOSTLIB in which each galaxy carries
+      a bulge+disk Sersic profile, with the transient position drawn with weight proportional to the local
+      surface brightness. The truth placement is therefore exactly a surface-brightness-weighted model,
+      so SBW with a Sersic-type profile matches the simulation's generative prior while DLR does not.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: The HOSTLIB includes a bulge+disk Sersic profile that is used to place transients near a
+          galaxy with a weight proportional to the local surface brightness.
+        prefix: construct a host library (HOSTLIB) for the SNANA simulation.
+        suffix: The HOSTLIB also includes estimates of stellar mass and star formation rate
+      location:
+        page: 11
+    scope: OpenUniverse2024 (SNANA HOSTLIB) simulated transients only; not a statement about real transient
+      offsets.
+  ou2024_hostlib_mass_sfr_type_correlations:
+    claim: The HOSTLIB carries stellar mass and SFR which SNANA uses for transient-host correlations (e.g.
+      core-collapse SNe only in star-forming galaxies); host choice in the truth is a galaxy-property-weighted
+      draw, not uniform.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: The HOSTLIB also includes estimates of stellar mass and star formation rate, which are used
+          to model transient-host correlations such as core collapse SNe being found only in star forming
+          galaxies.
+        prefix: with a weight proportional to the local surface brightness.
+        suffix: 3.2.3 Rebinning to reduce SED output size
+      location:
+        page: 11
+  ou2024_host_correlation_known_issue:
+    claim: 'Known issue: host-transient correlations in OpenUniverse2024 were modelled incorrectly, giving
+      hosts an average stellar mass about 1 dex too low. A cosmology propagation built on OU2024 truth hosts
+      inherits a host population biased toward faint, low-mass galaxies, which likely inflates mis-association
+      rates relative to a realistic host population.'
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: Host-transient correlations were also incorrectly modeled, resulting in an average stellar
+          mass about 1 dex too low.
+        prefix: without host extinction corrections.
+        suffix: Thus the Poisson noise contribution from the host is underestimated.
+      location:
+        page: 11
+    scope: Caveat on OpenUniverse2024 host truth; applies to any analysis using its host population.
+  ou2024_galaxy_model_bulge_disk_knots:
+    claim: Simulated galaxies are composite bulge + disk + star-forming-knot models with sizes and ellipticities
+      inherited from the cosmoDC2 models; a bulge+disk or free-n Sersic fit is the natural light model,
+      and a pure exponential would miss the bulge component.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: Galaxies are built from a composite morphological model consisting of a bulge, disk, and
+          star-forming knot regions.
+        prefix: image scene photon-by-photon.
+        suffix: The SED
+      location:
+        page: 3
+    - id: ev2
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: Briefly, the model for the scaling relations used for galaxy size was calibrated against
+          Zhang & Yang (2019);
+        prefix: we use the same models implemented in Korytov et al. (2019) for cosmoDC2.
+        suffix: the models for black hole mass and accretion rate were calibrated
+      location:
+        page: 6
+    - id: ev3
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: and the model for ellipticity was calibrated against Joachimi et al. (2013). We refer the
+          reader to the cosmoDC2 paper for details.
+        prefix: Kormendy & Ho (2013) and Aird et al. (2018), respectively;
+        suffix: Within the smooth disk profile, we model a random set of star-forming
+      location:
+        page: 6
+  ou2024_skycatalog_galaxy_truth_columns:
+    claim: The SkyCatalog galaxy parquet truth tables give per-galaxy bulge and disk half-light radii in
+      arcsec, per-component ellipticities, stellar mass, and redshift with and without peculiar velocity;
+      the truth host light profile and true redshift are directly available for every candidate host without
+      fitting.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: spheroidHalfLightRadiusArcsec
+        prefix: Convergence (𝜅) experienced by object.
+        suffix: float32 arcsec Bulge component half-light radius.
+      location:
+        page: 24
+    - id: ev2
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: Object redshift (inc. peculiar velocity).
+        prefix: redshift float64 –
+        suffix: redshiftHubble float64 – Object redshift (w/o peculiar velocity).
+      location:
+        page: 24
+  ou2024_sne_truth_table_host_id_and_separation:
+    claim: The SkyCatalog SNe truth table records for each transient the true host_id, host position and
+      magnitudes, z_CMB and host_sn_sep (angular separation in arcsec). The truth host link is the generative
+      one from SNANA, not a DLR match; the paper describes no post-hoc host-association product. host_sn_sep
+      gives the true offset distribution directly, which bounds the search radius needed.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: Table A4. Contents of the SkyCatalog SNe parquet tables.
+        prefix: OpenUniverse2024 25
+        suffix: Column name Datatype Units Description
+      location:
+        page: 25
+    - id: ev2
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: host_sn_sep
+        prefix: host_mag_F float32 – Host magnitude.
+        suffix: float32 arcsec Separation from host.
+      location:
+        page: 25
+  ou2024_truth_and_pipeline_catalog_products:
+    claim: Truth for the suite lives in SkyCatalog Parquet/HDF5 files, while the LSST imaging was run through
+      the LSST Science Pipelines producing coadd object catalogs and DIA object catalogs; a pipeline-side
+      host association must be built by matching these object catalogs to the SkyCatalog truth.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: The truth information for the simulation suite is provided primarily in the form of a SkyCatalog.
+          This is a set of compact Parquet and HDF5 files that contain all information about objects necessary
+          to reproduce the simulated images.
+        prefix: 6.1 SkyCatalog truth tables
+        suffix: The files are intended to be interacted with via the SkyCatalogs Python module.
+      location:
+        page: 17
+    - id: ev2
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: Source detection, measurement, object association and forced photometry are then performed
+          to generate the DIA object catalogs.
+        prefix: difference images are created for each visit.
+        suffix: 6.3 Roman image processing and catalogs
+      location:
+        page: 17
+  dc2_sn_position_sampled_from_sersic_profile:
+    claim: In DC2 a hosted SN Ia is assigned to the bulge or disk with probability proportional to that
+      component's stellar mass, and its position is drawn from the surface-brightness profile of that component
+      (pure Sersic n = 1 disk or n = 4 bulge). DC2 truth therefore places SNe exactly according to the host
+      light profile; an exponential-only SBW model is exact for disk-hosted SNe but mis-specified for bulge-hosted
+      ones.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: we first assigned the SN to one of the components randomly, assuming that the probability
+          of a component hosting it was proportional to its stellar mass. Then, finally, we assigned a position
+          by sampling the surface brightness profile of the hosting component (which in the cosmoDC2 catalog
+          was by definition sersic and only had a sersic index of 1 or 4)
+        prefix: Since cosmoDC2 galaxies have bulges, disks, or both,
+        suffix: This prescription results in angular distance of the hosted SNe Ia
+      location:
+        page: 16
+    scope: DC2/DP0.2 simulated SNe Ia only; real SN populations need not follow the host light exactly.
+  dc2_host_choice_proportional_to_stellar_mass:
+    claim: DC2 host galaxies were drawn within each redshift bin with probability proportional to stellar
+      mass, so the SN host population is biased to massive, bright, large galaxies relative to the field;
+      faint-host failure modes are under-represented in DP0.2 relative to a real sample.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: we chose the host galaxies in the redshift bin, such that the probability of occupation of
+          a galaxy is proportional to its stellar mass.
+        prefix: per unit stellar mass. Ignoring the latter,
+        suffix: As there are many more host galaxies of lower stellar mass
+      location:
+        page: 15
+  dc2_hostless_sn_fraction:
+    claim: All DC2 SNe Ia at z > 1.0 and a random 10% of those at z < 1.0 were deliberately made hostless.
+      The DP0.2 SN truth therefore contains a known hostless control sample; rows with empty host ids are
+      genuine hostless injections, not matching failures, and must be handled explicitly in sample cleaning.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: All SNe Ia at z > 1.0 were chosen to be hostless and do not trace the large-scale structure.
+          Even at z < 1.0, 10% of the SNe Ia were randomly selected to be hostless.
+        prefix: we first decided on their environment.
+        suffix: This choice was made to provide a control sample
+      location:
+        page: 15
+  dc2_galaxy_model_bulge_disk_fixed_sersic:
+    claim: cosmoDC2 galaxies are a bulge plus disk with fixed Sersic indices n = 4 and n = 1, with shapes
+      and sizes per component. A fixed-index bulge+disk fit such as CModel is the matched model family for
+      DP0.2 hosts; a free-n single Sersic approximates a two-component truth.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: The shapes and sizes are provided separately for the disk and bulge components and the light
+          profiles are assumed to be n = 1 Sersic and n = 4 Sersic for the disk and bulge components, respectively.
+        prefix: (e.g., the bulge-to-total ratio).
+        suffix: Additional information on the implementation of the modeling
+      location:
+        page: 14
+  dc2_random_walk_knots_perturb_disk_profile:
+    claim: 'Rendered DC2 images are not pure bulge+disk: part of each disk''s flux is moved into a random
+      walk of equal-flux point sources (star-formation knots). Rendered host light departs from the smooth
+      Sersic truth, affecting pipeline fits and stamp-based SBW; the SN position itself was sampled from
+      the smooth profile, not the knots.'
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: This new component comprises a number of point sources of equal flux, with the same SED as
+          the disk component, and with positions drawn from a Gaussian distribution matching the size and
+          ellipticity of the disk.
+        prefix: to the bulge and disk representation.
+        suffix: Finally, the flux allocated to the random walk is subtracted
+      location:
+        page: 14
+  dc2_truth_match_magnitude_within_1arcsec:
+    claim: 'The DESC truth-to-object matching is not pure nearest-neighbour: a 1 arcsec positional query
+      is followed by requiring the true source to be within one r-band magnitude of the measured one, chosen
+      to reduce blending ambiguities. A plain nearest-1-arcsec match differs from the DESC procedure precisely
+      in blended cases.'
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: we consider sources in the object catalog as “matched" if there is a source in the true catalog
+          that is within one magnitude of the measured magnitude in r-band (we use r-band because it is
+          the deepest).
+        prefix: detected objects is carried out. Next,
+        suffix: Using this procedure blended objects will still be matched
+      location:
+        page: 11
+    - id: ev2
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: we match the sources in the DC2 object catalog with their closest match in magnitude within
+          1 arcsec radius in cosmoDC2.
+        prefix: galaxies in the cosmoDC2 input catalog. That is,
+        suffix: Then each source in the DC2 object catalog is associated with the true redshift
+      location:
+        page: 29
+  dc2_truth_table_single_entry_per_galaxy:
+    claim: The DC2 summary truth tables combine bulge, disk and knot fluxes into one entry per galaxy, so
+      a truth-matched host is one whole galaxy; per-component truth exists only in the instance catalogs
+      / cosmoDC2.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: the summary truth tables combine the fluxes from the bulge, disk, and knot components, thereby
+          producing a single entry for each galaxy as a whole, whereas the instance catalogs provide separate
+          entries for each of the three possible galaxy components.
+        prefix: another important difference between the summary truth tables and the instance catalogs
+          is that
+        suffix: Therefore, to verify an instance catalog
+      location:
+        page: 12
+  dc2_pipeline_runs_cmodel_photometry:
+    claim: DC2 processing with the LSST Science Pipelines includes CModel photometry (fixed-index exponential
+      + de Vaucouleurs composite), so CModel bulge+disk parameters are available in the DP0.2 object catalogue
+      as an SBW light model; the paper does not describe their quality.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: various measurement algorithms are applied including centroiding, aperture photometry, PSF
+          photometry, CModel photometry and shape fitting.
+        prefix: source deblending, and source measurement. For the sources,
+        suffix: The image catalogs are compared to a reference catalog
+      location:
+        page: 24
+  dc2_sn_offsets_validated_against_sdss:
+    claim: The DC2 SN-host separation distribution (normalised by host size) was validated against SDSS
+      SNe Ia and agrees well except near galaxy cores, where the observed sample is depleted by selection
+      effects; SBW/DLR performance on DP0.2 should transfer to real surveys apart from the core excess.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2010.05926
+      quote:
+        exact: In general, the simulated distances show good agreement with the observations from SDSS.
+          It also leads to the distribution of surface brightness at the location of the SNe (as predicted
+          by the truth catalog) shown in Figure 7.
+        prefix: This is a likely explanation for the difference near the core.
+        suffix: As these simulations will largely be used for studies of the image processing pipeline
+      location:
+        page: 16
+  delight_host_set_assembly:
+    claim: The DELIGHT reference host set is 16,791 visually selected hosts restricted to transients within
+      one arcminute of the host centre; a 60 arcsec search radius covers every labelled host by construction,
+      while 30 arcsec truncates the large-separation tail the sample was built to include.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: we use a total of 16,791 visually selected host galaxies, restricting the sample to galaxies
+          whose candidates are within one arcminute from the host center.
+        prefix: For the proposed method, DELIGHT,
+        suffix: This is equivalent to the angular radius of the the Milky Way
+      location:
+        page: 3
+    scope: DELIGHT validation set only; the 1 arcmin cut is a property of the labelled sample.
+  delight_alerce_sample_from_ztf_and_catalogue_positions:
+    claim: 14,111 of the 16,791 DELIGHT hosts come from ZTF public-stream candidates (Aug 2019 to May 2022)
+      whose host was picked by eye among NED, SIMBAD and SDSS catalogue positions overlaid on Pan-STARRS
+      DR1 colour images; the labels are external-catalogue centroids on the ZTF/PS1 northern footprint,
+      which any candidate catalogue must cover.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: a collection of 14,111 transient candidate host galaxies visually identified by the ALeRCE
+          broker team between Aug 2019 and May 2022.
+        prefix: '1. ALeRCE sample:'
+        suffix: The transient candidates were first identified in the ZTF public alert stream
+      location:
+        page: 4
+    - id: ev2
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: The transient candidates were first identified in the ZTF public alert stream using the ALeRCE
+          stamp classifier
+        prefix: between Aug 2019 and May 2022.
+        suffix: (Carrasco-Davis et al. 2021) and then filtered and vetoed
+      location:
+        page: 4
+    - id: ev3
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: sources superimposed on PanSTARRS DR1 color images
+        prefix: and Sloan Digital Sky Survey (SDSS, Abdurro'uf et al. 2022)
+        suffix: using the ipyaladin tool.
+      location:
+        page: 4
+    scope: The northern-sky restriction is inferred from the ZTF and Pan-STARRS choice; the paper states
+      no declination limit.
+  delight_nearby_sample_asiago_hecate:
+    claim: A second Nearby sample of 2,680 hosts (Asiago catalogue plus HECATE galaxies with TNS SNe) with
+      large angular size (median semi-major axis 14.1 arcsec vs 2.4 arcsec for the ALeRCE sample) was added;
+      this sub-sample is where catalogue-ellipse methods fail most and where stamp SBW is most stressed.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: a collection of 2,563 visually identified host galaxies from the Asiago catalog (Barbon et
+          al. 1999) and 117 host galaxies that have TNS reported SNe in the HECATE catalog
+        prefix: '2. Nearby sample:'
+        suffix: (Kovlakas et al. 2021) of nearby galaxies.
+      location:
+        page: 4
+  delight_visual_vetting_by_twelve_people:
+    claim: Catalogue host positions can be off by several to tens of arcseconds, so every DELIGHT image
+      was visually examined by 12 people to remove wrong hosts and those whose label was far from the visual
+      centre. Matching DELIGHT labels to a model catalogue needs an arcsecond-scale positional tolerance,
+      not exact centroid equality.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: It is important to note that the catalog positions are not perfect, as many times one can
+          observe a deviation from the true position by several arcseconds and sometimes by tens of arcseconds.
+        prefix: of any source were masked out (see Section 2.1).
+        suffix: Thus, all resulting images were visually examined
+      location:
+        page: 5
+    - id: ev2
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: all resulting images were visually examined by a team of 12 people in order to remove incorrectly
+          selected hosts and those where the angular separation between the labeled position and the visually
+          estimated host center was thought to be too large.
+        prefix: sometimes by tens of arcseconds. Thus,
+        suffix: This step is included when defining the sample of 16,791 galaxies.
+      location:
+        page: 5
+  delight_images_ps1_rband_stamps:
+    claim: DELIGHT's imagery is archival Pan-STARRS r-band 120x120 arcsec stacks at 0.25 arcsec/pixel; r
+      was chosen because it best traces the bulge and hence the galaxy centre. PS1 r stamps are the native
+      imaging for stamp-based SBW on these fields, and r is the band in which the reference positions were
+      defined.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: archival r–band PanSTARRS image centered at its location using the panstamps tool.
+        prefix: (480×480 pixels with 0.25″/pixel)
+        suffix: We use only one band in order to ensure a faster image retrieval
+      location:
+        page: 4
+    - id: ev2
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: we use the r–band because it is a better tracer of the bulge, and therefore of the center
+          of galaxies (Kim et al. 2016).
+        prefix: be obtained using multi-band images and
+        suffix: The input images are processed using SExtractor
+      location:
+        page: 5
+  delight_dlr_comparison_numbers:
+    claim: On the DELIGHT test set DLR returns no host for 2.7% of transients; cross-matched to SDSS DR17
+      within 0.5 arcmin with a redshift difference > 0.05 counted as misassociation, DLR reaches 60.0% photometric-redshift
+      completeness with 2.6% contamination (1.9% ALeRCE, 7.1% Nearby) versus 62.8% / 0.86% for DELIGHT and
+      62.4% / 0.97% for the SExtractor normalised-ellipse method.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: 2.7% and 9.5% of the cases have no predicted position in DLR and Grad, respectively
+        prefix: some of the methods do not yield a predicted host galaxy position (
+        suffix: ). In the left and right panels of this figure
+      location:
+        page: 7
+    - id: ev2
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: DLR 20.7 19.7 25.4 0 0 0 60.0 63.5 43.7 2.6 1.9 7.1
+        prefix: SEx 21.8 20.1 29.7 0 0 0 62.4 65.6 47.5 0.97 0.66 3.0
+        suffix: Grad 19.6 19.1 22.0
+      location:
+        page: 12
+    - id: ev3
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: We assume that redshifts that differ by more than 0.05 from the one obtained using the true
+          position are equivalent to a misclassification.
+        prefix: 1-NN 15.4 16.8 8.4 0.14 0 1.4 54.2 60.9 22.9 6.2 3.4 40.8 Note—
+        suffix: We use bold letters for the best metric in each category
+      location:
+        page: 12
+    - id: ev4
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: to obtain the closest galaxy source with spectroscopic or photometric redshift within 0.5
+          arcmin from the predicted test set
+        prefix: We used the SDSS DR17 Object CrossID service
+        suffix: positions. The number of matches using different methods
+      location:
+        page: 9
+    scope: Metric is redshift recovery via SDSS cross-match of the predicted position, not direct host-ID
+      agreement; DLR implemented with SExtractor ellipses on PS1 r-band stamps.
+  delight_catastrophic_failure_mode_large_hosts:
+    claim: The dominant catastrophic failure of catalogue-ellipse methods is a large nearby host displaced
+      by a smaller, more distant galaxy closer in projection; DELIGHT's residual errors for hosts larger
+      than ~10 arcsec also carry a tail of a few arcseconds, so a position-tolerant host match is needed
+      when scoring against these labels.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: These errors correspond to cases where a large nearby host galaxy is confused with a smaller,
+          distant galaxy which is closer in projection.
+        prefix: Catastrophic errors are clustered near the identity line (gray, dotted lines).
+        suffix: Table 2. Number of spectroscopic and photometric redshift
+      location:
+        page: 9
+    - id: ev2
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: in larger galaxies the distribution of errors has a significant tail extending up to a few
+          arcseconds in absolute value.
+        prefix: the errors are typically below
+        suffix: Finally, in Appendix B we show ten random examples
+      location:
+        page: 9
+  delight_sextractor_ellipse_failures_kept:
+    claim: In 2% of DELIGHT hosts no SExtractor source coincides with the label; this 2% holds up to 11%
+      of the cross-match failures and 31% of the wrong redshifts, and the authors kept them to avoid biasing
+      results toward hosts well described by SExtractor ellipses. Such cases must be kept rather than dropped
+      when comparing SBW and DLR on this set.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2208.04310
+      quote:
+        exact: In fact, up to 11% of the cases with no cross-matches and 31% of the cases with incorrect
+          redshifts described in Section 5.2 are found within this 2% sample.
+        prefix: suggesting that this method could be used to further clean the sample.
+        suffix: We decide not to remove these examples to avoid biasing the results
+      location:
+        page: 13
+  legacy_tractor_model_set:
+    claim: 'Legacy Surveys Tractor catalogues model every source with one of a small set of parametric profiles:
+      PSF, de Vaucouleurs (DEV), exponential (EXP) or composite (COMP); REX and free-n Sersic types were
+      added in later releases, so a DR10 pull must handle them.'
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: 'The Tractor models each source using a small set of parametric light profiles: a delta function
+          (for point sources); a deVaucouleurs r−1/4 law; an'
+        prefix: a source model is fit simultaneously to the pixel-level data of all images containing the
+          source.
+        suffix: Publicly available at https://github.com/dstndstn/tractor
+      location:
+        page: 24
+    - id: ev2
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: The EXP and DEV types (middle and right panels respectively) are sources that are best fit
+          by exponential disk or de Vaucouleurs r1/4 light profiles.
+        prefix: corresponds to unresolved sources, which include stars, distant QSOs and some unresolved
+          galaxies.
+        suffix: All colors are in units of AB magnitudes.
+      location:
+        page: 36
+    scope: Legacy Surveys DR5-DR7 as described in the overview; later releases add REX and SER types.
+  legacy_model_type_chosen_by_joint_residual:
+    claim: The Tractor model type is selected by convolving each candidate profile with the per-exposure
+      PSF, fitting every image simultaneously and minimising the total residual; the fits use only the optical
+      grz data.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: The best fit model is determined by convolving each model with the specific PSF for each
+          individual exposure, fitting to each image, and minimizing the residuals for all images.
+        prefix: exponential disk; or a “composite” deVaucouleurs plus exponential.
+        suffix: The PSF for each optical image is constructed using PSFEx (Bertin 2011).
+      location:
+        page: 25
+    - id: ev2
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: The Tractor model fits are determined using only the optical grz data.
+        prefix: source position, source shape parameters and photometry
+        suffix: The mid-infrared photometry for each optically-detected source is then determined by forcing
+          the location and shape of the model
+      location:
+        page: 25
+  legacy_single_shape_across_bands:
+    claim: A single model type and set of shape parameters is shared across all grz bands; only the flux
+      varies by band. The Legacy Tractor light profile used for SBW is band-independent in shape, and the
+      band choice only sets which flux normalises it.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: We make the assumption that the model is the same across all the bands. Thus, if a source
+          is determined to be a point source, it is modeled as a point source in every band and every exposure
+          and its catalog photometry is based on this model.
+        prefix: The PSF for each optical image is constructed using PSFEx (Bertin 2011).
+        suffix: Alternatively, if the source is spatially extended, then the same light profile
+      location:
+        page: 25
+    - id: ev2
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: the same light profile (an exponential disk, de Vaucouleurs, or combination) is consistently
+          fit to all images in order to determine the best-fit source position, source shape parameters
+          and photometry
+        prefix: Alternatively, if the source is spatially extended, then
+        suffix: The Tractor model fits are determined using only the optical grz data.
+      location:
+        page: 25
+  legacy_coverage_and_depth:
+    claim: The Legacy Surveys cover at least 14,000 deg^2 in g, r and z only (no i band) to approximate
+      5-sigma depths of g = 24.0, r = 23.4, z = 22.5 AB for a fiducial exponential galaxy of half-light
+      radius 0.45 arcsec; this sets the host-detection floor and restricts the SBW band to g, r or z for
+      the DELIGHT fields.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: DESI requires that the Legacy Surveys deliver 5σ detections of a “fiducial” g=24.0, r=23.4
+          and z=22.5 AB mag galaxy with an exponential light profile of half-light radius rhalf = 0.45 arcsec.
+        prefix: 3.4 µm and 4.6 µm WISE bands (see § A for further details).
+        suffix: DESI also requires the depth (and the resulting target selection) to be as uniform as possible
+      location:
+        page: 8
+    - id: ev2
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: Imaging will cover at least 14,000 deg2 of the DESI footprint.
+        prefix: '2.'
+        suffix: This footprint is described in § 3.
+      location:
+        page: 41
+    - id: ev3
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: will reach approximate 5σ depths of g=24.0, r=23.4 and z=22.5 AB mag for faint galaxies.
+        prefix: from three ground-based telescopes (CTIO Blanco, KPNO Mayall and Steward Bok 90”) and
+        suffix: In addition, the data releases will contain mid-infrared photometry
+      location:
+        page: 35
+  legacy_psf_type_contains_compact_galaxies:
+    claim: The PSF model type is dominated by stars but also contains compact galaxies and QSOs because
+      star-galaxy separation is seeing-limited; rejecting all PSF-type sources as hosts discards some genuine
+      compact hosts, a cost of an extendedness cut on Legacy catalogues.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: Sources best fit by PSF models are dominated by stars (as exemplified by the clearly visible
+          stellar locus), but also contain compact galaxies and QSOs.
+        prefix: DR7 differentiated by their morphological type.
+        suffix: 'The sources best fit by spatially extended models (EXP: exponential disks; and DEV: de
+          Vaucouleurs'
+      location:
+        page: 33
+    - id: ev2
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: trace the galaxy locus with minimal contamination from stars (since the star-galaxy separation
+          is limited by the ground-based seeing).
+        prefix: 'The sources best fit by spatially extended models (EXP: exponential disks; and DEV: de
+          Vaucouleurs r1/4 profiles)'
+        suffix: Figure 17 shows cutouts of a wide variety of astronomical sources
+      location:
+        page: 33
+    - id: ev3
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: Many of the DESI galaxy targets appear small (less than 1 arcsec) and are near the limit
+          at which they can be resolved as extended sources rather than point sources. Because of this,
+          a morphological separation between extended sources and point sources will not be required for
+          DESI galaxy targets.
+        prefix: 4. z-band image quality will be smaller than 1.5 arcsec FWHM.
+        suffix: The primary driver for reasonably good image quality is to minimize blending between targets
+      location:
+        page: 42
+  legacy_tractor_fails_on_large_galaxies:
+    claim: Tractor parametric models fit faint sources well but leave significant residuals on very extended
+      galaxies and bright-star halos; large galaxies and crowded fields are poorly modelled and spurious
+      sources appear in their diffuse light. For SBW on Legacy models the profile of nearby large hosts
+      is least trustworthy, and phantom candidates near them must be handled.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: While most of the faint sources are well fit by the parametric models we used for the Legacy
+          Surveys, more significant residuals are seen associated with very extended galaxies and the halos
+          of bright, saturated stars.
+        prefix: the rendered The Tractor model; and the residual image (i.e., data − model).
+        suffix: The Tractor and our source detection algorithms do result in the catalog containing a small
+          fraction of spurious sources.
+      location:
+        page: 25
+    - id: ev2
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: In addition, spatially large, extended sources with complex morphologies (e.g., large galaxies)
+          and crowded fields (e.g., globular clusters and open star clusters) are poorly modeled by The
+          Tractor.
+        prefix: or in the diffuse emission associated with large galaxies.
+        suffix: Finally, a small number of sources are missed by The Tractor catalog;
+      location:
+        page: 25
+  legacy_z_band_best_image_quality:
+    claim: In the Legacy Surveys the z band is expected to have the best image quality and is the band in
+      which all DESI galaxy targets are detected; a z-band SBW evaluation uses the sharpest and most complete
+      optical data in this catalogue, at the shallowest nominal depth.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1804.08657
+      quote:
+        exact: All of the DESI targets will be detected in z-band, which is expected to have the best image
+          quality, therefore an image quality requirement is specified in that one band.
+        prefix: blended objects and the optimal extraction of their photometry in all bands.
+        suffix: 5. No regions larger than 3 deg in diameter will be covered by only nonphotometric observations.
+      location:
+        page: 42
+    scope: Legacy Surveys imaging only; does not transfer to Rubin or DES band choices.
+  qu2024_dlr_recipe_sextractor_moments:
+    claim: DES-SN5YR host matching uses DLR with the ellipse from SExtractor A_IMAGE, B_IMAGE and THETA_IMAGE
+      measured on the coadded r+i+z detection image, not the Sersic half-light ellipse; the galaxy with
+      the lowest d_DLR is the host.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: parameters are the A IMAGE, B IMAGE (converted into arcsec), and THETA IMAGE parameters output
+          by Source Extractor (Bertin 2011, sextractor) using the coadded r + i + z detection image. The
+          galaxy with the lowest dDLR value is chosen as the host galaxy.
+        prefix: For our DLR calculations, the values for the a, b,
+        suffix: 2.2. Analysis Overview
+      location:
+        page: 4
+    scope: DES-SN5YR data and simulation host matching; the Sersic fit is used only for placing simulated
+      SNe.
+  qu2024_dlr_threshold_4_radius_15arcsec:
+    claim: For DES-SN5YR data, d_DLR is computed for every catalogue galaxy within 15 arcsec of the SN and
+      candidates with d_DLR > 4 are discarded following the SDSS convention; SNe with no galaxy at d_DLR
+      <= 4 are hostless.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: dDLR values are computed for all galaxies in the catalog within 15′′ of the SN position.
+          Galaxies with dDLR > 4 are discarded, following the SDSS convention (Sako et al. 2018)
+        prefix: performed using the DLR method with the host galaxy catalog described in Section 3.2.
+        suffix: ', and those with lowest and second lowest dDLR values are identified'
+      location:
+        page: 7
+  qu2024_sim_sn_placement_intensity_weighted:
+    claim: 'In the SNANA simulations each SN is placed at radius R from its host with probability p(R) proportional
+      to I(R), the host''s fitted Sersic intensity profile: SN positions are surface-brightness weighted,
+      the same generative assumption that underlies SBW.'
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: The SN-host separation is determined by placing the SN at a radial distance R from the center
+          of the assigned host galaxy according to the probability distribution p(R) ∼ I(R), where I(R)
+          is the galaxy intensity at radius R described by the galaxy’s fitted Sérsic profile
+        prefix: but it does not model large scale structure.
+        suffix: (see Equation 3). This approach follows past work using SNANA such as Kessler et al. (2019).
+      location:
+        page: 8
+    scope: SNANA catalogue-level simulation; large-scale structure is not modelled.
+  qu2024_sersic_radii_scaled_0p8:
+    claim: The SExtractor Sersic half-light radii used to place simulated SNe had to be scaled by 0.8 to
+      match observed SN-host separations, implying fitted sizes on DES deep stacks are overestimated; for
+      very diffuse low-n galaxies the fit fails catastrophically with exaggerated Re, filtered with an area-ratio
+      cut.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: radii were scaled by a factor of 0.8 to obtain better data
+        prefix: The fitted Sérsic half-light
+        suffix: simulation agreement (see Section 5.2 for details
+      location:
+        page: 6
+    - id: ev2
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: the Sérsic profile fit fails catastrophically and produces greatly exaggerated estimates
+          of Re
+        prefix: such as very diffuse galaxies with low Sérsic index,
+        suffix: . This will result in SNe placed very far from the galaxy center in simulations
+      location:
+        page: 7
+    scope: SExtractor Sersic fits on DES deep coadds; a caution for any method evaluating a fitted light
+      profile at the SN position.
+  qu2024_sim_matching_10arcsec_10gal:
+    claim: In the simulation DLR matching considers up to 10 galaxies within 10 arcsec of the assigned host,
+      keeping the two lowest d_DLR galaxies provided d_DLR <= 4; a narrower search than the 15 arcsec used
+      on data.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: The simulation computes dDLR values for up to 10 galaxies within a 10′′ radius of the assigned
+          host and saves the galaxies with the lowest and second lowest dDLR values as the most and next
+          most likely host match
+        prefix: we apply host galaxy matching with the DLR method to the simulated SNe.
+        suffix: (HOSTGAL1 and HOSTGAL2), as long as dDLR ≤ 4.
+      location:
+        page: 8
+  qu2024_mismatch_rate_1p7pct:
+    claim: With DLR on a DES-SN5YR-like simulation, 2.5% of SNe Ia are matched to the wrong host before
+      light-curve cuts and 1.7% after, averaged over 25 realizations.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: the cuts not only reduce the average mismatch rate over 25 realizations from 2.5% to 1.7%,
+          but also significantly reduce the spread in redshift error.
+        prefix: between the matched and true hosts. These data show that
+        suffix: Quantitatively, the cuts reduced the middle 90% of the
+      location:
+        page: 9
+    scope: DES-SN5YR-like SNANA simulation with the deep DES galaxy catalogue cut at i < 25.5.
+  qu2024_hostless_rate_faint_hosts:
+    claim: About 2% of SNe are hostless under d_DLR <= 4 in both simulation (98.3% matched) and DES data
+      (98.2%); hostlessness arises when the true host is too faint to detect, and such SNe risk being matched
+      to a brighter nearby galaxy with a wrong redshift.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: at least one host galaxy match in 98.3% of SNe in our SN Ia-only simulations compared to
+          98.2% of
+        prefix: the DLR algorithm is able to find
+        suffix: classified SNe Ia in the DES data. The remaining
+      location:
+        page: 10
+    - id: ev2
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: SNe can appear hostless because their host galaxies are too faint to be detected and our
+          imposed dDLR ≤ 4 cut on potential host matches avoids matching to unrealistically faraway galaxies.
+        prefix: of SNe in our data and simulations is the rate of “hostless” SNe.
+        suffix: SNe in galaxy-dense regions have multiple potential host matches
+      location:
+        page: 10
+    - id: ev3
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: These SNe could be incorrectly matched to brighter, nearby galaxies that are close in projected
+          distance and thus assigned an incorrect redshift.
+        prefix: even in the deep coadded images created for this work described in Section 3.2.
+        suffix: Figure 1 illustrates a challenging example of host galaxy matching
+      location:
+        page: 3
+  qu2024_catalog_depth_cut_robustness:
+    claim: Matching against the redshift-cut catalogue versus the full detection catalogue changes the host
+      for only ~2% of DES SNe, and those mostly become hostless rather than switching galaxy; catalogue
+      depth cuts mainly move SNe into the hostless class.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: of DES SNe have the same host match when matched with the full catalog, and those that do
+          not mostly become
+        prefix: However, we find that
+        suffix: when the cuts are employed. Thus, we conclude that matching with the cut catalog is a valid
+          method
+      location:
+        page: 7
+  qu2024_wrong_host_to_w_bias:
+    claim: Propagating DLR mismatches through the full cosmology pipeline gives delta w = 0.0013 +/- 0.0026
+      for SN Ia-only simulations with a CMB prior; mismatched SNe show biased Hubble residuals but at <
+      2% of the sample barely move w. This is the full-pipeline benchmark for a cheap redshift-swap propagation.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: For simulations with SNe Ia only, we find ∆w = 0.0013 ± 0.0026.
+        prefix: 7.1. Cosmological Biases with SNe Ia Only
+        suffix: In the flat w0 wa CDM model, we find biases of
+      location:
+        page: 13
+    - id: ev2
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: Although wrong hosts clearly lead to biases on the Hubble diagram, SNe with the wrong host
+          match make up < 2% of the sample, resulting in the small ∆w value we observe.
+        prefix: distinct from the nearly unbiased subset of SNe with the correct host match (teal).
+        suffix: 7.1.1. Host Mismatch and the Mass Step
+      location:
+        page: 13
+    scope: DES-SN5YR-like sample with CMB prior; without the CMB prior delta w inflates to -0.062 +/- 0.072.
+  qu2024_host_confusion_cut:
+    claim: A cut on the Gupta et al. host-confusion parameter rejects 72% of wrong-host DLR matches at the
+      cost of 12% of correct matches; ambiguity between the top two d_DLR candidates is a usable mismatch
+      flag.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2307.13696
+      quote:
+        exact: The HC distributions for both populations look quite similar, but 72% of SNe with an incorrect
+          host match are removed by the HC
+        prefix: threshold was chosen by visual inspection of this distribution.
+        suffix: cut, while 12% of SNe with correct host matches are removed.
+      location:
+        page: 18
+  ghost_ps1_30arcsec_cone_search:
+    claim: GHOST builds its host-candidate table from Pan-STARRS DR1 with a 30 arcsec cone search around
+      the supernova; the 30 arcsec cone alone drops 7.3% of spectroscopic SNe, and hosts beyond 30 arcsec
+      had to be re-associated by hand.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: Query Pan-STARRS for all catalogued objects within 30″ of the supernova.
+        prefix: 'using the following procedure: 1.'
+        suffix: If a host galaxy has been reported in TNS or OSC
+      location:
+        page: 4
+    - id: ev2
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: We use the first data release of Pan-STARRS (PS1; Chambers et al. 2016) to search for candidate
+          host galaxies due to its survey depth
+        prefix: 2.1. PS1 Querying for Host Candidates
+        suffix: (5σ < 23.3 in g-band) and extensive list of sources
+      location:
+        page: 4
+    scope: Pan-STARRS DR1 catalogue, spectroscopically classified SNe mostly at z < 0.6.
+  ghost_dlr_uses_moments_and_kron_radius_best_snr_band:
+    claim: GHOST's DLR uses PS1 flux-weighted second moments for the ellipse and the Kron radius as semi-major
+      axis, in whichever band has the highest SNR, explicitly to avoid depending on a parametric light-profile
+      model.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: We have selected the Kron radius, defined as 2.5× the first radial moment of a candidate
+          host galaxy’s surface brightness profile, in the band which has the highest SNR, as our value
+          for ra to minimize this dependence.
+        prefix: may require us to adopt a light profile model.
+        suffix: The mean r-band Kron radius for all potential host galaxies
+      location:
+        page: 7
+  ghost_dlr_max_extended_to_5:
+    claim: GHOST relaxes the d_DLR <= 4 cut to d_DLR <= 5 because catalogue Kron radii of low-redshift,
+      deblended hosts are underestimated; the same threshold was used by SNLS.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: We have extended this value to 5 to account for the low Kron radius estimates associated
+          with low-redshift host galaxies
+        prefix: as a balance between sample purity and efficiency.
+        suffix: we note that a similar threshold is used for associating host galaxies in SNLS
+      location:
+        page: 8
+  ghost_dlr_fails_on_large_deblended_low_z_hosts:
+    claim: Catalogue-based DLR misassociation is ~5% overall but up to ~30% at low redshift in PS1, because
+      deep imaging deblends large nearby hosts into several sources with unphysical Kron radii, biasing
+      DLR away from large hosts and toward HII regions or stars.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: we predict our overall misassociation rate with the full pipeline to be ∼ 5%; however, for
+          low-redshift objects this rate can be as high as 30%
+        prefix: By visually inspecting a subset of associated host galaxies,
+        suffix: for the reasons given above. When DLR fails to find the true host galaxy
+      location:
+        page: 8
+    - id: ev2
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: When DLR fails to find the true host galaxy, a supernova is often matched to an HII region
+          or bright star.
+        prefix: this rate can be as high as 30% for the reasons given above.
+        suffix: To maintain the accuracy of our associations at low redshift
+      location:
+        page: 8
+    - id: ev3
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: These issues bias the DLR algorithm away from large host galaxies where visual association
+          would be trivial.
+        prefix: report uncharacteristically high Kron radius values.
+        suffix: Third, high-redshift host galaxies can easily be mistaken for imaging artifacts
+      location:
+        page: 8
+    scope: PS1 DR1 catalogue morphology; the failure is driven by deblending of extended low-z hosts, not
+      the DLR formalism.
+  ghost_gradient_ascent_beats_dlr_12_vs_16_pct:
+    claim: GHOST's image-level fallback (gradient ascent on a star-masked PS1 stamp, triggered only when
+      DLR fails or morphology is missing) achieves 12% misassociation versus 16% for DLR on the incomplete-morphology
+      sample by visual inspection, and recovers ~800 hostless events (~4% of spectroscopic SNe).
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: We find by visual inspection that the gradient ascent method achieves a 12% misassociation
+          rate for the incomplete morphology sample, compared to 16% for the DLR method.
+        prefix: and 3,129 matching the second.
+        suffix: We additionally find a ∼ 3% misassociation rate for the “hostless” sample
+      location:
+        page: 11
+    - id: ev2
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: We trigger this algorithm when a host galaxy is not found using DLR, and when a candidate
+          host galaxy is missing the morphology information necessary for the DLR method.
+        prefix: before the galactic center is reached.
+        suffix: There are 2,137 supernovae matching the first criterion, and 3,129 matching the second.
+      location:
+        page: 11
+    - id: ev3
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: This is nearly half of the supernovae removed by the DLR method and roughly 4% of all spectroscopic
+          supernovae.
+        prefix: our method recovers 800 host galaxies from the hostless sample.
+        suffix: We have included these matches in our final database.
+      location:
+        page: 11
+    scope: Reference set is visual inspection, not a truth table; the comparison is on the subset lacking
+      PS1 morphology.
+  ghost_image_method_fails_in_crowded_large_host_fields:
+    claim: 'The image-level gradient-ascent method fails when the host is large and the field crowded: the
+      smoothing filter blends neighbouring galaxies and shifts the light-profile peak, so the walk terminates
+      at an artificial maximum.'
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: the large filter selected can blend multiple galaxies and shift the peak of the true host
+          galaxy’s light profile.
+        prefix: When the host galaxy is large and the field is crowded,
+        suffix: This causes the algorithm to terminate at an artificial maximum, and can lead to incorrect
+          associations.
+      location:
+        page: 11
+  ghost_final_misassociation_lt3pct_validated_by_redshift:
+    claim: GHOST estimates < 3% misassociation in its final database, validated only by visual inspection
+      plus a redshift-consistency flag (SN and host redshift differing by > 50%); there is no independent
+      truth set.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: We estimate the misassociation rate of our final database to be < 3%, lower than the missasociation
+          rate reported by Gupta et al. (2016).
+        prefix: We have removed these events from our database.
+        suffix: We list the fraction of total supernovae dropped from our sample
+      location:
+        page: 11
+    - id: ev2
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: To confirm this sample as misassociated, we identify the matches where the supernova redshift
+          differs from its host galaxy’s redshift by greater than 50%.
+        prefix: events at this separation are probably uncommon (see Figure 2 of Galbany et al. 2012).
+        suffix: We plot this sample in Figure 6a.
+      location:
+        page: 11
+  ghost_star_cut_is_deliberately_lenient:
+    claim: GHOST makes point-source rejection conservative, removing only candidates classified as stars
+      at > 80% probability rather than 50%, because losing a true host is far more costly than keeping a
+      star that later cuts can remove.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2008.09630
+      quote:
+        exact: For this reason, we only remove sources that are classified as stars to >80% probability
+          by our RF model (instead of the fiducial 50% cut).
+        prefix: will be added back to the data once it is removed.
+        suffix: With this threshold, our mean accuracy on the full dataset decreases to 92%
+      location:
+        page: 7
+  gupta16_dlr_defined_from_sextractor_moment_ellipse:
+    claim: Gupta et al. define DLR as the elliptical radius of a galaxy in the SN direction with the ellipse
+      given by semi-major axis A, semi-minor axis B and a position angle; in practice these are the SExtractor
+      second-moment parameters A_IMAGE, B_IMAGE, THETA_IMAGE rather than a fitted half-light ellipse, because
+      moment parameters are what survey catalogues readily provide.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: Our method assumes that galaxies in images are elliptical in shape and can be described by
+          a semi-major axis A and a semi-minor axis B.
+        prefix: DLR (arcsec)
+        suffix: In addition, the galaxy position angle
+      location:
+        page: 7
+    - id: ev2
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: use the measured SExtractor parameters A IMAGE, B IMAGE, and THETA IMAGE when computing DLR
+          and performing the matching
+        prefix: size scale re in the host library when placing the SNe, but
+        suffix: since these types of parameters are more readily available
+      location:
+        page: 7
+  gupta16_fitted_half_light_radius_degrades_dlr_matching:
+    claim: 'Computing DLR from the GALFIT half-light radius for all candidates without a quality cut greatly
+      reduces matching accuracy: faint, poorly fit neighbours get r_e biased too large, hence tiny d_DLR,
+      and are preferentially chosen as host; moment-based SExtractor sizes are more robust for faint or
+      blended galaxies.'
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: We find that matching using re to compute DLR for all ACS-GC galaxies within the search radius
+          results in a greatly reduced matching accuracy.
+        prefix: survey catalog.
+        suffix: This is due to the fact that, in the absence of a quality cut
+      location:
+        page: 7
+    - id: ev2
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: These poorly-fit galaxies tend to have re values that are biased to be too large, which results
+          in their DLR separation from the SN being very small.
+        prefix: can have unreliable values of re .
+        suffix: This causes them to be preferentially selected
+      location:
+        page: 7
+    - id: ev3
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: By contrast, the SExtractor parameters we use are not fits to any model and are more robust
+          size estimates in cases of faint or blended galaxies.
+        prefix: leading to a reduced matching accuracy.
+        suffix: 3.2. Magnitude Limits
+      location:
+        page: 7
+    scope: Applies when model-fit radii are used without a fit-quality cut; well-measured GALFIT galaxies
+      show a tight linear r_e vs A_IMAGE relation.
+  gupta16_search_radius_30arcsec_loses_few_true_hosts:
+    claim: Matching searches all galaxies within 30 arcsec of the SN; in simulation only 0.05% (MICE) and
+      0.6% (ACS-GC) of SNe lie beyond 30 arcsec from their host. DES used 15 arcsec, which would remove
+      0.3% and 1.4%, so 30 arcsec is essentially complete and 15 arcsec already costs about 1%.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: When matching a SN to its host, we first begin by searching for all galaxies within
+        prefix: we can compute dDLR .
+        suffix: of the SN position. We compute dDLR for each of these
+      location:
+        page: 7
+    - id: ev2
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: Based on our simulations, 0.05% of MICE SNe and 0.6% of ACS-GC SNe are actually located
+        prefix: is designated as the host.
+        suffix: from the center of their hosts, and we remove these SNe from our sample.
+      location:
+        page: 7
+    - id: ev3
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: Host galaxy identification in DES is performed using the DLR method within an initial
+        prefix: 3.4. Comparison with Spectroscopically-Confirmed SNe in DES
+        suffix: search radius around each transient
+      location:
+        page: 9
+    - id: ev4
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: removes 0.3% of SNe in MICECAT and 1.4% of SNe in ACS-GC.
+        prefix: For our simulations, we find that a cut on SN-host separation of
+        suffix: obtained from the SN spectrum
+      location:
+        page: 9
+    scope: The arcsec values (30 and 15) sit just outside the quoted spans because the PDF renders the double-prime
+      symbol.
+  gupta16_dlr_threshold_4_is_nominal_sdss_choice_not_optimised:
+    claim: The d_DLR < 4 cut is inherited from SDSS-SNS as a nominal restriction (SNLS used R <= 5). Tuning
+      to keep 98% efficiency gives 5.3 DLR for MICECAT and 11.5 DLR for ACS-GC, so the optimal threshold
+      is strongly catalogue and size-measure dependent and larger than 4.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: There was a nominal restriction which required that the host have dDLR < 4.
+        prefix: selecting the galaxy with the minimum dDLR .
+        suffix: However, for a subset of
+      location:
+        page: 2
+    - id: ev2
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: To maintain an efficiency (true positive rate) of 98%, we find that a cut at a distance of
+          5.3 DLR results in a purity of 94.45% for MICECAT and removes 6.5% of the sample.
+        prefix: and we make a similar requirement using DLR.
+        suffix: Similarly fixing the efficiency at 98% for ACS-GC
+      location:
+        page: 9
+    - id: ev3
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: Similarly fixing the efficiency at 98% for ACS-GC, we find that a cut at 11.5 DLR results
+          in a purity of 97.29% and removes 7.1% of the sample.
+        prefix: removes 6.5% of the sample.
+        suffix: These purity values are listed in Table 1
+      location:
+        page: 9
+    scope: DLR depends on how A and B are measured, so the numeric threshold does not transfer directly
+      between catalogues.
+  gupta16_dlr_simulated_accuracy_90_to_92_percent:
+    claim: With a 5% hostless fraction built in, minimum-d_DLR matching recovers the true host 90.11% (MICECAT)
+      and 92.21% (ACS-GC) of the time versus 88.35% and 90.62% for nearest angular separation; the second-nearest
+      DLR galaxy is the true host 4% and 2% of the time. On DES SNe with host spectra the DLR failure rate
+      is about 2.7% (2/73).
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: We find that when using MICECAT, the DLR matching accuracy is 90.11% and the nearest separation
+          matching accuracy is 88.35%. When using ACS-GC, the DLR matching accuracy is 92.21% and the nearest
+          separation matching accuracy is 90.62%.
+        prefix: outperforms the angular separation method for both catalogs.
+        suffix: Recall that 5% of the mismatch is due to hostless SNe
+      location:
+        page: 8
+    - id: ev2
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: For MICECAT, the 2nd-nearest and 3rd-nearest galaxies in DLR are the true host 4% and 0.6%
+          of the time, respectively. For ACS-GC, these values are 2% and 0.5%.
+        prefix: to galaxies brighter than their true hosts.
+        suffix: In cases where the nearest DLR galaxy is not the correct host
+      location:
+        page: 8
+    - id: ev3
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: From this DES sample we can roughly estimate the host galaxy mismatch rate due to the failure
+          of the DLR method to be 2.7% (2/73).
+        prefix: and clusters.
+        suffix: We compare this rate to the
+      location:
+        page: 9
+    scope: Accuracies include a constructed 5% hostless population; the DES rate is from a bright, spectroscopically
+      biased subsample.
+  gupta16_dlr_mismatch_driven_by_separation_and_faint_hosts:
+    claim: DLR purity falls steeply with SN-to-true-host separation, is roughly flat with host brightness
+      except for a precipitous drop for the faintest hosts, and is lower for the smallest hosts.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: The matching accuracy is highly sensitive to the separation from the true host, as one would
+          expect since SNe that are farther away from their hosts have a higher probability of being matched
+          to another nearby galaxy.
+        prefix: simulated SNe as the black histograms.
+        suffix: Note that the exact DLR values cannot be directly compared
+      location:
+        page: 8
+    - id: ev2
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: For both MICECAT and ACS-GC, the matching purity is fairly insensitive to the true host galaxy
+          brightness except for the faintest hosts where the purity drops precipitously, as expected due
+          the magnitude limit we impose for our hostless SNe
+        prefix: once the hostless SNe are removed.
+        suffix: (Section 3.2). In both catalogs, the matching purity is lower for the smallest true hosts
+      location:
+        page: 9
+  gupta16_compact_objects_removed_from_candidate_catalogue:
+    claim: Before matching, the candidate catalogue is restricted to galaxies by removing compact objects;
+      a point-source rejection is applied upstream of the DLR algorithm rather than inside it.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: Since here we are interested only in a catalog of galaxies, we identify compact objects and
+          remove them.
+        prefix: which removes 56% of objects from the ACS-GC.
+        suffix: We use the definition of
+      location:
+        page: 4
+    scope: ACS-GC (HST COSMOS) catalogue; the paper does not test the effect of leaving point sources in.
+  gupta16_simulated_sne_placed_by_host_light_profile:
+    claim: The validation simulation chooses a host at matching redshift, weighted by luminosity, and places
+      the SN by sampling the host's surface-brightness profile; SN location tracks host light by construction.
+    created_at: '2026-10-26T20:04:08Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: Therefore, for the purpose of this study, it seems reasonable to use the surface brightness
+          profile of a galaxy to determine the placement of a simulated SN location within it.
+        prefix: track their host galaxy's light.
+        suffix: In addition, since the probability of a SN occurring in a galaxy
+      location:
+        page: 4
+    - id: ev2
+      doi: 10.48550/arXiv.1604.06138
+      quote:
+        exact: For each simulated SN, a random host galaxy is selected from the input host library, under
+          the condition that the redshift of the galaxy matches the redshift of the SN to within 0.001.
+        prefix: sizes, and light profile parameters.
+        suffix: For the subset of galaxies that satisfy this redshift agreement criterion
+      location:
+        page: 4
