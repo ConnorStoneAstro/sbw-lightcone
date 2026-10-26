@@ -79,15 +79,25 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   undocumented and must be obtained from the provider before publication.
   Candidates come from the DP2 Object table (both MultiProFit fits) over
   grouped TAP or the NERSC HATS `object_collection` via LSDB.
-- **Compute.** Decision: set up NERSC for `lc`. Today `lc compute resources`
-  lists only the local 8-CPU offer; `lc compute` reads a catalogue from
-  `LC_COMPUTE_CONFIG` or `~/.lightcone/compute.yaml` and disables local
-  compute on NERSC login nodes, so the intended route is to clone this project
-  on Perlmutter, install `lightcone-cli`, and configure a Slurm offer there
-  (format: see the Lightcone docs; not known locally). Until then every tier
-  is reachable from the laptop over TAP (RSP for DP0.2/DP2, Data Lab for DES
-  and Legacy, S3/NERSC portal for OU2024), with catalogue pulls cached under
-  `data/` as declared inputs. GPU recipes on NERSC need `podman-hpc`.
+- **Compute: NERSC Perlmutter via `lc`, set up 2026-10-26.** Lightcone runs
+  `lc` *on the login node* and launches recipes into Slurm allocations from
+  `~/.lightcone/compute.yaml` (local compute is refused on login nodes). On
+  Perlmutter (`ssh cstone@perlmutter.nersc.gov`, alias `nersc`; project dir
+  `$PROJECT` = `/global/cfs/cdirs/m1727/cstone`, account `m1727`):
+  uv 0.13 and `lightcone-cli==0.5.0` (with git-annex) are installed in
+  `~/.local/bin`; the uv cache must live on scratch (`UV_CACHE_DIR=$PSCRATCH/uv-cache`),
+  so `~/.bashrc` needs `export PATH="$HOME/.local/bin:$PATH"` and that export.
+  Two offers, both 16 CPUs / 60 GiB, one node: `shared-interactive`
+  (`salloc`, qos `shared_interactive`, fast start, max 4 h) and `shared`
+  (batch, qos `shared`, max 12 h). `lc compute launch --cpus 16 --memory 60
+  --startup fast --wait` takes the first. This is by design: the analysis is
+  catalogue queries and light numerics; raise the limit only if a recipe needs
+  it (deblending explorations later may). The project clone on NERSC is
+  `$PROJECT/host_association/paper`, with the bare hub
+  `$PROJECT/host_association/paper.git` as git remote `nersc` on both sides
+  (`git push nersc main git-annex` from the laptop, pull on NERSC; annexed
+  data moves with `git annex copy --to nersc`). The laptop keeps its own
+  `local` offer for probes over TAP.
 - **Rejected / parked.** OU2024 with our own Sersic fits on its coadds
   (rejected: only one preview coadd patch is public). DP2 DiaObject SN-like
   selection as the DP2 sample (parked: the collaborator list was preferred).
