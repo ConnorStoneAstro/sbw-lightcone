@@ -102,8 +102,12 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   it (deblending explorations later may). The project clone on NERSC is
   `$PROJECT/host_association/paper`, with the bare hub
   `$PROJECT/host_association/paper.git` as git remote `nersc` on both sides
-  (`git push nersc main git-annex` from the laptop, pull on NERSC; annexed
-  data moves with `git annex copy --to nersc`). The laptop keeps its own
+  (`git push nersc main git-annex` from the laptop, pull on NERSC). Annexed
+  data does not yet transfer through the hub (the laptop cannot reach the hub's
+  git-annex-shell over ssh): copy the file with `scp` to `$PSCRATCH` and run
+  `git annex reinject --known <file>` in the NERSC clone, as was done for
+  `data/dp2_transients.csv`. Perlmutter has no landlock, so `lc` runs recipes
+  there unsandboxed (`sandbox: none`) but still records every run. The laptop keeps its own
   `local` offer for probes over TAP.
 - **Rejected / parked.** OU2024 with our own Sersic fits on its coadds
   (rejected: only one preview coadd patch is public). DP2 DiaObject SN-like
