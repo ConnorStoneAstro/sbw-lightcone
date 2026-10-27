@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import json
 import os
 import sys
 import time
@@ -80,22 +81,30 @@ def main(argv=None):
     df["sep_truth_arcsec"] = ang_sep(df.sn_ra, df.sn_dec, df.host_ra, df.host_dec)
     df["far"] = df.sep_truth_arcsec > FAR_ARCSEC
 
-    if a.truth_match == "matches_truth":
-        mm = m[["host_galaxy", "match_objectId", "match_chisq"]].copy()
-        mm["match_objectId"] = mm["match_objectId"].astype("Int64")   # nullable: a float merge would round the ids
-        df = df.merge(mm, on="host_galaxy", how="left")
-        df["host_objectId"] = df.match_objectId.fillna(-1).astype(np.int64)
-        df = df.drop(columns=["match_objectId"])
-    else:
-        c = pq.read_table(a.candidates, columns=["sn_id", "objectId", "coord_ra", "coord_dec"]).to_pandas(ignore_metadata=True)
-        c = c.merge(df[["sn_id", "host_ra", "host_dec"]], on="sn_id")
-        c["dh"] = ang_sep(c.coord_ra, c.coord_dec, c.host_ra, c.host_dec)
-        c = c[c.dh <= 1.0].sort_values("dh").drop_duplicates("sn_id")
-        c["objectId"] = c["objectId"].astype("Int64")
-        df = df.merge(c[["sn_id", "objectId", "dh"]].rename(columns={"objectId": "host_objectId", "dh": "match_sep_arcsec"}),
-                      on="sn_id", how="left")
-        df["host_objectId"] = df.host_objectId.fillna(-1).astype(np.int64)
+    # both truth matchers are always computed; host_objectId is the one the decision selects
+    mm = m[["host_galaxy", "match_objectId", "match_chisq"]].copy()
+    mm["match_objectId"] = mm["match_objectId"].astype("Int64")   # nullable: a float merge would round the ids
+    df = df.merge(mm, on="host_galaxy", how="left")
+    df["host_objectId_mt"] = df.match_objectId.fillna(-1).astype(np.int64)
+    df = df.drop(columns=["match_objectId"])
+    c = pq.read_table(a.candidates, columns=["sn_id", "objectId", "coord_ra", "coord_dec"]).to_pandas(ignore_metadata=True)
+    c = c.merge(df[["sn_id", "host_ra", "host_dec"]], on="sn_id")
+    c["dh"] = ang_sep(c.coord_ra, c.coord_dec, c.host_ra, c.host_dec)
+    c = c[c.dh <= 1.0].sort_values("dh").drop_duplicates("sn_id")
+    c["objectId"] = c["objectId"].astype("Int64")
+    df = df.merge(c[["sn_id", "objectId", "dh"]].rename(columns={"objectId": "host_objectId_nn", "dh": "match_sep_arcsec"}),
+                  on="sn_id", how="left")
+    df["host_objectId_nn"] = df.host_objectId_nn.fillna(-1).astype(np.int64)
+    df["host_objectId"] = df["host_objectId_mt" if a.truth_match == "matches_truth" else "host_objectId_nn"]
     df["host_unmatched"] = (~df.hostless) & (df.host_objectId < 0)
+
+    # how the two matchers compare on hosted SNe with a host row, before the matcher-dependent cut
+    e = df[~df.hostless & ~df.host_missing & (~df.far if a.cuts != "all" else True)]
+    mt, nn = e.host_objectId_mt.to_numpy() >= 0, e.host_objectId_nn.to_numpy() >= 0
+    precut = {"n": len(e), "both": int((mt & nn).sum()), "mt_only": int((mt & ~nn).sum()),
+              "nn_only": int((~mt & nn).sum()), "neither": int((~mt & ~nn).sum()),
+              "both_differ": int((mt & nn & (e.host_objectId_mt != e.host_objectId_nn).to_numpy()).sum())}
+    print(f"truth matchers before cuts: {precut}", file=sys.stderr)
 
     n0 = len(df)
     if a.cuts == "clean":
@@ -103,6 +112,7 @@ def main(argv=None):
     df = df.sort_values("sn_id").reset_index(drop=True)
     print(f"sample: {len(df)} of {n0} SNe after cuts={a.cuts} ({time.time() - t0:.0f}s)", file=sys.stderr)
     tab = pa.Table.from_pandas(df, preserve_index=False)
+    tab = tab.replace_schema_metadata({**tab.schema.metadata, b"truth_match_precut": json.dumps(precut).encode()})
     pq.write_table(tab, a.output, compression="zstd")
 
 

@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from dp02_lib import COLORS, DLR_MAX, HOSTLESS_CUT, calibration_curve, dlr_hostless, sbw_hostless, wilson
+from dp02_lib import COLORS, DLR_MAX, HOSTLESS_CUT, calibration_curve, dlr_hostless, matrix_cells, sbw_hostless, wilson
 
 plt.rcParams.update({"font.size": 9, "axes.grid": True, "grid.alpha": 0.25, "grid.linewidth": 0.5,
                      "axes.spines.top": False, "axes.spines.right": False, "lines.linewidth": 1.5,
@@ -50,6 +50,7 @@ def recovery(df, out, hostless_cut):
            "disagree_dlr_right": float((~df.agree & df.dlr_correct).mean()),
            "sbw_hostless_cut": cut, "sbw_hostless_fraction": float(hl.mean()),
            "sbw_recovery_with_hostless_cut": ph, "sbw_recovery_with_hostless_cut_ci68": [lh, hh],
+           "agreement_matrix": matrix_cells(df, cut),
            "settings": df.attrs}
     with open(out, "w") as f:
         json.dump(res, f, indent=2, default=float)

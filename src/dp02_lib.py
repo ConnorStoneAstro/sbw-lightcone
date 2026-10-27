@@ -235,6 +235,20 @@ def dlr_hostless(df, t):
     return ~(df["d_dlr_min"].to_numpy(dtype=float) <= t)
 
 
+def matrix_cells(df, cut, truth_col="host_objectId"):
+    """3x3 SBW (true / wrong / hostless at flb < cut) x DLR (true / wrong / hostless) counts against
+    ``truth_col``, plus how many of the both-wrong SNe have SBW and DLR on the same object."""
+    t = df[truth_col].to_numpy()
+    s, d = df["sbw_objectId"].to_numpy(), df["dlr_objectId"].to_numpy()
+    hl = sbw_hostless(df, cut)
+    rows = {"sbw_true": (s == t) & (t >= 0) & ~hl, "sbw_wrong": ~((s == t) & (t >= 0)) & ~hl, "sbw_hostless": hl}
+    cols = {"dlr_true": (d == t) & (t >= 0), "dlr_wrong": (d >= 0) & (d != t), "dlr_hostless": d < 0}
+    out = {f"{r}/{c}": int((rm & cm).sum()) for r, rm in rows.items() for c, cm in cols.items()}
+    out["both_wrong_same_object"] = int((rows["sbw_wrong"] & cols["dlr_wrong"] & (s == d)).sum())
+    out["n"] = len(df)
+    return out
+
+
 # ---------------------------------------------------------------- statistics helpers
 def wilson(k, n, z=1.0):
     k, n = np.asarray(k, float), np.asarray(n, float)

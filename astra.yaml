@@ -154,7 +154,11 @@ outputs:
       host truth id, position, mag_r and redshift, the true host's DP0.2
       objectId (per truth_match) and the SN-host separation, plus the flags
       the sample cuts were based on (missing host row, host unmatched,
-      separation > 3 arcsec).
+      separation cut). Both truth matchers are always computed
+      (host_objectId_mt, host_objectId_nn with match_sep_arcsec);
+      host_objectId is the one truth_match selects, and the parquet metadata
+      key truth_match_precut counts how the two compare before the
+      matcher-dependent cut.
     inputs: [dp02_sn_truth, dp02_truth_match, dp02_candidates]
     decisions: [truth_match, dp02_sample_cuts]
     recipe:
@@ -348,6 +352,20 @@ outputs:
     decisions: []
     recipe:
       command: python src/dp02_fig.py hostless_metrics --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --output {output}
+  - id: dp02_truth_match_comparison
+    type: metric
+    format: json
+    description: >-
+      The two truth matchers side by side: how many SNe get a host under one
+      matcher but not the other and how many get a different host objectId
+      (before the matcher-dependent sample cut and within the sample), SBW and
+      DLR recovery restricted to SNe where the matchers agree and where they
+      differ, and the 3x3 agreement-matrix cells against each truth on the SNe
+      both matchers resolve.
+    inputs: [dp02_sample, dp02_associations]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/dp02_truth_match.py --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   # ---- Tier 2: DES ----
   - id: des_associations
     type: table
