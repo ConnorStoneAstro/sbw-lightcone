@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_credible_set_metrics",
+  "universe_id": "baseline",
+  "recipe": "python src/dp02_fig.py credible_set_metrics --associations results/baseline/dp02_associations.parquet --output results/baseline/dp02_credible_set_metrics.json",
+  "definition_version": "sha256:d46c09f1596b85a6e782f98824f03791badf816cab040ed60e14c057088edabe",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:f4f33718ea3a05e6bfa7b3a36a54d14db4d9ab32f055598228ff590fe9631ffc",
+  "decisions": {},
+  "input_versions": {
+    "dp02_associations": "sha256:7936fad192e6fbc5fc66f229556e550e7e5779f3a2a07303fff845c1a2b2e9ff"
+  },
+  "git_sha": "4dc2a7a2fea5e4ad0614efb2fe19cde25e2b8979",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-27T21:30:15.377+00:00",
+  "finished_at": "2026-10-27T21:32:56.229+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
