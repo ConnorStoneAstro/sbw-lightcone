@@ -46,7 +46,7 @@ GENERAL = ["sn_id", "objectId", "coord_ra", "coord_dec", "sep_arcsec", "refExten
 def load_candidates(path, bands=BANDS):
     cols = GENERAL + [f"{b}_{c}" for b in bands for c in PER_BAND]
     t = pq.read_table(path, columns=cols)
-    df = t.to_pandas()
+    df = t.to_pandas(ignore_metadata=True)
     return df.sort_values(["sn_id", "sep_arcsec"], kind="stable").reset_index(drop=True)
 
 

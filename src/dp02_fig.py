@@ -20,7 +20,7 @@ plt.rcParams.update({"font.size": 9, "axes.grid": True, "grid.alpha": 0.25, "gri
 
 def load(path):
     t = pq.read_table(path)
-    df = t.to_pandas()
+    df = t.to_pandas(ignore_metadata=True)
     df.attrs = {k.decode(): v.decode() for k, v in (t.schema.metadata or {}).items() if not k.startswith(b"pandas")}
     return df
 

@@ -100,7 +100,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     cfg = dict(search_radius=a.search_radius, dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness)
     cfgtxt = f"{a.search_radius} | d_DLR<={a.dlr_max[1:]} ({a.dlr_radius}) | {a.extendedness}"
-    sample = pq.read_table(a.sample).to_pandas()
+    sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     if a.max_sn:
         sample = sample.sample(a.max_sn, random_state=0)
     if a.mode in ("band", "band_dependence"):

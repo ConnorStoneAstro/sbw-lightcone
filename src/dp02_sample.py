@@ -27,7 +27,7 @@ def ang_sep(ra1, dec1, ra2, dec2):
 def _sne(f):
     t = pq.read_table(f, columns=["id", "id_string", "host_galaxy", "truth_type", "ra", "dec", "redshift", "tract"],
                       filters=[("truth_type", "==", 3)])
-    return t.drop_columns(["truth_type"]).to_pandas()
+    return t.drop_columns(["truth_type"]).to_pandas(ignore_metadata=True)
 
 
 def _hosts(args):
@@ -35,14 +35,14 @@ def _hosts(args):
     t = pq.read_table(f, columns=["id", "truth_type", "ra", "dec", "redshift", "mag_r", "flux_r"],
                       filters=[("truth_type", "==", 1)])
     t = t.filter(pc.is_in(t["id"], value_set=pa.array(ids, pa.int64())))
-    return t.drop_columns(["truth_type"]).to_pandas()
+    return t.drop_columns(["truth_type"]).to_pandas(ignore_metadata=True)
 
 
 def _match(args):
     f, idstr = args
     t = pq.read_table(f, columns=["id", "match_objectId", "match_candidate", "match_count", "match_chisq"])
     t = t.filter(pc.is_in(t["id"], value_set=pa.array(idstr, pa.string())))
-    return t.to_pandas()
+    return t.to_pandas(ignore_metadata=True)
 
 
 def main(argv=None):
@@ -85,7 +85,7 @@ def main(argv=None):
         df["host_objectId"] = df.match_objectId.fillna(-1).astype(np.int64)
         df = df.drop(columns=["match_objectId"])
     else:
-        c = pq.read_table(a.candidates, columns=["sn_id", "objectId", "coord_ra", "coord_dec"]).to_pandas()
+        c = pq.read_table(a.candidates, columns=["sn_id", "objectId", "coord_ra", "coord_dec"]).to_pandas(ignore_metadata=True)
         c = c.merge(df[["sn_id", "host_ra", "host_dec"]], on="sn_id")
         c["dh"] = ang_sep(c.coord_ra, c.coord_dec, c.host_ra, c.host_dec)
         c = c[c.dh <= 1.0].sort_values("dh").drop_duplicates("sn_id")

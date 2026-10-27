@@ -24,7 +24,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.profile == "stamps":
         raise SystemExit("sbw_profile=stamps needs deblended stamps, which do not exist for DP0.2 on NERSC")
-    sample = pq.read_table(a.sample).to_pandas()
+    sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     cand = load_candidates(a.candidates, bands=a.band)
     out = associate_all(sample, cand, band=a.band, profile=a.profile, search_radius=a.search_radius,
                         dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness, workers=a.workers)

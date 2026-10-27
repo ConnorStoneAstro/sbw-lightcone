@@ -40,7 +40,7 @@ def load_sne(truth_dir):
     for f in sorted(glob.glob(os.path.join(truth_dir, "truth_tract*.parquet"))):
         t = pq.read_table(f, columns=["id", "truth_type", "ra", "dec"],
                           filters=[("truth_type", "==", 3)])
-        frames.append(t.select(["id", "ra", "dec"]).to_pandas())
+        frames.append(t.select(["id", "ra", "dec"]).to_pandas(ignore_metadata=True))
     sn = pd.concat(frames, ignore_index=True).drop_duplicates("id")
     return sn
 
@@ -74,7 +74,7 @@ def one_tract(args):
     sn_rep = np.repeat(np.arange(len(hits)), n)
     sep = np.rad2deg(2 * np.arcsin(np.linalg.norm(
         unit_vectors(sra[sn_rep], sdec[sn_rep]) - unit_vectors(ora[obj_idx], odec[obj_idx]), axis=1) / 2)) * 3600
-    sub = t.take(pa.array(obj_idx)).drop_columns(["detect_isPrimary"]).to_pandas()
+    sub = t.take(pa.array(obj_idx)).drop_columns(["detect_isPrimary"]).to_pandas(ignore_metadata=True)
     out = pd.DataFrame({"sn_id": sid[sn_rep].astype(np.int64), "sep_arcsec": sep.astype(np.float32)})
     for c in sub.columns:
         v = sub[c]
