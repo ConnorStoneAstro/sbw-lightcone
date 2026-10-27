@@ -192,13 +192,13 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
     96.52%, ECE 0.008, SBW hostless 2.22%, DLR hostless 0.57%,
     both-wrong-same 2,234; recovery stays ~0.6-0.7 for SNe 5-10" from large
     hosts. N = 4 or 5 would remove ~12% / ~8.5% of the sep10 sample.
-  * *Radius fallback* (peer request): 10 SBW misses in the cutout prototype
-    were hosts with NaN `r_bdReD` (p = 0), so a galaxy ~20" away took P = 1.
-    `light_model(..., radius_fallback=True)` now falls back to the other CModel
-    radius, then the moment half-light radius. The association and sweep
-    recipes gained `--radius-fallback`, so the *recipe identity changed* and
-    everything downstream was remade in all five universes. Baseline: SBW
-    97.42 -> 97.52%, both-wrong-same 4,221 -> 4,177, DLR unchanged.
+  * *Radius fallback: removed (27 Oct 2026, later).* It briefly fell back to
+    the other CModel radius, then the moment radius, for hosts with NaN
+    `r_bdReD`. Now a candidate with no usable radius or flux for the profile
+    is *always dropped* before association, and a true host dropped that way
+    counts as cat2 "unusable" in the miss accounting. All numbers in the
+    first-results paragraph above predate this; current ones are in *Miss
+    accounting, quality cuts, ...* below.
   * *Agreement matrix with random positions* (peer request):
     `dp02_agreement_matrix` and `dp02_recovery` take `dp02_random_associations`;
     the figure adds a 2x2 for random positions and `dp02_recovery.json` gains
@@ -219,20 +219,15 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
     The random matrix there: SBW alone rejects 3.9%, DLR alone 3.2%.
   * *Cases and gallery.* `dp02_disagreement_cases` (baseline; seed 20261027,
     12 per class) needs only one universe because the sample carries both
-    matchers. Class sizes: truth_matchers_disagree 75, sbw_wrong 7,591,
-    dlr_wrong 26,846, sbw_ne_dlr 22,740, both_wrong_same 4,737 (no flb cut).
-    `src/dp02_gallery.py` is `../dp02_cutouts_proto/gallery.py` copied
-    unchanged (mtime 2026-10-27 11:20 EDT, sha256 e6c7f5a3...880b2; that
-    directory is not a git repo). `dp02_disagreement_gallery` has a recipe
-    but is *not materialized*. The laptop sandbox reads the declared token
-    `rsp_token` (`../.rsp_image_tap_token`) and reaches data.lsst.cloud
-    (checked with `lc run`; a probe run made 59/60 cutouts in 90 s, 5 pages).
-    But `lc materialize` on the laptop wants to rebuild the whole chain,
-    because the NERSC-only inputs cannot be checked there. The options are to
-    put the token at `$PROJECT/host_association/.rsp_image_tap_token` on NERSC
-    (same relative path, mode 600; compute nodes have internet), or to
-    materialize from a laptop clone that has those inputs. That is the user's
-    call, since it copies a credential.
+    matchers. Classes (baseline, p_true_threshold 0.05): truth_matchers_disagree
+    75, sbw_excludes_true_host 2,467 (P(true) < t), dlr_wrong_or_hostless
+    26,726, sbw_most_probable_ne_dlr 22,239, true_host_cut_by_object_table
+    1,873 (cat2). `src/dp02_gallery.py` began as a copy of
+    `../dp02_cutouts_proto/gallery.py` (sha256 e6c7f5a3...880b2); only its
+    labels changed since. The gallery now *materializes on NERSC*:
+    `rsp_token` is `/global/cfs/cdirs/m1727/cstone/.rsp_image_tap_token`
+    (mode 600; never print it), compute nodes reach data.lsst.cloud, and the
+    recipe caches cutouts under `$TMPDIR`.
   * *Operational.* The NERSC clone must `git fetch origin && git annex merge`
     before `git push origin main git-annex`, or the git-annex push is
     rejected. A remade output whose bytes are identical leaves its downstream
@@ -241,6 +236,60 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
     random chains took 1 h 50 min on 16 CPUs. `$PROJECT` paths inside
     `n.sh`-style double-quoted ssh commands expand on the laptop, so quote
     remote globs in single quotes.
+- **Miss accounting, quality cuts, P(true), credible sets, Youden J, PA
+  mirror (27 Oct 2026, evening; no radius fallback, candidate_quality none,
+  p_true_threshold p005, r, exponential, flb 0.01, d_DLR 4 half-light).**
+  * *Language.* SBW is scored by P_SBW(true host), not argmax. No figure says
+    "SBW host = true"; the wording is "SBW most probable host". The argmax
+    recovery is kept as a secondary number (`sbw_argmax_recovery`).
+  * *Headline (baseline, 306,332 SNe).* Mean P_SBW(true) 0.9705 +/- 0.0003
+    (argmax 97.42%, DLR 91.28%, agreement 92.74%). Bands: P > 0.5 91.13%,
+    0.05-0.5 0.87%, < 0.05 0.70%, SBW hostless (flb < 0.01) 7.30%. Physical
+    (274,633): mean P 0.9799, argmax 98.32%, DLR 95.89%, SBW hostless 2.35%.
+    The 4x3 matrix: P > 0.5 / DLR wrong 6,919, P < 0.05 / DLR wrong 2,108,
+    SBW hostless / DLR true 7,271.
+  * *Miss accounting* (`dp02_miss_accounting`). The denominator is 321,161
+    hosted SNe: the 14,829 whose true host has no DP0.2 object count as cat1.
+    Baseline SBW: cat1 absent 4.62%, cat2 cut 0.58% (point source 989,
+    unusable radius/flux 884), cat3 genuine 7.04% (P < t 1,977, hostless
+    20,641), success 87.76%. DLR: cat2 0.58% (+884 true hosts with no DLR
+    ellipse), cat3 7.74% (other closer 14,021, beyond d 4 10,827), success
+    87.06%. Physical: SBW cat3 1.99%, success 92.85%; DLR 3.33% / 91.51%.
+    Most of SBW's cat3 is the hostless cut, not a wrong pick.
+  * *candidate_quality.* `basic` (cModel_flag or S/N < 5) removes 7.9% of
+    candidates but only 277 true hosts (cat2 0.58 -> 0.67%); mean P 0.9705 ->
+    0.9702, so it changes nothing. `strict` (+ blendedness > 0.5 or > 50
+    siblings) removes 13.6% of candidates and 32,012 true hosts (cat2 10.6%),
+    mean P 0.874. It lowers SBW cat3 only 7.04 -> 6.44% and DLR 7.74 ->
+    5.39%. So object-table cuts are not a route to fewer failures on DP0.2:
+    the true hosts are as blended as the impostors. Sibling count barely
+    discriminates: 96% of true hosts are deblended children, median 10
+    siblings vs 12 for wrong picks (`SIBLING_MAX = 50` removes 0.85% / 2.4%).
+  * *Credible sets* (`dp02_credible_set_metrics`, set = candidates with
+    P > t). Baseline at t 0.01: coverage 98.92%, mean size 1.087. At t 0.05:
+    98.58% / 1.046. Knee at t 0.034 (98.68%, size 1.055). Top-k: k = 1
+    97.42%, k = 2 99.15%, k = 3 99.32%. The ceiling is the 99.39% of true
+    hosts that survive the cuts. Physical knee t 0.046 (99.04%, 1.035). So a
+    one-extra-candidate set buys ~1.2 points over argmax at a mean cost of
+    0.05 candidates.
+  * *Youden J* (hostless indicator, real kept + random rejected - 1). On
+    baseline the flb_best maximum is J 0.789 at flb 0.0215 (89.9% real kept,
+    89.1% random rejected) and DLR's is J 0.778 at d_DLR 2.7 (89.9% / 87.9%).
+    Physical: flb 0.032 (J 0.853), d 2.5 (J 0.849). flb_max matches
+    flb_best. 0.0215 is > 2x from 0.01 and from 0.05, so `sbw_hostless_cut`
+    gained `flb02` (0.02); the default stays flb01. Do not retune these on
+    DP0.2 before OU2024; they are meant to transfer unchanged.
+  * *PA mirror, as a prior-insight-like note* (`dp02_pa_mirror`, no
+    literature quote yet). 7,664 elongated hosts (q < 0.5 in truth and in
+    moments, SN beyond 1 R_e). SN offset angle against the pipeline moment
+    PA: <cos 2 delta> = -0.002 (flat; median |delta| 45.2 deg). Against the
+    mirrored moment PA (-PA): 0.326 (27.1 deg). Against the cosmoDC2 PA:
+    0.335 (26.4 deg). median |PA_mom + PA_cosmoDC2| = 1.3 deg, while
+    median |PA_mom - PA_cosmoDC2| = 44.4 deg. The cutouts show six large
+    hosts with the SN on the mirrored ellipse, off the visible disk. So DC2
+    rendered galaxies at -PA and placed SNe at +PA. Any offset-shape
+    analysis on DC2 must use +PA (`host_offsets` does). The SBW/DLR
+    association is unaffected because it uses the rendered image.
 - **lc on NERSC, operational.** `lc` hashes every declared input by content
   on every command with no cache (1 TB = 15 min), hence the objectTable index
   file; the 52 GB truth and 7 GB match directories cost ~1-2 min per command
