@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "dp02_calibration_by_profile",
   "universe_id": "baseline",
-  "recipe": "python src/dp02_sweep.py profile --sample results/baseline/dp02_sample.parquet --candidates results/baseline/dp02_candidates.parquet --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --output results/baseline/dp02_calibration_by_profile.pdf",
-  "definition_version": "sha256:c3db3d3ac7cfa02efd9fa6787047155bcaf90fe1bfe2012bb872f97ddf38f8aa",
+  "recipe": "python src/dp02_sweep.py profile --sample results/baseline/dp02_sample.parquet --candidates results/baseline/dp02_candidates.parquet --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --radius-fallback --output results/baseline/dp02_calibration_by_profile.pdf",
+  "definition_version": "sha256:486c67d361350eeb71a596fbac639606bd99ef57d64b41dd4eb0af70414dc454",
   "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:61ea534999166680cb170b523d925c0643d2f8d055f0ec9ce26e77be6e4e7bcb",
+  "data_version": "sha256:1a947ecb2c759b04b0566a71bb062ab8e489e0618aed62aae47fcacb6db03916",
   "decisions": {
     "band": "r",
     "search_radius": "r30",
@@ -17,7 +17,7 @@
     "dp02_sample": "sha256:524f15344b3110626472d9b72a14b8fbc4b9d2a040cd40dc11e5302aee50c965",
     "dp02_candidates": "sha256:fbc46d625de78e09083e9b1e965b7cc81d2d391c7fac44ef320de6da3756846a"
   },
-  "git_sha": "db57e0467ffbed4b1996996bebf9474e1ac27813",
+  "git_sha": "77c6095e253cc3eca2c8e871b2f09d1892cb04b0",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -27,8 +27,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T17:15:10.351+00:00",
-  "finished_at": "2026-10-27T17:19:44.707+00:00",
+  "started_at": "2026-10-27T18:08:48.476+00:00",
+  "finished_at": "2026-10-27T18:13:13.765+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
