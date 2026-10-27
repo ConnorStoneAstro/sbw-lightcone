@@ -90,7 +90,7 @@ def one_tract(args):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--truth", required=True, help="directory of DC2 merged truth tract parquet files")
-    ap.add_argument("--objects", required=True, help="directory of DP0.2 objectTable tract parquet files")
+    ap.add_argument("--objects", required=True, help="directory of DP0.2 objectTable tract files, or the csv index of them")
     ap.add_argument("--search-radius", required=True, choices=sorted(RADIUS))
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "16")))
     ap.add_argument("--max-tracts", type=int, default=None, help="probe: only the first N tract files")
@@ -100,7 +100,13 @@ def main(argv=None):
     t0 = time.time()
     sn = load_sne(a.truth)
     print(f"{len(sn)} SNe from truth", file=sys.stderr)
-    files = sorted(glob.glob(os.path.join(a.objects, "objectTable_tract_*.parq")))
+    if os.path.isdir(a.objects):
+        files = sorted(glob.glob(os.path.join(a.objects, "objectTable_tract_*.parq")))
+    else:   # an index file: one absolute path per line (plus size and mtime), see data/dp02_objectTable_index.csv
+        files = sorted(pd.read_csv(a.objects)["path"].tolist())
+        missing = [f for f in files if not os.path.exists(f)]
+        if missing:
+            raise SystemExit(f"{len(missing)} objectTable files from the index are missing, e.g. {missing[0]}")
     if a.max_tracts:
         files = files[: a.max_tracts]
     r = RADIUS[a.search_radius]

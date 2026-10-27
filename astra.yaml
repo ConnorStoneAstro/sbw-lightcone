@@ -39,10 +39,14 @@ inputs:
       DP0.2 objectId under truth_match: matches_truth.
   - id: dp02_object
     type: data
-    source: "/global/cfs/cdirs/lsst/shared/rubin/DP0.2/objectTable"
+    source: "data/dp02_objectTable_index.csv"
     description: >-
-      DP0.2 Object table, one parquet per tract (157 tracts, 1 TB), the same
-      rows ingested into Qserv. Per band: CModel bulge (de Vaucouleurs) and
+      DP0.2 Object table at NERSC, /global/cfs/cdirs/lsst/shared/rubin/DP0.2/objectTable,
+      one parquet per tract (157 tracts, 1 TB), the same rows ingested into
+      Qserv. The declared source is an index of those files (path, size,
+      mtime, written by src/dp02_index_objects.py) because lc hashes declared
+      inputs by content on every command and 1 TB takes 15 minutes; DP0.2 is
+      a frozen 2022 release, so the index stands in for the bytes. Per band: CModel bulge (de Vaucouleurs) and
       disk (exponential) determinant radii bdReB/bdReD in pixels, component
       fluxes bdFluxB/bdFluxD, cModelFlux, HSM source and PSF moments
       ixx/iyy/ixy(PSF), kronRad, extendedness. The v23 bdE1 column is unusable
