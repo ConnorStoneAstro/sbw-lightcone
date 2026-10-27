@@ -48,9 +48,88 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   Sersic), `deepCoadd_calexp` for 22 tracts (683 GB) in
   `u/descdm/step3_wfd_000..062` and `step3a_wfd_063..066`, plus scarlet
   model data and DIA tables, so the stamp form of SBW is possible there. The
-  user decided OU2024 is folded back in as a second simulated tier; that
-  work is being prepared in a separate session, and the spec does not carry
-  it yet. The OU2024 prior insights are still in the spec as evidence.
+  user decided OU2024 is folded back in as a second simulated tier; it is
+  wired on branch `ou24-tier` (next item).
+- **OU2024 tier (27 Oct 2026, branch `ou24-tier`, NERSC clone
+  `$PROJECT/host_association/paper-ou24`; not merged into main).** Inputs are
+  three index csvs under `data/`: `ou24_object` (67 objectTable files, all
+  needed because each tract's runs hold disjoint patches),
+  `ou24_sn_truth` (33 skyCatalog `snana_*.parquet`, the SNANA dump
+  `OU24_TRANSIENT_TRUTH_HEAD.DAT.gz`, 155 `*_HEAD.FITS.gz`) and
+  `ou24_host_truth` (skyCatalog `galaxy_*`, `galaxy_flux_*`,
+  `galaxy_sed_*.hdf5` for 33 pixels + the throughputs), written by
+  `src/ou24_index_objects.py` / `src/ou24_index_files.py`. Chain:
+  `ou24_sn_table` (521,766 transients, all hosted, 5 min; B/T from the
+  component SEDs) -> `ou24_truth_match` (hand-built; `truth_match:
+  matches_truth` = magnitude-aware, `nearest_1arcsec` = nearest; 51.7% / 61.1%
+  of hosts) -> `ou24_sample` (same `dp02_sample_cuts`; FIXMAG always dropped;
+  all z kept, median 1.5) and `ou24_candidates` (from the whole sn_table) ->
+  the DP0.2 scripts unchanged (`--tier ou24` only changes titles;
+  `dp02_random_positions.py --sne` draws over a tract's file union;
+  `dp02_offsets.py` without `--shapes` reads the sample's offset columns).
+  No `--radius-fallback` anywhere on OU2024. Whole chain ~45 min per universe
+  on 16 CPUs. New: `ou24_recovery_by_host_mag`, `ou24_dp02_comparison`
+  (takes `dp02_associations`, which already carries host_mag_r, so
+  `dp02_sample` is not an input), `ou24_pa_check(_metrics)`. Materialized:
+  baseline, physical, and the new universe `ext_none` (OU2024 outputs only;
+  its DP0.2 outputs are unmade, and `ou24_dp02_comparison` was left out
+  there because it would pull the DP0.2 chain).
+  * *Headline (baseline, r, exponential, 262,710 transients):* SBW 74.4%,
+    DLR 71.7%, agreement 70.4%, DLR hostless 24.3%, true host among
+    candidates only 81.7%, ECE 0.24. z < 1: SBW 85.7%, DLR 80.6%. Hosts
+    r < 24 (58k): SBW 98.5%, DLR 93.2%, agreement 93.9% (z < 1: 98.7 / 93.0),
+    against DP0.2 97.9 / 91.3 at r < 24. Reweighted to DP0.2's host-r
+    distribution OU2024 gives SBW 97.2%, DLR 92.4% (DP0.2 97.4 / 91.2). So
+    the machinery agrees; the headline is low because OU2024 hosts are
+    faint (median sample host r 25.1 vs 22.3, the host-mass bug) and because
+    at r 24-26 OU2024 recovers much worse than DP0.2 at the same magnitude
+    (SBW 0.89 at 24-25, 0.65 at 25-26, 0.40 at 26-27; DLR > SBW past r 26).
+    Likely causes: ext05 (below) and OU2024's 15 s exposures (coadds ~0.4
+    mag shallower than intended; insight `ou2024_lsst_exposures_15s_shallower`).
+  * *physical (235,637):* SBW 75.1%, DLR 74.6%; r < 24 SBW 99.0%, DLR 96.7%
+    (DP0.2 physical 98.4 / 95.9); reweighted SBW 97.4%, DLR 95.1%.
+  * *Extendedness.* ext05 drops the true host for 18.3% of transients
+    (faint compact hosts with refExtendedness < 0.5). `ext_none`: true host
+    always a candidate, SBW 85.2% (+10.8), DLR 81.2% (+9.5), z < 1 92.3 /
+    86.3, r < 24 unchanged (98.8 / 92.9), ECE 0.13; the cost is random
+    rejection SBW 91.8 -> 90.3% and DLR 86.8 -> 83.8% (flb 0.01 / d 4). The
+    gain is all in faint hosts; kept as a universe, not the default.
+  * *Hostless (baseline):* random positions rejected SBW 91.8%, DLR 86.8%
+    (2x2: both reject 86.6%, SBW alone 5.1%, DLR alone 0.2%); real kept at
+    flb 0.01 70.8% vs DLR d4 75.7%, d3 70.8% / 91.2% rejected, so SBW flb
+    0.01 and DLR d3 sit at nearly the same point, as on DP0.2. 99.3% of
+    random positions still get a P > 0.5 host. Real SBW hostless 29% is
+    mostly the faint hosts whose true host is not a candidate.
+  * *Matrix (baseline, flb 0.01):* SBW right / DLR wrong 2,207, DLR right /
+    SBW wrong 399, both wrong 4,427 (4,139 same object), SBW hostless / DLR
+    true 10,784.
+  * *Profiles (r):* baseline exponential 74.4%, de Vaucouleurs 74.7% (ECE
+    0.14), moment Gaussian 76.3%; ext_none 85.2 / 87.4 (ECE 0.04) / 91.5%.
+    Unlike DP0.2 (de Vaucouleurs best), the moment Gaussian wins on OU2024,
+    because it keeps faint hosts whose CModel fit is poor.
+  * *Bands (baseline):* SBW u 31%, g 64%, r 74%, i 66%, z 55%, y 47%, DLR
+    ~0.65-0.70 flat; the SBW host differs from r for 63% in u. Cause: the
+    true host's light model is invalid (no usable HSM moments in that band)
+    for 61% in u, 18% g, 7% r, 18% i, 33% z, 43% y, so it drops out of SBW;
+    for hosts r < 24 it is valid in g-y >= 98.6% (u 76%). A shape from the
+    reference band when a band's moments fail would fix it; not done (a
+    code decision for Connor, cf. the no-fallback rule for radii).
+  * *PA check: no mirror bug in OU2024.* For q < 0.5, offset > 1 R_e
+    (93,864): <cos 2(psi - beta)> = 0.306 +/- 0.002, mirror 0.000; against
+    the pipeline moment axis of the matched object (45,660) <cos 2(psi -
+    phi)> = 0.177, mirror -0.004; beta vs phi 0.48. beta = 0.5 atan2(g2, g1)
+    = SNANA a_rot is measured from +x West toward North in the sky_to_plane
+    frame, i.e. the same convention as the pipeline moments (the prep note
+    "beta = -phi" came from an East-based frame). `ou24_sample` offsets use
+    +beta.
+  * *Offsets:* failure rates flat (~22-25%, set by faint hosts) to ~2 R_e of
+    the dominant component, then rise; both-wrong-same ~2% rising to 6-10%
+    beyond 5 R_e. The physical cut removes 10% of the clean3 sample.
+  * *Operational.* `ou24_dp02_comparison` uses the DP0.2 results as of
+    acb147c (with radius fallback); remake after merging main. The NERSC
+    clone has remote `mainclone` = `../paper`, used once for `git annex get`
+    of the DP0.2 associations. An ssh disconnect detaches the `lc` client
+    but the login-node process keeps going.
 - **DP0.2 runs entirely on NERSC from parquet.** Inputs: DESC merged truth
   `DC2-prod/Run2.2i/truth/truth_merged_summary_v1-0-0/match_dr6_v2/truth_tract*.parquet`
   (166 tracts; SNe = truth_type 3, 445k; host rows = truth_type 1 with mag_r;
