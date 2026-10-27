@@ -2,17 +2,18 @@
   "schema_version": 1,
   "output_id": "dp02_recovery",
   "universe_id": "baseline",
-  "recipe": "python src/dp02_fig.py recovery --associations results/baseline/dp02_associations.parquet --hostless-cut flb01 --output results/baseline/dp02_recovery.json",
-  "definition_version": "sha256:b408e2e70a8501304f85fae40c1d620069580d214c1acc6946d6fa1feb56c9c5",
+  "recipe": "python src/dp02_fig.py recovery --associations results/baseline/dp02_associations.parquet --random results/baseline/dp02_random_associations.parquet --hostless-cut flb01 --output results/baseline/dp02_recovery.json",
+  "definition_version": "sha256:9323163d3e614a33b188d856d3913b2a6a5cad125735d38e68a742dcd58b3095",
   "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:20309f1e7392384bdff845d3eb2367de5563dd3b007ddc26485d6cf0d2144602",
+  "data_version": "sha256:97381b781c7942ecd2fa7f4dd36fb3c67594201b9705d3f0ce30d7c8c1d316db",
   "decisions": {
     "sbw_hostless_cut": "flb01"
   },
   "input_versions": {
-    "dp02_associations": "sha256:6b60c0c2eb23f49bda4abcf4a9a9eea965b6743fc8efeba26307988716afa6f1"
+    "dp02_associations": "sha256:ecd1d41bfe377b73e5f8da814941d4a0cf07302943f0b6cce35498cecc342d43",
+    "dp02_random_associations": "sha256:6dc047bd987b34439c19ad64c5e18df10c55e062e8d01bce1ca060b2f2da4a80"
   },
-  "git_sha": "db57e0467ffbed4b1996996bebf9474e1ac27813",
+  "git_sha": "77c6095e253cc3eca2c8e871b2f09d1892cb04b0",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -22,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T16:58:59.963+00:00",
-  "finished_at": "2026-10-27T16:59:54.644+00:00",
+  "started_at": "2026-10-27T18:25:14.194+00:00",
+  "finished_at": "2026-10-27T18:27:00.230+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
