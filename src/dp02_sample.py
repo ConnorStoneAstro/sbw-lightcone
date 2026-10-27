@@ -81,7 +81,9 @@ def main(argv=None):
     df["far"] = df.sep_truth_arcsec > FAR_ARCSEC
 
     if a.truth_match == "matches_truth":
-        df = df.merge(m[["host_galaxy", "match_objectId", "match_chisq"]], on="host_galaxy", how="left")
+        mm = m[["host_galaxy", "match_objectId", "match_chisq"]].copy()
+        mm["match_objectId"] = mm["match_objectId"].astype("Int64")   # nullable: a float merge would round the ids
+        df = df.merge(mm, on="host_galaxy", how="left")
         df["host_objectId"] = df.match_objectId.fillna(-1).astype(np.int64)
         df = df.drop(columns=["match_objectId"])
     else:
@@ -89,6 +91,7 @@ def main(argv=None):
         c = c.merge(df[["sn_id", "host_ra", "host_dec"]], on="sn_id")
         c["dh"] = ang_sep(c.coord_ra, c.coord_dec, c.host_ra, c.host_dec)
         c = c[c.dh <= 1.0].sort_values("dh").drop_duplicates("sn_id")
+        c["objectId"] = c["objectId"].astype("Int64")
         df = df.merge(c[["sn_id", "objectId", "dh"]].rename(columns={"objectId": "host_objectId", "dh": "match_sep_arcsec"}),
                       on="sn_id", how="left")
         df["host_objectId"] = df.host_objectId.fillna(-1).astype(np.int64)
