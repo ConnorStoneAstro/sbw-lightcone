@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_agreement_vs_ddlr",
+  "universe_id": "physical",
+  "recipe": "python src/dp02_fig.py agreement_vs_ddlr --associations results/physical/dp02_associations.parquet --output results/physical/dp02_agreement_vs_ddlr.pdf",
+  "definition_version": "sha256:5127ba4a3ecf501a8f982abb88ce82266a9061a4dbb1f42db183fc0db283f6b9",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:876393480a07462725f92c65b6b3c7e16a7fa62f003a0d049f0aff4d2559d38d",
+  "decisions": {},
+  "input_versions": {
+    "dp02_associations": "sha256:21eed7c8a91e262547ccbb79e1b936965ac6f7d4955fca1a5ed94715fdbec698"
+  },
+  "git_sha": "4dc2a7a2fea5e4ad0614efb2fe19cde25e2b8979",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-27T22:52:56.608+00:00",
+  "finished_at": "2026-10-27T22:53:39.158+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_miss_accounting",
+  "universe_id": "baseline",
+  "recipe": "python src/dp02_miss.py compute --sample results/baseline/dp02_sample.parquet --associations results/baseline/dp02_associations.parquet --candidates results/baseline/dp02_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --hostless-cut flb01 --p-threshold p005 --workers 16 --output results/baseline/dp02_miss_accounting.json",
+  "definition_version": "sha256:370bdffbef7116639b50f6a5d754eb1a6e476660e5592bbeb8d844fc4906be2a",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:260cadcd2889f50204e781f9b43547e750d267664f8460db2a583b8cdda9c239",
+  "decisions": {
+    "sbw_profile": "exponential",
+    "band": "r",
+    "search_radius": "r30",
+    "dlr_max": "d4",
+    "dlr_radius": "half_light",
+    "extendedness_cut": "ext05",
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
+  },
+  "input_versions": {
+    "dp02_sample": "sha256:524f15344b3110626472d9b72a14b8fbc4b9d2a040cd40dc11e5302aee50c965",
+    "dp02_associations": "sha256:7936fad192e6fbc5fc66f229556e550e7e5779f3a2a07303fff845c1a2b2e9ff",
+    "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
+  },
+  "git_sha": "4dc2a7a2fea5e4ad0614efb2fe19cde25e2b8979",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-27T21:23:45.314+00:00",
+  "finished_at": "2026-10-27T21:30:09.888+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
