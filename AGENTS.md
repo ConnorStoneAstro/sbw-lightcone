@@ -106,6 +106,32 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   with DLR declines with the SBW host's d_DLR and collapses past 4 by
   construction. Run cost on `shared-interactive`: candidates 9 min on 16
   CPUs, the whole 16-output chain 42 min.
+- **DP0.2 hostless indicator (27 Oct 2026, baseline).** `dp02_random_positions`
+  draws one position per truth SN uniformly (RA, sin dec) inside its tract,
+  redrawn unless a 1 arcmin cell holds a primary DP0.2 object (386,248
+  positions in 152 tracts; 7,774 SNe sit in the 13 truth tracts with no
+  objectTable file and get none); ids are the negated truth ids. Random
+  candidates (40.5M pairs, 10 min) and associations go through the same
+  scripts (`--positions`). `flb_max` (max frac_light_beyond over candidates)
+  was added to `associate_one`; `dp02_associations` was rematerialized for it
+  (recipe gained `--workers 16`), headline numbers unchanged. Results: SBW
+  P_SBW is a *relative* probability, so 98.9% of random positions still get a
+  top host with P > 0.5 (79% with P > 0.9); hostlessness must come from
+  flb. At flb_best < 0.01: 92.7% of real SNe kept, 85.7% of random rejected,
+  14.2% of random kept on a P > 0.5 host; DLR d <= 4: 96.1% kept, 76.3%
+  rejected (23.5% random kept with P > 0.5); d <= 3: 92.0% / 84.8%. On the
+  ROC SBW lies slightly above DLR everywhere (about 1 point of random
+  rejection at equal real kept); flb_max is indistinguishable from flb_best.
+  Expected: for one exponential profile flb at 4 r_e is 0.0094, so flb 0.01
+  and d_DLR 4 are nearly the same ellipse; the operating points differ
+  mostly because DLR's radius is the bulge+disk flux-weighted one. Half the
+  random positions have flb_best < 1e-5. 3x3 matrix (flb 0.01): SBW hostless
+  7.30% of real SNe, of which 2.42% DLR-true, 1.05% DLR-wrong, 3.82% DLR
+  hostless; SBW right 88.71% overall (2.35% with DLR wrong, 0.08% DLR none);
+  recovery with the cut 91.14%. `dp02_hostless_indicator.pdf`,
+  `dp02_hostless_metrics.json`. On NERSC the clone's hub remote is `origin`
+  (`nersc` only on the laptop); `lc compute launch` there gives a 1 h
+  allocation by default, enough for this chain (~25 min).
 - **lc on NERSC, operational.** `lc` hashes every declared input by content
   on every command with no cache (1 TB = 15 min), hence the objectTable index
   file; the 52 GB truth and 7 GB match directories cost ~1-2 min per command
