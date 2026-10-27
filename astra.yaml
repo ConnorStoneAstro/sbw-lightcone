@@ -174,7 +174,7 @@ outputs:
     inputs: [dp02_sn_truth, dp02_object]
     decisions: [search_radius]
     recipe:
-      command: python src/dp02_candidates.py --truth {inputs.dp02_sn_truth} --objects {inputs.dp02_object} --search-radius {decisions.search_radius} --output {output}
+      command: python src/dp02_candidates.py --truth {inputs.dp02_sn_truth} --objects {inputs.dp02_object} --search-radius {decisions.search_radius} --workers 16 --output {output}
       resources: {cpus: 16, memory: 56Gi}
   - id: dp02_sample
     type: table
@@ -375,7 +375,7 @@ outputs:
     inputs: [dp02_random_positions, dp02_object]
     decisions: [search_radius]
     recipe:
-      command: python src/dp02_candidates.py --positions {inputs.dp02_random_positions} --objects {inputs.dp02_object} --search-radius {decisions.search_radius} --output {output}
+      command: python src/dp02_candidates.py --positions {inputs.dp02_random_positions} --objects {inputs.dp02_object} --search-radius {decisions.search_radius} --workers 16 --output {output}
       resources: {cpus: 16, memory: 56Gi}
   - id: dp02_random_associations
     type: table
