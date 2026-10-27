@@ -561,7 +561,7 @@ outputs:
       the mirror of the measured galaxy and not with the galaxy itself.
       Right: six deepCoadd cutouts (headline band, north up, east left) of
       large elongated hosts whose two PAs differ by more than 60 degrees and
-      whose SN lies within 15 degrees of +PA at 1-3 R_e, with the cosmoDC2
+      whose SN lies within 15 degrees of +PA at 1.3-3.5 R_e, with the cosmoDC2
       ellipse (+PA, 2 R_e) and the pipeline moment ellipse (2 half-light
       radii) drawn. No paper documents this; it is recorded in AGENTS.md.
     inputs: [dp02_sample, dp02_associations, dp02_candidates, dp02_host_truth_shapes, rsp_token]

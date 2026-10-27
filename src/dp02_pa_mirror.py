@@ -78,10 +78,10 @@ def summary(sel):
 
 def choose(df):
     """Large elongated hosts whose cosmoDC2 PA and measured PA differ by > 60 deg, SN within 15 deg of +PA
-    at 1-3 R_e; the largest N_EXAMPLES, one per host."""
-    m = ((df.q_true < 0.4) & (df.q_mom < 0.4) & df.mom_valid & (df.re > 1.5)
+    at 1.3-3.5 R_e; the largest N_EXAMPLES, one per host."""
+    m = ((df.q_true < 0.4) & (df.q_mom < 0.4) & df.mom_valid & (df.re > 1.0)
          & (np.abs(fold(df.pa_true - df.pa_mom)) > 60) & (np.abs(fold(df.psi - df.pa_true)) < 15)
-         & (df.offset_re > 1.0) & (df.offset_re < 3.0))
+         & (df.offset_re > 1.3) & (df.offset_re < 3.5))
     return df[m].sort_values("re", ascending=False).drop_duplicates("host_galaxy").head(N_EXAMPLES)
 
 
