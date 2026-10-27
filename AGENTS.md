@@ -39,17 +39,50 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   side by side on the truth sample and does not depend on that decision.
   Band dependence likewise is an output (`dp02_band_dependence`,
   `dp2_band_consistency`), with `band` only fixing the headline band.
-- **Simulation tier is DP0.2, not OpenUniverse2024.** The public OU2024 release
-  has no multiband Object table (only skyCatalog truth, single-visit src, one
-  preview coadd patch); DP0.2 has CModel bulge+disk fits plus SN truth with
-  host ids over the RSP TAP (`dp02_dc2_catalogs`). On DP0.2 "exponential" maps
-  to the CModel disk-only component and "sersic" to bulge+disk; the stamp form
-  needs deblender model stamps from the butler. OU2024 truth is used only for
-  the cosmology propagation. Both simulations place SNe by sampling the host
-  light profile (DC2: Sersic n = 1 or 4 component chosen by stellar mass;
-  OU2024: SNANA HOSTLIB surface-brightness weight), so SBW is favoured by
-  construction there; say so in the paper. OU2024 hosts are also ~1 dex too
-  low in stellar mass (known issue).
+- **Simulation tier is DP0.2; OpenUniverse2024 is dropped (26 Oct 2026).**
+  OU2024's multiband Object table does exist, but only DESC-internally on
+  NERSC (`/global/cfs/cdirs/lsst/production/gen3/roman-desc-sims/repo`,
+  `u/descdm/step3b_wfd_000..066_w_2024_22`, 26 tracts, 70 GB, pipeline
+  w_2024_22) and it carries the same CModel bulge+disk / moments / Kron
+  columns as DP0.2 with no MultiProFit Sersic and no surviving coadd images
+  (only preview tract 2877 patch 19 is public). It buys nothing over DP0.2
+  for SBW inputs and loses the stamp form, so the cosmology propagation and
+  the OU2024 inputs/outputs were removed from the spec; the OU2024 prior
+  insights stay as evidence on other options.
+- **DP0.2 runs entirely on NERSC from parquet.** Inputs: DESC merged truth
+  `DC2-prod/Run2.2i/truth/truth_merged_summary_v1-0-0/match_dr6_v2/truth_tract*.parquet`
+  (166 tracts; SNe = truth_type 3, 445k; host rows = truth_type 1 with mag_r;
+  its match_objectId is the DESC DR6 processing and must not be used),
+  Rubin's DP0.2 truth match `shared/rubin/DP0.2/match_ref_truth_summary_objectTable`
+  (id string to DP0.2 objectId; 93% of SN hosts in tract 2897 have one), and
+  `shared/rubin/DP0.2/objectTable` (157 tracts, 1 TB). TruthSummary itself is
+  not on NERSC (TAP only), which is why the DESC merged truth is used. No
+  DP0.2 images exist on NERSC, so the stamp form stays parked (RSP cutouts
+  on a subsample later).
+- **DP0.2 column conventions (src/dp02_lib.py).** `bdReB`/`bdReD` are
+  determinant radii `(xx*yy-xy^2)^(1/4)` = sqrt(a b) of the de Vaucouleurs /
+  exponential half-light ellipse in 0.2" pixels; semi-major = r/sqrt(q). The
+  v23 `E1` functor had no parentheses (`xx - yy/(xx+yy)`), so `bdE1` is
+  garbage and q, phi come from PSF-subtracted HSM moments
+  (`ixx-ixxPSF` ...), falling back to raw moments. No fracDev is exported,
+  so there is no bulge+disk composite: on DP0.2 `sbw_profile` maps
+  exponential -> n=1 with bdReD and the total cModelFlux, sersic -> n=4 with
+  bdReB and cModelFlux, moments -> Gaussian (n=0.5) with the moment
+  ellipse. DLR `half_light` uses the bdFlux-weighted mean of bdReB/bdReD;
+  `moments` uses the rms semi-axes. Checked on synthetic galaxies (m, d_DLR
+  on major/minor axis) before running.
+- **DP0.2 pipeline shape.** `dp02_candidates` (one row per SN-object pair
+  within the search radius, 16 workers over the tract files) feeds
+  `dp02_sample` (truth + host objectId + cuts) and `dp02_associations`; the
+  per-band and per-profile sweeps (`src/dp02_sweep.py`) recompute the
+  association in-process and do not depend on the headline band/profile.
+  `dp02_hostless_indicator` still has no recipe (needs random-position
+  candidates). Figures asked for on 26 Oct: SBW reliability curve
+  (fraction of top hosts that are true vs P_SBW, 1:1 if calibrated) per
+  band and per profile, the SBW/DLR/truth agreement matrix, agreement vs
+  d_DLR; added on my side: recovery vs redshift and the P(true host)
+  distribution. `lc status` hashes the declared input directories by
+  content, so the first status after declaring the 1 TB objectTable is slow.
 - **DP0.2 quirks** (from the 22 Oct 2026 prototype): ~5% of SN truth rows point
   to an empty host row; ~9% sit > 3 arcsec from the declared host; all z > 1
   and 10% of z < 1 SNe are deliberately hostless (control sample, not
@@ -109,7 +142,7 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   `data/dp2_transients.csv`. Perlmutter has no landlock, so `lc` runs recipes
   there unsandboxed (`sandbox: none`) but still records every run. The laptop keeps its own
   `local` offer for probes over TAP.
-- **Rejected / parked.** OU2024 with our own Sersic fits on its coadds
+- **Rejected / parked.** OU2024 altogether (above); OU2024 with our own Sersic fits on its coadds
   (rejected: only one preview coadd patch is public). DP2 DiaObject SN-like
   selection as the DP2 sample (parked: the collaborator list was preferred).
   Pareto-style "best method" tables (out of scope by framing).
