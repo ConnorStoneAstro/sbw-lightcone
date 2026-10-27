@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from dp02_lib import COLORS, DLR_MAX, HOSTLESS_CUT, calibration_curve, dlr_hostless, matrix_cells, sbw_hostless, wilson
+from dp02_lib import COLORS, DLR_MAX, HOSTLESS_CUT, calibration_curve, dlr_hostless, matrix_cells, random_cells, sbw_hostless, wilson
 
 plt.rcParams.update({"font.size": 9, "axes.grid": True, "grid.alpha": 0.25, "grid.linewidth": 0.5,
                      "axes.spines.top": False, "axes.spines.right": False, "lines.linewidth": 1.5,
@@ -30,7 +30,7 @@ def subtitle(df):
     return f"{a.get('profile', '?')} | band {a.get('band', '?')} | {a.get('search_radius', '?')} | d_DLR<={a.get('dlr_max', '?')[1:]} ({a.get('dlr_radius', '?')}) | N={len(df)}"
 
 
-def recovery(df, out, hostless_cut):
+def recovery(df, out, hostless_cut, rnd):
     n = len(df)
     cut = HOSTLESS_CUT[hostless_cut]
     hl = sbw_hostless(df, cut)
@@ -51,6 +51,7 @@ def recovery(df, out, hostless_cut):
            "sbw_hostless_cut": cut, "sbw_hostless_fraction": float(hl.mean()),
            "sbw_recovery_with_hostless_cut": ph, "sbw_recovery_with_hostless_cut_ci68": [lh, hh],
            "agreement_matrix": matrix_cells(df, cut),
+           "random_matrix": random_cells(rnd, cut),
            "settings": df.attrs}
     with open(out, "w") as f:
         json.dump(res, f, indent=2, default=float)
@@ -79,7 +80,7 @@ def calibration(df, out):
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
-def agreement_matrix(df, out, hostless_cut):
+def agreement_matrix(df, out, hostless_cut, rnd):
     cut = HOSTLESS_CUT[hostless_cut]
     hl = sbw_hostless(df, cut)
     rows = [("SBW host = true", df.sbw_correct & ~hl), ("SBW host wrong", ~df.sbw_correct & ~hl),
@@ -88,7 +89,7 @@ def agreement_matrix(df, out, hostless_cut):
             ("DLR: no host", df.dlr_hostless)]
     n = len(df)
     M = np.array([[int((r & c).sum()) for _, c in cols] for _, r in rows])
-    fig, ax = plt.subplots(figsize=(5.6, 4.2))
+    fig, (ax, ar) = plt.subplots(1, 2, figsize=(9.6, 4.6), width_ratios=[3, 2.2])
     ax.imshow(M / n, cmap="Blues", vmin=0, vmax=1, aspect="auto")
     for i, (rl, rm) in enumerate(rows):
         for j, (cl, cm) in enumerate(cols):
@@ -101,7 +102,24 @@ def agreement_matrix(df, out, hostless_cut):
                     color="white" if M[i, j] / n > 0.5 else "black")
     ax.set_xticks(range(3), [c for c, _ in cols]); ax.set_yticks(range(3), [r for r, _ in rows])
     ax.grid(False)
-    ax.set_title(f"SBW vs DLR vs truth (agree on host: {100 * df.agree.mean():.2f}%)\n" + subtitle(df), fontsize=8)
+    rs = 100 * (df.sbw_correct & ~hl).mean(); rd = 100 * df.dlr_correct.mean()
+    ax.set_title(f"real SNe (N = {n:,}; agree on host {100 * df.agree.mean():.2f}%)", fontsize=8)
+    ax.set_xlabel(f"recovery with the hostless cuts: SBW {rs:.2f}%, DLR {rd:.2f}%", fontsize=8)
+    # random positions: no host exists, so hostless is the correct answer
+    hr = sbw_hostless(rnd, cut); dr = rnd["dlr_objectId"].to_numpy() < 0
+    rrows = [("SBW: no host\n(correct)", hr), ("SBW assigns host\n(wrong)", ~hr)]
+    rcols = [("DLR: no host\n(correct)", dr), ("DLR assigns host\n(wrong)", ~dr)]
+    nr = len(rnd)
+    R = np.array([[int((r & c).sum()) for _, c in rcols] for _, r in rrows])
+    ar.imshow(R / nr, cmap="Greys", vmin=0, vmax=1.6, aspect="auto")
+    for i in range(2):
+        for j in range(2):
+            ar.text(j, i, f"{R[i, j]:,}\n{100 * R[i, j] / nr:.2f}%", ha="center", va="center", fontsize=8)
+    ar.set_xticks(range(2), [c for c, _ in rcols]); ar.set_yticks(range(2), [r for r, _ in rrows])
+    ar.grid(False)
+    ar.set_title(f"random positions (N = {nr:,})", fontsize=8)
+    ar.set_xlabel(f"correctly rejected: SBW {100 * hr.mean():.2f}%, DLR {100 * dr.mean():.2f}%", fontsize=8)
+    fig.suptitle("SBW vs DLR vs truth, same hostless cuts on real SNe and random positions\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
@@ -296,11 +314,11 @@ def main(argv=None):
     a = ap.parse_args(argv)
     df = load(a.associations)
     if a.kind == "recovery":
-        recovery(df, a.output, a.hostless_cut)
+        recovery(df, a.output, a.hostless_cut, load(a.random))
     elif a.kind == "calibration":
         calibration(df, a.output)
     elif a.kind == "agreement_matrix":
-        agreement_matrix(df, a.output, a.hostless_cut)
+        agreement_matrix(df, a.output, a.hostless_cut, load(a.random))
     elif a.kind == "agreement_vs_ddlr":
         agreement_vs_ddlr(df, a.output)
     elif a.kind == "recovery_vs":

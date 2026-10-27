@@ -201,16 +201,16 @@ outputs:
     inputs: [dp02_sample, dp02_candidates]
     decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
     recipe:
-      command: python src/dp02_associate.py --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --workers 16 --output {output}
+      command: python src/dp02_associate.py --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --workers 16 --radius-fallback --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_recovery
     type: metric
     format: json
-    description: Fraction of SNe whose true host is the top-ranked host, per method, with binomial intervals, plus the SBW-DLR agreement rate and sample size, the fraction SBW declares hostless under sbw_hostless_cut and the SBW recovery with that cut applied.
-    inputs: [dp02_associations]
+    description: Fraction of SNe whose true host is the top-ranked host, per method, with binomial intervals, plus the SBW-DLR agreement rate and sample size, the fraction SBW declares hostless under sbw_hostless_cut and the SBW recovery with that cut applied, the 3x3 agreement-matrix cells, and the random-position 2x2 (SBW / DLR hostless or assigning a host) with the fraction each method correctly rejects.
+    inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut]
     recipe:
-      command: python src/dp02_fig.py recovery --associations {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_fig.py recovery --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: dp02_calibration
     type: figure
     format: pdf
@@ -229,7 +229,7 @@ outputs:
     inputs: [dp02_sample, dp02_candidates]
     decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
     recipe:
-      command: python src/dp02_sweep.py band --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_sweep.py band --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_calibration_by_profile
     type: figure
@@ -238,7 +238,7 @@ outputs:
     inputs: [dp02_sample, dp02_candidates]
     decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
     recipe:
-      command: python src/dp02_sweep.py profile --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_sweep.py profile --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_agreement_matrix
     type: figure
@@ -247,11 +247,16 @@ outputs:
       3x3 matrix of SBW (host true / host wrong / hostless under
       sbw_hostless_cut) against DLR (host true / host wrong / hostless):
       counts and fractions of SNe in each cell, so the disagreements split
-      into who was right and both methods' hostless calls are visible.
-    inputs: [dp02_associations]
+      into who was right and both methods' hostless calls are visible. A
+      second panel applies the same cuts to dp02_random_positions as a 2x2
+      (SBW hostless = correct / assigns a host = wrong, against the same for
+      DLR), so loosening the hostless cut is seen to cost random rejections;
+      under each panel the real recovery with the cuts and the random
+      fraction correctly rejected.
+    inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut]
     recipe:
-      command: python src/dp02_fig.py agreement_matrix --associations {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_fig.py agreement_matrix --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: dp02_agreement_vs_ddlr
     type: figure
     format: pdf
@@ -307,7 +312,7 @@ outputs:
     inputs: [dp02_sample, dp02_candidates]
     decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
     recipe:
-      command: python src/dp02_sweep.py band_dependence --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_sweep.py band_dependence --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_profile_sweep
     type: table
@@ -320,7 +325,7 @@ outputs:
     inputs: [dp02_sample, dp02_candidates]
     decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
     recipe:
-      command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_random_positions
     type: table
@@ -352,7 +357,7 @@ outputs:
     inputs: [dp02_random_positions, dp02_random_candidates]
     decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
     recipe:
-      command: python src/dp02_associate.py --positions {inputs.dp02_random_positions} --candidates {inputs.dp02_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_associate.py --positions {inputs.dp02_random_positions} --candidates {inputs.dp02_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_hostless_indicator
     type: figure

@@ -78,19 +78,27 @@ def moment_shape(ixx, iyy, ixy, pxx, pyy, pxy):
     return q, phi, l1, l2, valid
 
 
-def light_model(c, band, profile):
-    """Semi-major half-light radius (arcsec), flux (nJy), n, q, phi and a validity mask."""
+def light_model(c, band, profile, radius_fallback=False):
+    """Semi-major half-light radius (arcsec), flux (nJy), n, q, phi and a validity mask.
+
+    With ``radius_fallback`` a candidate whose own CModel radius is missing or non-positive takes the other
+    CModel component's radius, then the moment half-light radius, instead of dropping out of SBW (p = 0),
+    which otherwise lets a galaxy far away take P = 1."""
     g = lambda k: c[f"{band}_{k}"].to_numpy(dtype=float)
     flux = g("cModelFlux")
     q, phi, l1, l2, valid = moment_shape(g("ixx"), g("iyy"), g("ixy"), g("ixxPSF"), g("iyyPSF"), g("ixyPSF"))
+    a_mom = GAUSS_HALF_LIGHT * np.sqrt(l1) * PIX
     if profile == "exponential":
-        a = g("bdReD") * PIX / np.sqrt(q)
+        a, a2 = g("bdReD") * PIX / np.sqrt(q), g("bdReB") * PIX / np.sqrt(q)
     elif profile == "sersic":
-        a = g("bdReB") * PIX / np.sqrt(q)
+        a, a2 = g("bdReB") * PIX / np.sqrt(q), g("bdReD") * PIX / np.sqrt(q)
     elif profile == "moments":
-        a = GAUSS_HALF_LIGHT * np.sqrt(l1) * PIX
+        a = a2 = a_mom
     else:
         raise ValueError(f"profile {profile!r} is not one of {PROFILES} (stamps need images, not available here)")
+    if radius_fallback:
+        good = lambda r: np.isfinite(r) & (r > 0)
+        a = np.where(good(a), a, np.where(good(a2), a2, a_mom))
     ok = valid & np.isfinite(a) & (a > 0) & np.isfinite(flux) & (flux > 0)
     return a, flux, SERSIC_N[profile], q, phi, ok
 
@@ -114,7 +122,8 @@ def dlr_ellipse(c, band, dlr_radius, q, l1, l2):
     return a, b, ok
 
 
-def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_max, dlr_radius, extendedness):
+def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_max, dlr_radius, extendedness,
+                  radius_fallback=False):
     """Associate one SN against its candidate rows ``c`` (a DataFrame slice)."""
     out = {"n_cand": len(c), "n_cand_used": 0, "true_in_cand": False,
            "sbw_objectId": -1, "p_sbw_max": np.nan, "p_sbw_true": np.nan, "rank_true": -1,
@@ -139,7 +148,7 @@ def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_ma
     if it >= 0:
         out["sep_true"] = sep[it]
     x, y = sky_to_plane(c["coord_ra"].to_numpy(), c["coord_dec"].to_numpy(), sn_ra, sn_dec)
-    a, flux, n, q, phi, ok = light_model(c, band, profile)
+    a, flux, n, q, phi, ok = light_model(c, band, profile, radius_fallback)
     _, _, l1, l2, _ = moment_shape(*(c[f"{band}_{k}"].to_numpy(dtype=float)
                                      for k in ("ixx", "iyy", "ixy", "ixxPSF", "iyyPSF", "ixyPSF")))
     # ---- SBW
@@ -177,7 +186,7 @@ _G = {}
 
 
 def associate_all(sample: pd.DataFrame, cand: pd.DataFrame, *, band, profile, search_radius, dlr_max,
-                  dlr_radius, extendedness, workers=None) -> pd.DataFrame:
+                  dlr_radius, extendedness, radius_fallback=False, workers=None) -> pd.DataFrame:
     """Associate every SN of ``sample`` using its rows in ``cand`` (both keyed by sn_id)."""
     workers = workers or int(os.environ.get("DP02_WORKERS", "16"))
     t0 = time.time()
@@ -192,7 +201,7 @@ def associate_all(sample: pd.DataFrame, cand: pd.DataFrame, *, band, profile, se
     _G["cand"] = cand
     _G["starts"] = np.column_stack([starts, ends])
     _G["cfg"] = dict(band=band, profile=profile, radius=RADIUS[search_radius], dlr_max=DLR_MAX[dlr_max],
-                     dlr_radius=dlr_radius, extendedness=extendedness)
+                     dlr_radius=dlr_radius, extendedness=extendedness, radius_fallback=radius_fallback)
     n = len(sample)
     chunks = [(lo, min(lo + 2000, n)) for lo in range(0, n, 2000)]
     rows = []
@@ -206,7 +215,7 @@ def associate_all(sample: pd.DataFrame, cand: pd.DataFrame, *, band, profile, se
     out["dlr_hostless"] = out["dlr_objectId"] < 0
     out["agree"] = (out["sbw_objectId"] >= 0) & (out["sbw_objectId"] == out["dlr_objectId"])
     for k, v in dict(band=band, profile=profile, search_radius=search_radius, dlr_max=dlr_max,
-                     dlr_radius=dlr_radius, extendedness=extendedness).items():
+                     dlr_radius=dlr_radius, extendedness=extendedness, radius_fallback=radius_fallback).items():
         out.attrs[k] = v
     print(f"associated {n} SNe ({band}, {profile}) in {time.time() - t0:.0f}s", file=sys.stderr)
     return out
@@ -246,6 +255,18 @@ def matrix_cells(df, cut, truth_col="host_objectId"):
     out = {f"{r}/{c}": int((rm & cm).sum()) for r, rm in rows.items() for c, cm in cols.items()}
     out["both_wrong_same_object"] = int((rows["sbw_wrong"] & cols["dlr_wrong"] & (s == d)).sum())
     out["n"] = len(df)
+    return out
+
+
+def random_cells(rnd, cut):
+    """2x2 SBW (hostless at flb < cut = correct / assigns a host) x DLR (hostless / assigns) counts for
+    random positions, which have no host."""
+    hl = sbw_hostless(rnd, cut)
+    dh = rnd["dlr_objectId"].to_numpy() < 0
+    rows = {"sbw_hostless": hl, "sbw_host": ~hl}
+    cols = {"dlr_hostless": dh, "dlr_host": ~dh}
+    out = {f"{r}/{c}": int((rm & cm).sum()) for r, rm in rows.items() for c, cm in cols.items()}
+    out.update(n=len(rnd), sbw_rejected=float(hl.mean()), dlr_rejected=float(dh.mean()))
     return out
 
 

@@ -1,0 +1,17 @@
+id: dlr_moments
+description: Baseline (clean3 sample) with the DLR ellipse from the PSF-subtracted
+  HSM second moments (rms semi-axes), the literature-faithful DLR
+decisions:
+  sbw_profile: exponential
+  band: r
+  search_radius: r30
+  dlr_max: d4
+  dlr_radius: moments
+  extendedness_cut: ext05
+  sbw_hostless_cut: flb01
+  exclude_suspect: keep
+  truth_match: matches_truth
+  dp02_sample_cuts: clean3   # as baseline
+  dp2_sample: rc_salt
+  reference_match: pos_1arcsec
+  delight_catalogue: legacy_dr10

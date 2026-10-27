@@ -94,11 +94,14 @@ def main(argv=None):
     ap.add_argument("--dlr-max", required=True, choices=sorted(DLR_MAX))
     ap.add_argument("--dlr-radius", required=True, choices=["half_light", "moments"])
     ap.add_argument("--extendedness", required=True, choices=["ext05", "none"])
+    ap.add_argument("--radius-fallback", action="store_true",
+                    help="missing CModel radius -> other component's radius -> moment radius (else the candidate gets p = 0)")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--max-sn", type=int, default=None, help="probe: subsample the SNe")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
-    cfg = dict(search_radius=a.search_radius, dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness)
+    cfg = dict(search_radius=a.search_radius, dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness,
+               radius_fallback=a.radius_fallback)
     cfgtxt = f"{a.search_radius} | d_DLR<={a.dlr_max[1:]} ({a.dlr_radius}) | {a.extendedness}"
     sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     if a.max_sn:
