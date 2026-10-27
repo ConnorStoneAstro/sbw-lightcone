@@ -4,13 +4,13 @@
   "universe_id": "baseline",
   "recipe": "python src/dp02_fig.py calibration --associations results/baseline/dp02_associations.parquet --output results/baseline/dp02_calibration.pdf",
   "definition_version": "sha256:74a1c289b18841e5a9dc710b34c8a03b0dc7265c5c0c490f6da538c7219467da",
-  "env_version": "sha256:84de715ba076a4f19c42a54bda086c88f03224e680e46203146337f1a452c7c4",
-  "data_version": "sha256:5f67b73c48109a1ef999b8b135d4036468a6c14b99a665f26cf9e784e51c63c9",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:763e3f347db46450adea07db934bc258af851aea35e538969420c79c0d9cee85",
   "decisions": {},
   "input_versions": {
-    "dp02_associations": "sha256:16474e294779802d6fd590060c608a16215f6e77ffc4af60d2b654ac08802d15"
+    "dp02_associations": "sha256:6b60c0c2eb23f49bda4abcf4a9a9eea965b6743fc8efeba26307988716afa6f1"
   },
-  "git_sha": "f46ff19951e39d2e70b8b9bd9d314d029106c1da",
+  "git_sha": "db57e0467ffbed4b1996996bebf9474e1ac27813",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T15:07:16.461+00:00",
-  "finished_at": "2026-10-27T15:07:52.740+00:00",
+  "started_at": "2026-10-27T16:59:00.003+00:00",
+  "finished_at": "2026-10-27T16:59:58.120+00:00",
   "uv_version": "0.13.5",
   "image": null
 }

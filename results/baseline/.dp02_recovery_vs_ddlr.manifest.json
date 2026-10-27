@@ -4,13 +4,13 @@
   "universe_id": "baseline",
   "recipe": "python src/dp02_fig.py recovery_vs --x ddlr --associations results/baseline/dp02_associations.parquet --output results/baseline/dp02_recovery_vs_ddlr.pdf",
   "definition_version": "sha256:6ca3cb3869d11abc08bba81f4b9a5bb62b707e1d1f1a21da8a92f710d7ffb964",
-  "env_version": "sha256:84de715ba076a4f19c42a54bda086c88f03224e680e46203146337f1a452c7c4",
-  "data_version": "sha256:73f3b852c201709b20e00b54689a94035ae1f43a15563b3a16d3f3e31904b9bc",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:aa5ab0315fdf8123b504bef0a1edb6d207f8913616aca2e5b104f653d539b4d9",
   "decisions": {},
   "input_versions": {
-    "dp02_associations": "sha256:16474e294779802d6fd590060c608a16215f6e77ffc4af60d2b654ac08802d15"
+    "dp02_associations": "sha256:6b60c0c2eb23f49bda4abcf4a9a9eea965b6743fc8efeba26307988716afa6f1"
   },
-  "git_sha": "f46ff19951e39d2e70b8b9bd9d314d029106c1da",
+  "git_sha": "db57e0467ffbed4b1996996bebf9474e1ac27813",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T15:07:16.460+00:00",
-  "finished_at": "2026-10-27T15:07:52.739+00:00",
+  "started_at": "2026-10-27T16:59:00.242+00:00",
+  "finished_at": "2026-10-27T16:59:58.295+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
