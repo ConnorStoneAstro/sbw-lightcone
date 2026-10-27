@@ -2,17 +2,18 @@
   "schema_version": 1,
   "output_id": "dp02_agreement_matrix",
   "universe_id": "truth_nearest",
-  "recipe": "python src/dp02_fig.py agreement_matrix --associations results/truth_nearest/dp02_associations.parquet --hostless-cut flb01 --output results/truth_nearest/dp02_agreement_matrix.pdf",
-  "definition_version": "sha256:a8ef22f41839565ea3b21dcbdca45ecfa750b22b4082e0daa3e5043836e1e1fc",
-  "env_version": "sha256:84de715ba076a4f19c42a54bda086c88f03224e680e46203146337f1a452c7c4",
-  "data_version": "sha256:5b3da4ac3c15f0a271c1406899383f7dddea916b62e70659ba2560332179f745",
+  "recipe": "python src/dp02_fig.py agreement_matrix --associations results/truth_nearest/dp02_associations.parquet --random results/truth_nearest/dp02_random_associations.parquet --hostless-cut flb01 --output results/truth_nearest/dp02_agreement_matrix.pdf",
+  "definition_version": "sha256:f5ac34707027aa974df2d083eb88d66bee103c65d01322233c8517ae738eb0e9",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:d255dffd20832c47fd4d5c1fb20ddf75eb789de787c51b812984eff26d90095c",
   "decisions": {
     "sbw_hostless_cut": "flb01"
   },
   "input_versions": {
-    "dp02_associations": "sha256:092cae4877c5b556277a08f8fb1768cac8270aba5d3075a07009d0fa1f3be4ad"
+    "dp02_associations": "sha256:3793c305bd9b85036638ef8010ded9639ed81a6db651a452361d83f4d12cbc15",
+    "dp02_random_associations": "sha256:6dc047bd987b34439c19ad64c5e18df10c55e062e8d01bce1ca060b2f2da4a80"
   },
-  "git_sha": "0cc14c48d23040ff99a456c24a905f63a7ccbc8f",
+  "git_sha": "77c6095e253cc3eca2c8e871b2f09d1892cb04b0",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -22,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T15:36:28.326+00:00",
-  "finished_at": "2026-10-27T15:37:20.892+00:00",
+  "started_at": "2026-10-27T18:39:06.011+00:00",
+  "finished_at": "2026-10-27T18:39:50.401+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
