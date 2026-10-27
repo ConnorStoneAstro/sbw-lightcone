@@ -4,13 +4,13 @@
   "universe_id": "sep10",
   "recipe": "python src/dp02_fig.py recovery_vs --x separation --associations results/sep10/dp02_associations.parquet --output results/sep10/dp02_recovery_vs_separation.pdf",
   "definition_version": "sha256:288e737525205a9bf1a36860e1ff3e3092d9d9a5b33b6fa8b6c13d9c2f3f5af2",
-  "env_version": "sha256:84de715ba076a4f19c42a54bda086c88f03224e680e46203146337f1a452c7c4",
-  "data_version": "sha256:06f64f8b4b646559c8f3e3502bc4c5c5d8e5ca5bca8e05a841a94d7f01d2fc7c",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:41e9fa19fa5be6d4628ae09e4314bb3cfa45a831d17515de2294d1c7c7cf6fb1",
   "decisions": {},
   "input_versions": {
-    "dp02_associations": "sha256:ce07733178271fac3726452977029f9d246d567958f434bc6c8f2a83b93fb8d7"
+    "dp02_associations": "sha256:af8a8bfdc749e1ac5b4088c239ae75ef8f12841e84313c3d86d0d88207a39cd2"
   },
-  "git_sha": "9fc37832519f57d706a0eef809189227b5b43246",
+  "git_sha": "77c6095e253cc3eca2c8e871b2f09d1892cb04b0",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T15:57:19.840+00:00",
-  "finished_at": "2026-10-27T15:57:54.530+00:00",
+  "started_at": "2026-10-27T17:48:47.723+00:00",
+  "finished_at": "2026-10-27T17:49:43.511+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
