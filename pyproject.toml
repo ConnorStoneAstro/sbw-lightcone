@@ -2,7 +2,17 @@
 name = "paper"
 version = "0.0.1"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "pandas>=3.1.0",
+    "pyarrow>=26.0.0",
+    "sbw-host",
+    "scipy>=1.18.1",
+]
 
 [tool.uv]
 required-version = ">=0.12"
+
+[tool.uv.sources]
+sbw-host = { git = "https://github.com/ConnorStoneAstro/sbw-host.git", rev = "3ad7ab20974e11d40b959570ba516c7dfcd9d1da" }

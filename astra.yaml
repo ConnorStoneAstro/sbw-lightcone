@@ -11,34 +11,50 @@ description: >-
   exponential, free-n Sersic, or deblended image stamps) recovers hosts best,
   and how SBW relates to the directional-light-radius (DLR) standard
   (disagreement rate, band dependence, agreement versus d_DLR) rather than
-  which one wins. A cheap propagation of mis-association into a redshift and
-  distance-modulus error uses OpenUniverse2024 truth. Each tier produces an
-  association table, a recovery or disagreement metric, regime-binned figures
-  and a disagreement gallery; a cross-tier summary table collects them.
+  which one wins. Each tier produces an association table, a recovery or
+  disagreement metric and regime-binned figures; the DP0.2 tier adds SBW
+  calibration (reliability) curves and the SBW/DLR agreement-versus-truth
+  matrix; a cross-tier summary table collects them. Everything for DP0.2 runs
+  on NERSC from the parquet copies of the DC2 truth and DP0.2 Object tables.
 
 inputs:
   # ---- Tier 1: simulation with true hosts (DP0.2 / DC2) ----
   - id: dp02_sn_truth
     type: data
-    source: "tap://data.lsst.cloud/api/tap dp02_dc2_catalogs.TruthSummary (truth_type=3) + MatchesTruth"
+    source: "/global/cfs/cdirs/lsst/shared/DC2-prod/Run2.2i/truth/truth_merged_summary_v1-0-0/match_dr6_v2"
     description: >-
-      DC2 supernova truth rows (truth_type = 3) with host_galaxy id, joined to
-      MatchesTruth for the pipeline objectId of the true host. Fetched over the
-      RSP TAP service and cached in data/.
+      DESC DC2 merged truth summary, one parquet per tract (166 tracts): every
+      truth row (truth_type 1 galaxy, 2 star, 3 SN) with id, host_galaxy, ra,
+      dec, redshift, fluxes and mag_r. SN rows (445k over the DC2 footprint)
+      give the transient positions and the true host id; the host's own row
+      gives its position, magnitude and redshift. The match_objectId column in
+      these files refers to the DESC DR6 processing, not DP0.2, and is not used.
+  - id: dp02_truth_match
+    type: data
+    source: "/global/cfs/cdirs/lsst/shared/rubin/DP0.2/match_ref_truth_summary_objectTable"
+    description: >-
+      Rubin's DP0.2 truth-to-object match (the TAP MatchesTruth table), one
+      parquet per tract: truth id string to DP0.2 objectId with match_candidate,
+      match_count and match_chisq. This is how a true host galaxy becomes a
+      DP0.2 objectId under truth_match: matches_truth.
   - id: dp02_object
     type: data
-    source: "tap://data.lsst.cloud/api/tap dp02_dc2_catalogs.Object (CModel bulge+disk, HSM moments) | NERSC /global/cfs/cdirs/lsst/shared/rubin/DP0.2 parquet"
+    source: "/global/cfs/cdirs/lsst/shared/rubin/DP0.2/objectTable"
     description: >-
-      DP0.2 Object table rows around each SN: per-band CModel bulge+disk
-      parameters (r_bdReB, r_bdReD, r_bdE1/E2, r_bdFluxB/D), HSM moments,
-      refExtendedness and flags. These are the only pipeline shape fits available
-      for DC2 (no MultiProFit Sersic).
+      DP0.2 Object table, one parquet per tract (157 tracts, 1 TB), the same
+      rows ingested into Qserv. Per band: CModel bulge (de Vaucouleurs) and
+      disk (exponential) determinant radii bdReB/bdReD in pixels, component
+      fluxes bdFluxB/bdFluxD, cModelFlux, HSM source and PSF moments
+      ixx/iyy/ixy(PSF), kronRad, extendedness. The v23 bdE1 column is unusable
+      (the E1 functor lacked parentheses: xx - yy/(xx+yy)), so orientation and
+      axis ratio come from the PSF-subtracted HSM moments instead.
   - id: dp02_deblended_stamps
     type: data
-    source: "butler dp02 deepCoadd_deblendedModel / footprints via NERSC or RSP"
+    source: "RSP butler dp02 deepCoadd_deblendedModel / cutout service (not on NERSC)"
     description: >-
-      Deblender model stamps for candidate hosts, used by the image-level (stamp)
-      form of SBW.
+      Deblender model stamps for candidate hosts, used by the image-level
+      (stamp) form of SBW. No DP0.2 images exist on NERSC, so this needs the
+      RSP cutout service and is parked until a subsample is chosen.
   # ---- Tier 2: DES-SN5YR confident host matches ----
   - id: des_sn5yr_hosts
     type: data
@@ -109,75 +125,172 @@ inputs:
     description: >-
       DP2 Object table rows with both MultiProFit fits, queried per transient
       region (grouped TAP) or via the LSDB HATS copy at NERSC.
-  # ---- Cosmology propagation: OpenUniverse2024 truth ----
-  - id: ou2024_transient_truth
-    type: data
-    source: "https://portal.nersc.gov/cfs/lsst/DESC_TD_PUBLIC/Roman+DESC/ OU24_TRANSIENT_TRUTH_HEAD.DAT.gz + SNIa HEAD files (SIM_HOSTLIB_GALID, HOSTGAL_* SNANA DLR match)"
-    description: >-
-      OpenUniverse2024 SN Ia truth: true host id and redshift, SNANA's own DLR
-      host match, GALSNSEP, GALSNDDLR. Used to propagate mis-association into a
-      redshift and distance-modulus error. Caveat: SNANA places SNe weighted by
-      host surface brightness, which favours SBW by construction.
-  - id: ou2024_skycatalog
-    type: data
-    source: "s3://nasa-irsa-simulations/openuniverse2024/roman/full/roman_rubin_cats_v1.1.2_faint/ galaxy_<hpix>.parquet (bulge/disk sizes, ellipticities, redshift)"
-    description: >-
-      Truth galaxy profiles and redshifts around each OU2024 SN, giving a
-      noise-free candidate catalogue for the cosmology propagation.
 
 outputs:
   # ---- Tier 1: DP0.2 ----
+  - id: dp02_candidates
+    type: table
+    format: parquet
+    description: >-
+      Every DP0.2 primary object within the search radius of any DC2 SN, one
+      row per (SN, object) pair, carrying the per-band CModel component radii
+      and fluxes, HSM moments, extendedness and position. Extracted once from
+      the 157 tract files; everything downstream reads this instead of the
+      1 TB Object table.
+    inputs: [dp02_sn_truth, dp02_object]
+    decisions: [search_radius]
+    recipe:
+      command: python src/dp02_candidates.py --truth {inputs.dp02_sn_truth} --objects {inputs.dp02_object} --search-radius {decisions.search_radius} --output {output}
+      resources: {cpus: 16, memory: 56Gi}
+  - id: dp02_sample
+    type: table
+    format: parquet
+    description: >-
+      One row per DC2 SN in the test sample: SN position and redshift, true
+      host truth id, position, mag_r and redshift, the true host's DP0.2
+      objectId (per truth_match) and the SN-host separation, plus the flags
+      the sample cuts were based on (missing host row, host unmatched,
+      separation > 3 arcsec).
+    inputs: [dp02_sn_truth, dp02_truth_match, dp02_candidates]
+    decisions: [truth_match, dp02_sample_cuts]
+    recipe:
+      command: python src/dp02_sample.py --truth {inputs.dp02_sn_truth} --match {inputs.dp02_truth_match} --candidates {inputs.dp02_candidates} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --output {output}
+      resources: {cpus: 4, memory: 24Gi}
   - id: dp02_associations
     type: table
     format: parquet
     description: >-
-      One row per DP0.2 SN: true host objectId, SBW top host and p_sbw,
-      DLR host and d_dlr, separation, host magnitude and size, per-band results.
-    inputs: [dp02_sn_truth, dp02_object, dp02_deblended_stamps]
-    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, truth_match, dp02_sample_cuts]
+      One row per sample SN: true host objectId, SBW top host and its p_sbw,
+      p_sbw of the true host and its rank, frac_light_beyond, DLR host and
+      d_dlr, d_dlr of the true host, number of candidates, and the derived
+      flags sbw_correct, dlr_correct, agree.
+    inputs: [dp02_sample, dp02_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_associate.py --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
   - id: dp02_recovery
     type: metric
     format: json
-    description: Fraction of SNe whose true host is the top-ranked host, per method, with binomial intervals.
+    description: Fraction of SNe whose true host is the top-ranked host, per method, with binomial intervals, plus the SBW-DLR agreement rate and sample size.
     inputs: [dp02_associations]
     decisions: []
+    recipe:
+      command: python src/dp02_fig.py recovery --associations {inputs.dp02_associations} --output {output}
+  - id: dp02_calibration
+    type: figure
+    format: pdf
+    description: >-
+      SBW reliability curve: SNe binned by the top host's p_sbw, against the
+      fraction of those SNe whose top host is the true host. A calibrated
+      probability follows the 1:1 line.
+    inputs: [dp02_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py calibration --associations {inputs.dp02_associations} --output {output}
+  - id: dp02_calibration_by_band
+    type: figure
+    format: pdf
+    description: The reliability curve recomputed in each of u g r i z y with the headline profile, one panel per band, independent of the band decision.
+    inputs: [dp02_sample, dp02_candidates]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_sweep.py band --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: dp02_calibration_by_profile
+    type: figure
+    format: pdf
+    description: The reliability curve recomputed for each analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian) in the headline band, independent of the sbw_profile decision.
+    inputs: [dp02_sample, dp02_candidates]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_sweep.py profile --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: dp02_agreement_matrix
+    type: figure
+    format: pdf
+    description: >-
+      Matrix of (SBW host == DLR host) against (SBW host == true host, DLR host
+      == true host): counts and fractions of SNe in each cell, including the
+      DLR-hostless cell, so the disagreements split into who was right.
+    inputs: [dp02_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py agreement_matrix --associations {inputs.dp02_associations} --output {output}
+  - id: dp02_agreement_vs_ddlr
+    type: figure
+    format: pdf
+    description: Fraction of SNe where SBW and DLR pick the same host, as a function of the DLR host's d_DLR (and of the SBW host's d_DLR).
+    inputs: [dp02_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py agreement_vs_ddlr --associations {inputs.dp02_associations} --output {output}
   - id: dp02_recovery_vs_ddlr
     type: figure
     format: pdf
-    description: Recovery fraction per method and SBW-DLR agreement rate as a function of the true host's d_DLR.
+    description: Recovery fraction per method as a function of the true host's d_DLR.
     inputs: [dp02_associations]
     decisions: []
+    recipe:
+      command: python src/dp02_fig.py recovery_vs --x ddlr --associations {inputs.dp02_associations} --output {output}
   - id: dp02_recovery_vs_separation
     type: figure
     format: pdf
     description: Recovery fraction per method versus transient-host angular separation.
     inputs: [dp02_associations]
     decisions: []
+    recipe:
+      command: python src/dp02_fig.py recovery_vs --x separation --associations {inputs.dp02_associations} --output {output}
   - id: dp02_recovery_vs_host_mag
     type: figure
     format: pdf
     description: Recovery fraction per method versus true-host r magnitude (faint-host regime).
     inputs: [dp02_associations]
     decisions: []
+    recipe:
+      command: python src/dp02_fig.py recovery_vs --x host_mag --associations {inputs.dp02_associations} --output {output}
+  - id: dp02_recovery_vs_redshift
+    type: figure
+    format: pdf
+    description: Recovery fraction per method versus SN redshift (hosts shrink and fade with z).
+    inputs: [dp02_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py recovery_vs --x redshift --associations {inputs.dp02_associations} --output {output}
+  - id: dp02_p_true_host
+    type: figure
+    format: pdf
+    description: Distribution of the p_sbw assigned to the true host (log scale), split by whether SBW ranked it first; shows how confident the failures are.
+    inputs: [dp02_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py p_true_host --associations {inputs.dp02_associations} --output {output}
   - id: dp02_band_dependence
     type: figure
     format: pdf
     description: SBW recovery and SBW-DLR agreement per band (u g r i z y), and how often the SBW top host changes between bands.
-    inputs: [dp02_associations]
-    decisions: []
+    inputs: [dp02_sample, dp02_candidates]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_sweep.py band_dependence --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
   - id: dp02_profile_sweep
     type: table
     format: csv
     description: >-
-      Recovery fraction for every SBW form (disk-only, bulge+disk, deblended
-      stamps) side by side, independent of the headline sbw_profile choice.
-      This answers "which form of SBW is best" in one table.
-    inputs: [dp02_sn_truth, dp02_object, dp02_deblended_stamps]
-    decisions: [band, search_radius, extendedness_cut, truth_match, dp02_sample_cuts]
+      Recovery fraction, DLR agreement and calibration error for every
+      analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian)
+      side by side, independent of the headline sbw_profile choice. The stamp
+      form joins once dp02_deblended_stamps exists.
+    inputs: [dp02_sample, dp02_candidates]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
   - id: dp02_hostless_indicator
     type: figure
     format: pdf
-    description: Distribution of max frac_light_beyond for true SN positions versus random sky positions (hostless separability).
+    description: Distribution of max frac_light_beyond for true SN positions versus random sky positions (hostless separability). Needs a random-position candidate extraction; not yet implemented.
     inputs: [dp02_associations, dp02_object]
     decisions: [sbw_profile, band, search_radius]
   # ---- Tier 2: DES ----
@@ -272,21 +385,6 @@ outputs:
     description: One row per dataset and method with recovery (where a reference exists), disagreement rate and sample size.
     inputs: [dp02_recovery, des_recovery, delight_recovery, dp2_disagreement_rate]
     decisions: []
-  # ---- Cosmology propagation ----
-  - id: ou2024_misassociation_dmu
-    type: figure
-    format: pdf
-    description: >-
-      Distribution of the distance-modulus error from adopting the wrong host's
-      redshift, for SBW and DLR applied to the OU2024 truth catalogue.
-    inputs: [ou2024_transient_truth, ou2024_skycatalog]
-    decisions: [sbw_profile, search_radius, dlr_max, cosmo_propagation]
-  - id: ou2024_cosmo_bias
-    type: metric
-    format: json
-    description: Mis-association rate and the resulting bias and scatter in the Hubble residual per method.
-    inputs: [ou2024_misassociation_dmu, ou2024_transient_truth, ou2024_skycatalog]
-    decisions: [sbw_profile, search_radius, dlr_max, cosmo_propagation]
 
 decisions:
   sbw_profile:
@@ -299,13 +397,16 @@ decisions:
     default: exponential
     options:
       exponential:
-        label: Exponential (n = 1) fit; disk-only on DP0.2 CModel
+        label: Exponential (n = 1) fit; on DP0.2 the CModel disk component radius with the total cModel flux
         insights: [dc2_sn_position_sampled_from_sersic_profile, legacy_tractor_model_set, legacy_single_shape_across_bands]
       sersic:
-        label: Free-n Sersic fit; bulge+disk composite on DP0.2 CModel
+        label: Free-n Sersic fit; on DP0.2 the CModel de Vaucouleurs (n = 4) component radius with the total cModel flux (no fracDev is exported, so no composite)
         insights: [ou2024_hostlib_sb_weighted_placement, ou2024_galaxy_model_bulge_disk_knots, dc2_sn_position_sampled_from_sersic_profile, dc2_galaxy_model_bulge_disk_fixed_sersic, dc2_pipeline_runs_cmodel_photometry, legacy_tractor_model_set, legacy_single_shape_across_bands, qu2024_sim_sn_placement_intensity_weighted, qu2024_sersic_radii_scaled_0p8]
+      moments:
+        label: Gaussian with the PSF-subtracted second-moment ellipse and the cModel flux (the DLR literature's shape, used as a light model)
+        insights: [sullivan06_dlr_ellipse_is_sextractor_moments, gupta16_dlr_defined_from_sextractor_moment_ellipse]
       stamps:
-        label: Image-level deblended model stamps (sbw_host.stamps)
+        label: Image-level deblended model stamps (sbw_host.stamps); not available on DP0.2 at NERSC
         insights: [dc2_random_walk_knots_perturb_disk_profile, delight_catastrophic_failure_mode_large_hosts, delight_nearby_sample_asiago_hecate, legacy_tractor_fails_on_large_galaxies, ghost_gradient_ascent_beats_dlr_12_vs_16_pct, ghost_image_method_fails_in_crowded_large_host_fields]
   band:
     label: Band in which surface brightness is evaluated
@@ -360,7 +461,7 @@ decisions:
     default: half_light
     options:
       half_light:
-        label: Model half-light ellipse (1.386 x reff for MultiProFit)
+        label: Model half-light ellipse (1.386 x reff for MultiProFit; flux-weighted bulge/disk radius on DP0.2)
         insights: [qu2024_sersic_radii_scaled_0p8]
       moments:
         label: "Second-moment (HSM or SExtractor A, B) ellipse"
@@ -391,10 +492,10 @@ decisions:
     default: matches_truth
     options:
       matches_truth:
-        label: MatchesTruth table
+        label: Rubin's DP0.2 truth-object match table (TAP MatchesTruth)
         insights: [dc2_truth_match_magnitude_within_1arcsec, dc2_truth_table_single_entry_per_galaxy]
       nearest_1arcsec:
-        label: Nearest Object within 1 arcsec of the truth position
+        label: Nearest primary Object within 1 arcsec of the host truth position (among the SN's candidates)
         insights: [dc2_truth_match_magnitude_within_1arcsec]
   dp02_sample_cuts:
     label: DP0.2 SN sample cleaning
@@ -405,7 +506,7 @@ decisions:
     default: clean
     options:
       clean:
-        label: Drop empty-host rows and report the > 3 arcsec subset separately
+        label: Drop SNe whose host row is missing, unmatched to an object, or > 3 arcsec away
         insights: [dc2_hostless_sn_fraction, dc2_host_choice_proportional_to_stellar_mass]
       all:
         label: Keep every SN truth row
@@ -449,15 +550,6 @@ decisions:
       ps1_stamps:
         label: Pan-STARRS stacks with the stamp form of SBW
         insights: [delight_images_ps1_rband_stamps, delight_alerce_sample_from_ztf_and_catalogue_positions]
-  cosmo_propagation:
-    label: How mis-association is propagated to cosmology
-    rationale: Keep it cheap; the full SNANA/BBC route is out of scope.
-    default: redshift_swap
-    options:
-      redshift_swap:
-        label: "Wrong host => wrong redshift; delta mu from the fiducial cosmology"
-        insights: [ou2024_hostlib_sb_weighted_placement, ou2024_host_correlation_known_issue, ou2024_skycatalog_galaxy_truth_columns, ou2024_sne_truth_table_host_id_and_separation, qu2024_wrong_host_to_w_bias, qu2024_mismatch_rate_1p7pct]
-      none: { label: Report the mis-association rate only }
 
 prior_insights:
   sullivan06_dlr_original_definition:
