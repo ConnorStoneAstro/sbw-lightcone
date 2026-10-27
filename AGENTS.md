@@ -88,6 +88,34 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   and 10% of z < 1 SNe are deliberately hostless (control sample, not
   failures). Keep objectIds int64 end to end; sync TAP joins time out, use
   chunked `id IN (...)` queries or async.
+- **First DP0.2 results (26 Oct 2026, baseline universe, 306,332 clean SNe,
+  all z < 1 because DC2's z > 1 SNe are hostless).** SBW top host = true host
+  97.42% (r, exponential), DLR 91.24%, agreement 92.62%, DLR hostless 3.9%,
+  true host among candidates 99.7%. Profiles: de Vaucouleurs 97.76% (best,
+  ECE 0.013), exponential 97.42% (ECE 0.015), moment Gaussian 96.87% (ECE
+  0.025). Bands: u 92.6% (ECE 0.06), g 96.9%, r/i/z/y 97.4-97.7%; the SBW
+  host changes vs r for 7% of SNe in u and < 1% elsewhere. SBW is
+  *overconfident* in the 0.5-0.95 range (reliability curve ~0.1 below 1:1)
+  and converges at P -> 1; ECE is driven by that band. Agreement matrix:
+  SBW right / DLR wrong 3.1%, SBW right / DLR none 3.3%, DLR right / SBW
+  wrong 0.2%, both wrong 1.7% of which 4,851/5,305 pick the *same* wrong
+  object (likely the truth match pointing at a different deblended child;
+  the `truth_match: nearest_1arcsec` universe would test this). Recovery
+  falls with separation (SBW 0.73 at 3", DLR 0.37) and at both magnitude
+  ends (bright 16-18 mag: DLR ~0.8, SBW ~0.95; faint > 25). Agreement
+  with DLR declines with the SBW host's d_DLR and collapses past 4 by
+  construction. Run cost on `shared-interactive`: candidates 9 min on 16
+  CPUs, the whole 16-output chain 42 min.
+- **lc on NERSC, operational.** `lc` hashes every declared input by content
+  on every command with no cache (1 TB = 15 min), hence the objectTable index
+  file; the 52 GB truth and 7 GB match directories cost ~1-2 min per command
+  and are kept as real inputs. `lc compute launch` refused to start while
+  `~/.lightcone` was group-writable (chmod 700). lc's result commits land in
+  the NERSC clone only: `git push origin main git-annex` there before
+  committing on the laptop, otherwise the branches diverge (a rebase of the
+  DATALAD commits worked but left the annexed file "modified"; `git restore
+  --staged --worktree results/` cleared it). Small results are brought to the
+  laptop with scp + `git annex reinject --known`.
 - **DES tier.** 1623 Dovekie SNe Ia (IDSURVEY = 10) with HOSTGAL_RA/DEC from
   DES-SN5YR HEAD files; candidates from DES DR2 `des_dr2.main` via NOIRLab
   Data Lab TAP (use `q3c_radial_query(...) = 't'`; `phi = theta_j2000 + 90` in
