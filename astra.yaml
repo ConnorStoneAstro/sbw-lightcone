@@ -66,6 +66,15 @@ inputs:
       half-light semi-axes (size_bulge_true, size_minor_bulge_true,
       size_disk_true, size_minor_disk_true, arcsec), position_angle_true,
       bulge_to_total_ratio_i, ellipticities, stellar masses and true magnitudes.
+  - id: rsp_token
+    type: data
+    source: "../.rsp_image_tap_token"
+    description: >-
+      Rubin Science Platform access token (read:tap and read:image scopes) on
+      the laptop, used by the cutout gallery to query
+      dp02_dc2_catalogs.ObsCore and the SODA cutout service at
+      data.lsst.cloud. Outside the repository and never committed; only its
+      hash enters the run records.
   - id: dp02_deblended_stamps
     type: data
     source: "RSP butler dp02 deepCoadd_deblendedModel / cutout service (not on NERSC)"
@@ -409,7 +418,40 @@ outputs:
     decisions: [sbw_hostless_cut]
     recipe:
       command: python src/dp02_truth_match.py --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
-  # ---- Tier 2: DES ----
+  - id: dp02_disagreement_cases
+    type: table
+    format: csv
+    description: >-
+      Twelve seeded random SNe per disagreement class for the cutout gallery:
+      truth_matchers_disagree (MatchesTruth and nearest-within-1-arcsec name
+      different objects), sbw_wrong, dlr_wrong (including DLR hostless),
+      sbw_ne_dlr and both_wrong_same (SBW and DLR on the same wrong object).
+      Columns case_id, class, class_n (size of the class), sn_id, sn_ra,
+      sn_dec, label, marker positions truth_pos (host truth position),
+      truth_match, truth_nearest, sbw, dlr (_ra/_dec, NaN where absent),
+      p_sbw_max, d_dlr_min, sep_truth_arcsec and the objectIds. Both matchers
+      come from the one sample (dp02_sample always carries both), so a single
+      universe's associations suffice.
+    inputs: [dp02_associations, dp02_candidates]
+    decisions: []
+    recipe:
+      command: python src/dp02_cases.py --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --output {output}
+      resources: {cpus: 4, memory: 24Gi}
+  - id: dp02_disagreement_gallery
+    type: figure
+    format: pdf
+    description: >-
+      DP0.2 deep-coadd cutouts (30 arcsec, headline band, north up, east left)
+      of dp02_disagreement_cases, one page per class, with markers for the SN,
+      the host truth position, both truth matchers' objects and the SBW and DLR
+      picks. Made with src/dp02_gallery.py (a verbatim copy of the cutout
+      prototype's gallery.py) over the RSP cutout service, so it runs on the
+      laptop, not NERSC.
+    inputs: [dp02_disagreement_cases, rsp_token]
+    decisions: [band]
+    recipe:
+      command: bash -c 'python src/dp02_gallery.py {inputs.dp02_disagreement_cases} --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$TMPDIR/dp02_cutouts"'
+  # ---- Tier 2: DES ----  # ---- Tier 2: DES ----
   - id: des_associations
     type: table
     format: parquet

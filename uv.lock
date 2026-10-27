@@ -657,20 +657,24 @@ name = "paper"
 version = "0.0.1"
 source = { virtual = "." }
 dependencies = [
+    { name = "astropy" },
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pyarrow" },
+    { name = "requests" },
     { name = "sbw-host" },
     { name = "scipy" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "astropy", specifier = ">=8.0.2" },
     { name = "matplotlib", specifier = ">=3.11.2" },
     { name = "numpy", specifier = ">=2.5.4" },
     { name = "pandas", specifier = ">=3.1.0" },
     { name = "pyarrow", specifier = ">=26.0.0" },
+    { name = "requests", specifier = ">=2.34.2" },
     { name = "sbw-host", git = "https://github.com/ConnorStoneAstro/sbw-host.git?rev=3ad7ab20974e11d40b959570ba516c7dfcd9d1da" },
     { name = "scipy", specifier = ">=1.18.1" },
 ]
