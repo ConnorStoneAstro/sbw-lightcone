@@ -168,15 +168,16 @@ outputs:
       host truth id, position, mag_r and redshift, the true host's DP0.2
       objectId (per truth_match) and the SN-host separation, plus the flags
       the sample cuts were based on (missing host row, host unmatched,
-      separation cut). Both truth matchers are always computed
+      separation cut; offset_re, the offset in host half-light radii, under
+      cuts=physical). Both truth matchers are always computed
       (host_objectId_mt, host_objectId_nn with match_sep_arcsec);
       host_objectId is the one truth_match selects, and the parquet metadata
       key truth_match_precut counts how the two compare before the
       matcher-dependent cut.
-    inputs: [dp02_sn_truth, dp02_truth_match, dp02_candidates]
+    inputs: [dp02_sn_truth, dp02_truth_match, dp02_candidates, dp02_host_truth_shapes]
     decisions: [truth_match, dp02_sample_cuts]
     recipe:
-      command: python src/dp02_sample.py --truth {inputs.dp02_sn_truth} --match {inputs.dp02_truth_match} --candidates {inputs.dp02_candidates} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --output {output}
+      command: python src/dp02_sample.py --truth {inputs.dp02_sn_truth} --match {inputs.dp02_truth_match} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --output {output}
       resources: {cpus: 4, memory: 24Gi}
   - id: dp02_associations
     type: table
@@ -643,8 +644,15 @@ decisions:
       many arcsec (the recovery-vs-separation curve suggests a geometric cut
       would have to be ~10 arcsec to stop hurting the results); a cut in units
       of the host's own half-light radius removes the unphysical tail without
-      penalising large hosts, so it is the default. The 3 arcsec cut is kept for
-      comparability with the first results.
+      penalising large hosts, so it is the default. N = 3 is where the
+      both-wrong-same-object fraction turns up in dp02_offset_diagnostic
+      (sep10): 0.1-0.5% inside 1 R_e, ~3% at 2 R_e, ~6% at 2.7 R_e, ~12% at 3.6
+      R_e for bulge-dominated hosts, with DLR failures jumping from 16% to 38% to
+      75% over the same bins; it is a constant in src/dp02_sample.py to tune.
+      The radius uses position_angle_true East of North and the truth axis
+      ratio, the convention DC2 placed SNe with (the rendered galaxies are
+      mirrored, see host_offsets in src/dp02_lib.py). The 3 arcsec cut is kept
+      for comparability with the first results.
     default: physical
     options:
       clean3:
@@ -654,7 +662,7 @@ decisions:
         label: As clean3 but > 10 arcsec
         insights: [dc2_hostless_sn_fraction, dc2_sn_position_sampled_from_sersic_profile]
       physical:
-        label: As clean3 but drop only SNe beyond N half-light radii of the host along its truth ellipse (bulge R_e for B/T > 0.5, disk R_e otherwise; N set in src/dp02_sample.py)
+        label: As clean3 but drop only SNe beyond N = 3 half-light radii of the host along its truth ellipse (bulge R_e for B/T_i > 0.5, disk R_e otherwise; N_RE in src/dp02_sample.py)
         insights: [dc2_hostless_sn_fraction, dc2_sn_position_sampled_from_sersic_profile, dc2_sn_offsets_scale_with_hosting_component_size]
       all:
         label: Keep every SN truth row

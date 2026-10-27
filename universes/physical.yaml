@@ -1,0 +1,17 @@
+id: physical
+description: 'Baseline with the physical sample cut: drop SNe beyond 3 half-light
+  radii of the host''s dominant component along its truth ellipse (the spec default)'
+decisions:
+  sbw_profile: exponential
+  band: r
+  search_radius: r30
+  dlr_max: d4
+  dlr_radius: half_light
+  extendedness_cut: ext05
+  sbw_hostless_cut: flb01
+  exclude_suspect: keep
+  truth_match: matches_truth
+  dp02_sample_cuts: physical
+  dp2_sample: rc_salt
+  reference_match: pos_1arcsec
+  delight_catalogue: legacy_dr10

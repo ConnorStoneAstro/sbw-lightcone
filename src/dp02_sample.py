@@ -16,7 +16,14 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
+from dp02_lib import host_offsets
+
 FAR_ARCSEC = {"clean3": 3.0, "clean10": 10.0}   # geometric cuts: drop SNe this far from the truth host
+# physical cut: drop SNe beyond N_RE half-light radii of the host along its truth ellipse (bulge R_e for
+# bulge-dominated hosts, disk R_e otherwise; see dp02_offset_diagnostic). Hosts without cosmoDC2 shapes are kept.
+N_RE = 3.0   # where both-wrong-same-object turns up in dp02_offset_diagnostic (sep10): ~3% at 2 R_e, ~12% at 3.6 R_e
+SHAPE_COLS = ["galaxy_id", "size_bulge_true", "size_minor_bulge_true", "size_disk_true", "size_minor_disk_true",
+              "position_angle_true", "bulge_to_total_ratio_i"]
 
 
 def ang_sep(ra1, dec1, ra2, dec2):
@@ -51,6 +58,7 @@ def main(argv=None):
     ap.add_argument("--truth", required=True)
     ap.add_argument("--match", required=True)
     ap.add_argument("--candidates", required=True)
+    ap.add_argument("--shapes", required=True, help="dp02_host_truth_shapes (used by cuts=physical)")
     ap.add_argument("--truth-match", required=True, choices=["matches_truth", "nearest_1arcsec"])
     ap.add_argument("--cuts", required=True, choices=["clean3", "clean10", "physical", "all"])
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "4")))
@@ -82,7 +90,13 @@ def main(argv=None):
     if a.cuts in FAR_ARCSEC:
         df["far"] = df.sep_truth_arcsec > FAR_ARCSEC[a.cuts]
     elif a.cuts == "physical":
-        raise SystemExit("cuts=physical needs the host truth shapes (not implemented yet)")
+        sh = pq.read_table(a.shapes, columns=SHAPE_COLS).to_pandas(ignore_metadata=True)
+        d = df[["host_galaxy", "sn_ra", "sn_dec", "host_ra", "host_dec"]].merge(
+            sh.rename(columns={"galaxy_id": "host_galaxy"}), on="host_galaxy", how="left")
+        df["offset_re"] = host_offsets(d)["own"]
+        df["far"] = df.offset_re.to_numpy() > N_RE
+        print(f"physical cut N = {N_RE:g}: {int(df.far.sum())} SNe beyond, "
+              f"{int((~df.hostless & ~df.host_missing & df.offset_re.isna()).sum())} hosted without shapes kept", file=sys.stderr)
     else:
         df["far"] = False
 

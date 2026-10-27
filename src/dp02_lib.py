@@ -258,7 +258,13 @@ def host_offsets(df, pa_convention="east_of_north"):
     along the truth ellipse (elliptical radius), for the bulge, the disk and the dominant component.
 
     ``df`` needs sn_ra, sn_dec, host_ra, host_dec and the cosmoDC2 columns size_(minor_)bulge_true,
-    size_(minor_)disk_true (arcsec), position_angle_true (deg) and bulge_to_total_ratio_i."""
+    size_(minor_)disk_true (arcsec), position_angle_true (deg) and bulge_to_total_ratio_i.
+
+    "east_of_north" reads position_angle_true as the major axis East of North, which is how DC2 placed
+    the SNe (offset angles align with it, <cos 2(psi - PA)> = 0.59 for q < 0.3 hosts). The *rendered*
+    galaxies are mirrored: DP0.2 HSM moments of large elongated hosts give PA = -position_angle_true
+    (median |dPA| 0.8 deg), and SN angles are uncorrelated with that axis. SN radii follow the semi-major
+    R_e exactly (median r/R_e = 1.00) on a rounder ellipse than the galaxy (axis ratio ~ q^0.4)."""
     x, y = sky_to_plane(df["sn_ra"].to_numpy(), df["sn_dec"].to_numpy(),
                         df["host_ra"].to_numpy(), df["host_dec"].to_numpy())   # arcsec, +x West, +y North
     e, n = -x, y
