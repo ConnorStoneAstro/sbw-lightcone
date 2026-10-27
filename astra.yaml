@@ -770,6 +770,8 @@ decisions:
         label: "flb_best < 0.001 (lenient: only far-wing positions are hostless)"
       flb01:
         label: "flb_best < 0.01"
+      flb02:
+        label: "flb_best < 0.02 (Youden-J optimum on DP0.2 baseline, 0.0215; physical 0.032)"
       flb05:
         label: "flb_best < 0.05 (strict)"
   candidate_quality:

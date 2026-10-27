@@ -31,7 +31,7 @@ GAUSS_HALF_LIGHT = 1.17741     # half-light radius of a Gaussian in units of sig
 BANDS = "ugrizy"
 RADIUS = {"r15": 15.0, "r30": 30.0, "r60": 60.0}
 DLR_MAX = {"d4": 4.0, "d5": 5.0}
-HOSTLESS_CUT = {"flb001": 0.001, "flb01": 0.01, "flb05": 0.05}   # SBW hostless when flb_best < cut
+HOSTLESS_CUT = {"flb001": 0.001, "flb01": 0.01, "flb02": 0.02, "flb05": 0.05}   # SBW hostless when flb_best < cut
 PROFILES = ("exponential", "sersic", "moments")
 PROFILE_LABEL = {"exponential": "exponential (n = 1, CModel disk radius)",
                  "sersic": "de Vaucouleurs (n = 4, CModel bulge radius)",
