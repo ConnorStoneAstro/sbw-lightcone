@@ -31,6 +31,7 @@ GAUSS_HALF_LIGHT = 1.17741     # half-light radius of a Gaussian in units of sig
 BANDS = "ugrizy"
 RADIUS = {"r15": 15.0, "r30": 30.0, "r60": 60.0}
 DLR_MAX = {"d4": 4.0, "d5": 5.0}
+HOSTLESS_CUT = {"flb001": 0.001, "flb01": 0.01, "flb05": 0.05}   # SBW hostless when flb_best < cut
 PROFILES = ("exponential", "sersic", "moments")
 PROFILE_LABEL = {"exponential": "exponential (n = 1, CModel disk radius)",
                  "sersic": "de Vaucouleurs (n = 4, CModel bulge radius)",
@@ -117,7 +118,7 @@ def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_ma
     """Associate one SN against its candidate rows ``c`` (a DataFrame slice)."""
     out = {"n_cand": len(c), "n_cand_used": 0, "true_in_cand": False,
            "sbw_objectId": -1, "p_sbw_max": np.nan, "p_sbw_true": np.nan, "rank_true": -1,
-           "flb_best": np.nan, "flb_true": np.nan, "m_true": np.nan, "sep_sbw": np.nan,
+           "flb_best": np.nan, "flb_max": np.nan, "flb_true": np.nan, "m_true": np.nan, "sep_sbw": np.nan,
            "dlr_objectId": -1, "d_dlr_min": np.nan, "d_dlr_true": np.nan, "d_dlr_sbw": np.nan, "sep_dlr": np.nan,
            "sep_true": np.nan}
     if len(c) == 0:
@@ -147,6 +148,7 @@ def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_ma
         p = np.full(len(c), 0.0); p[ok] = np.nan_to_num(res.p_sbw)
         flb = np.full(len(c), np.nan); flb[ok] = res.frac_light_beyond
         m = np.full(len(c), np.nan); m[ok] = res.m
+        out["flb_max"] = float(np.nanmax(flb)) if np.isfinite(flb).any() else np.nan
         k = int(np.argmax(p))
         if p[k] > 0:
             out["sbw_objectId"] = int(oid[k]); out["p_sbw_max"] = p[k]; out["flb_best"] = flb[k]
@@ -220,6 +222,17 @@ def _run_chunk_pairs(idx_range):
         r["sn_id"] = S["sn_id"][i]
         rows.append(r)
     return rows
+
+
+def sbw_hostless(df, cut, col="flb_best"):
+    """SBW declares the transient hostless: no SBW host, or its frac_light_beyond below ``cut``."""
+    f = df[col].to_numpy(dtype=float)
+    return (df["sbw_objectId"].to_numpy() < 0) | ~(f >= cut)
+
+
+def dlr_hostless(df, t):
+    """DLR declares the transient hostless: no candidate with d_DLR <= t."""
+    return ~(df["d_dlr_min"].to_numpy(dtype=float) <= t)
 
 
 # ---------------------------------------------------------------- statistics helpers

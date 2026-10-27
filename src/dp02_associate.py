@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 
+import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -11,7 +12,9 @@ from dp02_lib import DLR_MAX, PROFILES, RADIUS, associate_all, load_candidates
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--sample", required=True)
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--sample", help="dp02_sample table (SNe with their true host objectId)")
+    src.add_argument("--positions", help="positions with no true host (sn_id, sn_ra, sn_dec), e.g. dp02_random_positions")
     ap.add_argument("--candidates", required=True)
     ap.add_argument("--profile", required=True, choices=PROFILES + ("stamps",))
     ap.add_argument("--band", required=True, choices=list("ugrizy"))
@@ -24,7 +27,11 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.profile == "stamps":
         raise SystemExit("sbw_profile=stamps needs deblended stamps, which do not exist for DP0.2 on NERSC")
-    sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
+    if a.sample:
+        sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
+    else:
+        sample = pq.read_table(a.positions).to_pandas(ignore_metadata=True)
+        sample["host_objectId"] = np.int64(-1)
     cand = load_candidates(a.candidates, bands=a.band)
     out = associate_all(sample, cand, band=a.band, profile=a.profile, search_radius=a.search_radius,
                         dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness, workers=a.workers)

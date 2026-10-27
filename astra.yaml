@@ -167,20 +167,22 @@ outputs:
       One row per sample SN: true host objectId, SBW top host and its p_sbw,
       p_sbw of the true host and its rank, frac_light_beyond, DLR host and
       d_dlr, d_dlr of the true host, number of candidates, and the derived
-      flags sbw_correct, dlr_correct, agree.
+      flags sbw_correct, dlr_correct, agree. flb_max is the largest
+      frac_light_beyond over all candidates (an alternative hostless statistic
+      to flb_best, the SBW top host's).
     inputs: [dp02_sample, dp02_candidates]
     decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
     recipe:
-      command: python src/dp02_associate.py --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_associate.py --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --workers 16 --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_recovery
     type: metric
     format: json
-    description: Fraction of SNe whose true host is the top-ranked host, per method, with binomial intervals, plus the SBW-DLR agreement rate and sample size.
+    description: Fraction of SNe whose true host is the top-ranked host, per method, with binomial intervals, plus the SBW-DLR agreement rate and sample size, the fraction SBW declares hostless under sbw_hostless_cut and the SBW recovery with that cut applied.
     inputs: [dp02_associations]
-    decisions: []
+    decisions: [sbw_hostless_cut]
     recipe:
-      command: python src/dp02_fig.py recovery --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py recovery --associations {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: dp02_calibration
     type: figure
     format: pdf
@@ -214,13 +216,14 @@ outputs:
     type: figure
     format: pdf
     description: >-
-      Matrix of (SBW host == DLR host) against (SBW host == true host, DLR host
-      == true host): counts and fractions of SNe in each cell, including the
-      DLR-hostless cell, so the disagreements split into who was right.
+      3x3 matrix of SBW (host true / host wrong / hostless under
+      sbw_hostless_cut) against DLR (host true / host wrong / hostless):
+      counts and fractions of SNe in each cell, so the disagreements split
+      into who was right and both methods' hostless calls are visible.
     inputs: [dp02_associations]
-    decisions: []
+    decisions: [sbw_hostless_cut]
     recipe:
-      command: python src/dp02_fig.py agreement_matrix --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py agreement_matrix --associations {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: dp02_agreement_vs_ddlr
     type: figure
     format: pdf
@@ -291,12 +294,60 @@ outputs:
     recipe:
       command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
       resources: {cpus: 16, memory: 40Gi}
+  - id: dp02_random_positions
+    type: table
+    format: parquet
+    description: >-
+      One random sky position per DC2 truth SN, uniform on the sphere within
+      the SN's tract (RA uniform, sin dec uniform inside the bounding box of the
+      tract's primary DP0.2 objects, redrawn unless a 1 arcmin cell there holds
+      a primary object, so edge-tract corners outside the footprint are
+      excluded). sn_id is the negated truth SN id; seeded.
+    inputs: [dp02_sn_truth, dp02_object]
+    decisions: []
+    recipe:
+      command: python src/dp02_random_positions.py --truth {inputs.dp02_sn_truth} --objects {inputs.dp02_object} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: dp02_random_candidates
+    type: table
+    format: parquet
+    description: The dp02_candidates extraction run on dp02_random_positions instead of the truth SNe.
+    inputs: [dp02_random_positions, dp02_object]
+    decisions: [search_radius]
+    recipe:
+      command: python src/dp02_candidates.py --positions {inputs.dp02_random_positions} --objects {inputs.dp02_object} --search-radius {decisions.search_radius} --output {output}
+      resources: {cpus: 16, memory: 56Gi}
+  - id: dp02_random_associations
+    type: table
+    format: parquet
+    description: SBW and DLR association of every random position, with the same columns as dp02_associations and no true host (host_objectId = -1).
+    inputs: [dp02_random_positions, dp02_random_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_associate.py --positions {inputs.dp02_random_positions} --candidates {inputs.dp02_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
   - id: dp02_hostless_indicator
     type: figure
     format: pdf
-    description: Distribution of max frac_light_beyond for true SN positions versus random sky positions (hostless separability). Needs a random-position candidate extraction; not yet implemented.
-    inputs: [dp02_associations, dp02_object]
-    decisions: [sbw_profile, band, search_radius]
+    description: >-
+      Hostless indicators, real SNe versus random positions: (a) flb_best
+      distributions (real SBW-correct, real SBW-wrong, random); (b) fraction
+      rejected versus threshold for flb_best < t; (c) the same for the DLR rule
+      d_DLR_min > t; (d) random positions rejected versus real SNe kept for
+      SBW (flb_best, flb_max) and DLR, with the sbw_hostless_cut and dlr_max
+      operating points marked.
+    inputs: [dp02_associations, dp02_random_associations]
+    decisions: [sbw_hostless_cut, dlr_max]
+    recipe:
+      command: python src/dp02_fig.py hostless_indicator --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+  - id: dp02_hostless_metrics
+    type: metric
+    format: json
+    description: Real SNe kept and random positions rejected at flb_best and flb_max thresholds 0.001, 0.01, 0.05, 0.1 and d_DLR thresholds 3, 4, 5 (Wilson intervals), and the fraction of random positions whose SBW host has P > 0.5 (landing on a galaxy).
+    inputs: [dp02_associations, dp02_random_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py hostless_metrics --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --output {output}
   # ---- Tier 2: DES ----
   - id: des_associations
     type: table
@@ -481,6 +532,25 @@ decisions:
       none:
         label: Keep all objects
         insights: [legacy_psf_type_contains_compact_galaxies]
+  sbw_hostless_cut:
+    label: frac_light_beyond below which SBW declares a transient hostless
+    rationale: >-
+      frac_light_beyond is the fraction of a host's light fainter than the
+      isophote through the transient, so it is SBW's natural hostless
+      statistic: a transient on a galaxy's isophotes has a sizeable fraction
+      of the light beyond it, one far in the wings has almost none. The cut
+      trades real transients lost against random positions rejected (see
+      dp02_hostless_indicator); 0.01 is the default as the point where the
+      real loss is still small. Used for the 3x3 agreement matrix and the
+      hostless-aware recovery; the threshold sweep itself is an output.
+    default: flb01
+    options:
+      flb001:
+        label: "flb_best < 0.001 (lenient: only far-wing positions are hostless)"
+      flb01:
+        label: "flb_best < 0.01"
+      flb05:
+        label: "flb_best < 0.05 (strict)"
   exclude_suspect:
     label: Drop fits flagged as suspect (deblend-halo phantoms)
     default: keep

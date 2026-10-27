@@ -10,6 +10,7 @@ decisions:
   dlr_max: d4
   dlr_radius: half_light
   extendedness_cut: ext05
+  sbw_hostless_cut: flb01
   exclude_suspect: keep
   truth_match: matches_truth
   dp02_sample_cuts: clean

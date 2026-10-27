@@ -89,7 +89,9 @@ def one_tract(args):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--truth", required=True, help="directory of DC2 merged truth tract parquet files")
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--truth", help="directory of DC2 merged truth tract parquet files")
+    src.add_argument("--positions", help="parquet of positions (sn_id, sn_ra, sn_dec) to use instead of the truth SNe")
     ap.add_argument("--objects", required=True, help="directory of DP0.2 objectTable tract files, or the csv index of them")
     ap.add_argument("--search-radius", required=True, choices=sorted(RADIUS))
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "16")))
@@ -98,8 +100,12 @@ def main(argv=None):
     a = ap.parse_args(argv)
 
     t0 = time.time()
-    sn = load_sne(a.truth)
-    print(f"{len(sn)} SNe from truth", file=sys.stderr)
+    if a.positions:
+        sn = pd.read_parquet(a.positions, columns=["sn_id", "sn_ra", "sn_dec"]).rename(
+            columns={"sn_id": "id", "sn_ra": "ra", "sn_dec": "dec"})
+    else:
+        sn = load_sne(a.truth)
+    print(f"{len(sn)} positions from {a.positions or 'truth'}", file=sys.stderr)
     if os.path.isdir(a.objects):
         files = sorted(glob.glob(os.path.join(a.objects, "objectTable_tract_*.parq")))
     else:   # an index file: one absolute path per line (plus size and mtime), see data/dp02_objectTable_index.csv
