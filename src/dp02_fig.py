@@ -13,6 +13,9 @@ import pyarrow.parquet as pq
 
 from dp02_lib import COLORS, DLR_MAX, HOSTLESS_CUT, calibration_curve, dlr_hostless, matrix_cells, random_cells, sbw_hostless, wilson
 
+TIER = {"dp02": "DC2", "ou24": "OU2024"}
+LABEL = {"tier": "DC2"}   # set from --tier; the figure titles name the simulation
+
 plt.rcParams.update({"font.size": 9, "axes.grid": True, "grid.alpha": 0.25, "grid.linewidth": 0.5,
                      "axes.spines.top": False, "axes.spines.right": False, "lines.linewidth": 1.5,
                      "legend.frameon": False, "figure.dpi": 120})
@@ -76,7 +79,7 @@ def calibration(df, out):
     cc, _ = calibration_curve(df)
     ah.bar(cc.p_mean, cc.n, width=0.012, color=COLORS["sbw"], alpha=0.6)
     ah.set_yscale("log"); ah.set_ylabel("SNe per bin"); ah.set_xlabel("top-host $P_{\\mathrm{SBW}}$")
-    fig.suptitle("SBW calibration on DC2 truth\n" + subtitle(df), fontsize=8)
+    fig.suptitle(f"SBW calibration on {LABEL['tier']} truth\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
@@ -166,6 +169,8 @@ XSPEC = {
 def recovery_vs(df, out, xkey):
     col, lab, edges, logx = XSPEC[xkey]
     x = df[col].to_numpy(dtype=float)
+    if xkey == "redshift" and np.nanmax(x) > edges[-1]:   # OU2024 transients reach z ~ 3
+        edges = np.linspace(0, 3, 31)
     fig, (ax, ah) = plt.subplots(2, 1, figsize=(4.8, 4.6), height_ratios=[3, 1], sharex=True)
     for flag, name, color in [(df.sbw_correct, "SBW", COLORS["sbw"]), (df.dlr_correct, "DLR", COLORS["dlr"])]:
         c, p, lo, hi, n = binned_fraction(x, flag.to_numpy(), edges)
@@ -178,7 +183,7 @@ def recovery_vs(df, out, xkey):
     ah.set_yscale("log"); ah.set_ylabel("SNe"); ah.set_xlabel(lab)
     if logx:
         ax.set_xscale("log")
-    fig.suptitle("Host recovery on DC2 truth\n" + subtitle(df), fontsize=8)
+    fig.suptitle(f"Host recovery on {LABEL['tier']} truth\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
@@ -297,7 +302,7 @@ def hostless_indicator(df, rnd, out, hostless_cut, dlr_max):
     ad.set_xlabel("fraction of real SNe kept (have a host)"); ad.set_ylabel("fraction of random positions rejected")
     ad.set_xlim(0.8, 1.002); ad.set_ylim(0, 1.02)
     ad.legend(fontsize=7, loc="lower left"); ad.set_title("(d) hostless indicators compared", fontsize=9, loc="left")
-    fig.suptitle(f"Hostless indicators on DC2: {len(df):,} real SNe vs {len(rnd):,} random positions\n" + subtitle(df), fontsize=8)
+    fig.suptitle(f"Hostless indicators on {LABEL['tier']}: {len(df):,} real SNe vs {len(rnd):,} random positions\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
@@ -310,8 +315,10 @@ def main(argv=None):
     ap.add_argument("--random", help="association table of random positions (hostless kinds)")
     ap.add_argument("--hostless-cut", choices=sorted(HOSTLESS_CUT))
     ap.add_argument("--dlr-max", choices=sorted(DLR_MAX))
+    ap.add_argument("--tier", choices=sorted(TIER), default="dp02")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
+    LABEL["tier"] = TIER[a.tier]
     df = load(a.associations)
     if a.kind == "recovery":
         recovery(df, a.output, a.hostless_cut, load(a.random))

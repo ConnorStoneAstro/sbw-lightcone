@@ -4,8 +4,10 @@ version: "0.0.14"
 name: "SBW host association performance"
 description: >-
   Tests the surface-brightness-weighted (SBW) host-association method for
-  transients, as implemented in the sbw_host package, on four tiers of data:
-  DP0.2 (DC2) with true hosts, the DES-SN5YR published hosts, the DELIGHT
+  transients, as implemented in the sbw_host package, on five tiers of data:
+  DP0.2 (DC2) and OpenUniverse2024 (OU2024, the same Rubin data products from
+  the later w_2024_22 stack on a different simulated sky) with true hosts,
+  the DES-SN5YR published hosts, the DELIGHT
   visually matched host set, and Rubin DP2 real data without any reference.
   SBW is taken as the framework; the questions are which form of SBW (fitted
   exponential, free-n Sersic, or deblended image stamps) recovers hosts best,
@@ -14,8 +16,11 @@ description: >-
   which one wins. Each tier produces an association table, a recovery or
   disagreement metric and regime-binned figures; the DP0.2 tier adds SBW
   calibration (reliability) curves and the SBW/DLR agreement-versus-truth
-  matrix; a cross-tier summary table collects them. Everything for DP0.2 runs
-  on NERSC from the parquet copies of the DC2 truth and DP0.2 Object tables.
+  matrix, and OU2024 repeats the DP0.2 chain, adds results in host-magnitude
+  bins (its hosts are drawn ~1 dex too light) and checks whether its
+  transients sit on the rendered host or its mirror image as in DC2; a
+  cross-tier summary table collects them. Everything for DP0.2 and OU2024 runs
+  on NERSC from the parquet copies of the truth and Object tables.
 
 inputs:
   # ---- Tier 1: simulation with true hosts (DP0.2 / DC2) ----
@@ -82,6 +87,61 @@ inputs:
       Deblender model stamps for candidate hosts, used by the image-level
       (stamp) form of SBW. No DP0.2 images exist on NERSC, so this needs the
       RSP cutout service and is parked until a subsample is chosen.
+  # ---- Tier 1b: simulation with true hosts (OpenUniverse2024, LSST WFD) ----
+  - id: ou24_object
+    type: data
+    source: "data/ou24_objectTable_index.csv"
+    description: >-
+      OpenUniverse2024 LSST WFD Object table processed with the LSST Science
+      Pipelines w_2024_22, in the roman-desc-sims butler repo at NERSC,
+      /global/cfs/cdirs/lsst/production/gen3/roman-desc-sims/repo/u/descdm/step3b_wfd_NNN_w_2024_22/<timestamp>/objectTable_tract/<tract>/*.parq
+      (NNN = 000..066): 67 files in 22 tracts (RA 5.8-13.2, Dec -46.7 to
+      -41.4, about 27 deg2), 18.27M rows, 6.70M primary, 74.9 GB. The runs of
+      one tract hold disjoint patches, so every file is needed (detect_isPrimary
+      makes objects unique). The declared source is an index (run, tract, path,
+      size, mtime, rows, primary rows, patches, RA/Dec box) written by
+      src/ou24_index_objects.py --rule union, as dp02_object does for DP0.2.
+      Every DP0.2 column used here exists with the same name; the v23 bdE1
+      functor bug persists in w_2024_22 (r_bdE1 between 1.9 and 440 for 99.8%
+      of resolved galaxies), so shapes come from the HSM moments as on DP0.2.
+      Not a public release: DESC NERSC group access (lsst).
+  - id: ou24_sn_truth
+    type: data
+    source: "data/ou24_sn_truth_index.csv"
+    description: >-
+      OU2024 transient truth, declared through an index (path, size, mtime,
+      written by src/ou24_index_files.py) of 189 files, 0.62 GB, all read in
+      place at NERSC: (1) the skyCatalog transient tables
+      /global/cfs/cdirs/descssim/imSim/skyCatalogs_v1.1.2/snana_<hpix>.parquet
+      (33 files, 1,352,231 transients; what imSim injected: id, ra, dec,
+      host_id, z_CMB, model_name, mjds), public at
+      https://portal.nersc.gov/cfs/lsst/DESC_TD_PUBLIC/Roman+DESC/PQ+HDF5_ROMAN+LSST_LARGE/
+      and IRSA s3://nasa-irsa-simulations/openuniverse2024/roman/full/roman_rubin_cats_v1.1.2_faint/;
+      (2) the SNANA truth dump OU24_TRANSIENT_TRUTH_HEAD.DAT.gz (R. Kessler,
+      148 MB: CID, GENTYPE, GALID = true host, GALSNSEP, GALSNDDLR,
+      LOGMASS_TRUE, a_rot) and (3) the 155 per-class SNANA HEAD files
+      ROMAN+LSST_LARGE_<class>/*_HEAD.FITS.gz (SIM_HOSTLIB_GALID, HOSTGAL_*),
+      both under /global/cfs/cdirs/lsst/www/DESC_TD_PUBLIC/Roman+DESC =
+      https://portal.nersc.gov/cfs/lsst/DESC_TD_PUBLIC/Roman+DESC/. Every
+      transient has a true host (GALID); SNANA's HOSTGAL_OBJID equals it
+      whenever non-zero, so it is not an independent DLR host.
+  - id: ou24_host_truth
+    type: data
+    source: "data/ou24_skycatalog_galaxy_index.csv"
+    description: >-
+      OU2024 skyCatalog v1.1.2 galaxy truth (diffsky), declared through an
+      index of 105 files, 489 GB (the SED hdf5 files are most of it):
+      /global/cfs/cdirs/descssim/imSim/skyCatalogs_v1.1.2/galaxy_<hpix>.parquet
+      (positions, spheroid/disk half-light radii in arcsec before the
+      area-preserving shear, spheroid/disk reduced-shear ellipticities,
+      stellar mass), galaxy_flux_<hpix>.parquet (LSST fluxes in photons/s/cm2,
+      AB magnitudes with the 00README zero points) and galaxy_sed_<hpix>.hdf5
+      (separate disk, bulge and knot SEDs, the only source of B/T), for all 33
+      healpix pixels, plus the LSST throughputs
+      /global/cfs/cdirs/descssim/imSim/lsst/data/throughputs_aug_2021/baseline/total_<b>.dat
+      used to integrate them. Public mirror as for ou24_sn_truth (IRSA,
+      portal.nersc.gov PQ+HDF5_ROMAN+LSST_LARGE). galaxy_id = <hpix><1
+      digit><9 digits> = the SNANA GALID.
   # ---- Tier 2: DES-SN5YR confident host matches ----
   - id: des_sn5yr_hosts
     type: data
@@ -456,7 +516,290 @@ outputs:
     decisions: [band]
     recipe:
       command: bash -c 'python src/dp02_gallery.py {inputs.dp02_disagreement_cases} --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$TMPDIR/dp02_cutouts"'
-  # ---- Tier 2: DES ----  # ---- Tier 2: DES ----
+  # ---- Tier 1b: OpenUniverse2024 (mirrors the DP0.2 chain; same scripts where only the inputs differ) ----
+  - id: ou24_sn_table
+    type: table
+    format: parquet
+    description: >-
+      One row per OU2024 transient within 60 arcsec of a primary object of the
+      22 tracts (its tract is that object's): skyCatalog id, position, z_CMB
+      and class, the SNANA truth (GALID = true host id, GALSNSEP, GALSNDDLR,
+      a_rot, HOSTGAL_*), and the true host's skyCatalog truth: position,
+      redshift, ugrizy AB magnitudes, bulge and disk half-light radii (sqrt(ab),
+      arcsec), axis ratios and major-axis angles (host_beta_*, from +x West
+      toward North, equal to SNANA's a_rot), r- and i-band bulge/disk/knot light
+      fractions (host_bt_i = bulge fraction) and stellar mass. Flags hostless,
+      host_missing (host not in the galaxy files), skycat_host_missing.
+    inputs: [ou24_sn_truth, ou24_host_truth, ou24_object]
+    decisions: []
+    recipe:
+      command: python src/ou24_sn_table.py --truth-index {inputs.ou24_sn_truth} --galaxy-index {inputs.ou24_host_truth} --objects {inputs.ou24_object} --coverage-radius 60 --component-bands ri --workers 16 --output {output}
+      resources: {cpus: 16, memory: 56Gi}
+  - id: ou24_truth_match
+    type: table
+    format: parquet
+    description: >-
+      Hand-built truth-to-object match for every OU2024 true host (no
+      MatchesTruth table exists for OU2024): all primary objects within 1
+      arcsec of the skyCatalog host position; nearest_* is the closest, mag_*
+      the one with |m_r(cModel) - m_r(truth)| < 1 and the lowest chi2 =
+      (sep / 0.1")^2 + (dm / 0.2)^2. Carries n_within, multiple, no_match,
+      matchers_agree and the nearest object's r-band moments, CModel radii,
+      extendedness and deblend parent.
+    inputs: [ou24_sn_table, ou24_object]
+    decisions: []
+    recipe:
+      command: python src/ou24_truth_match.py --sn-table {inputs.ou24_sn_table} --objects {inputs.ou24_object} --match-radius 1.0 --max-dmag 1.0 --pos-sigma 0.1 --mag-sigma 0.2 --workers 16 --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: ou24_candidates
+    type: table
+    format: parquet
+    description: Every primary OU2024 object within the search radius of any transient of ou24_sn_table, one row per (transient, object) pair, with the dp02_candidates columns (src/dp02_candidates.py unchanged).
+    inputs: [ou24_sn_table, ou24_object]
+    decisions: [search_radius]
+    recipe:
+      command: python src/dp02_candidates.py --positions {inputs.ou24_sn_table} --objects {inputs.ou24_object} --search-radius {decisions.search_radius} --output {output}
+      resources: {cpus: 16, memory: 56Gi}
+  - id: ou24_sample
+    type: table
+    format: parquet
+    description: >-
+      One row per OU2024 transient in the test sample, with the dp02_sample
+      columns: transient and true-host truth, host_objectId under truth_match
+      (matches_truth = the magnitude-aware match, nearest_1arcsec = the
+      nearest; both always carried as host_objectId_mt / _nn), the cut flags,
+      and the elliptical offsets in skyCatalog half-light radii
+      (offset_re_bulge, offset_re_disk, offset_re of the dominant component by
+      B/T_i, bulge_dominated). FIXMAG sources peak after the survey and are
+      always dropped. All redshifts are kept (median z 1.5; DP0.2 has only
+      z < 1), so z < 1 splits are reported alongside.
+    inputs: [ou24_sn_table, ou24_truth_match]
+    decisions: [truth_match, dp02_sample_cuts]
+    recipe:
+      command: python src/ou24_sample.py --sn-table {inputs.ou24_sn_table} --match {inputs.ou24_truth_match} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --output {output}
+      resources: {cpus: 4, memory: 24Gi}
+  - id: ou24_associations
+    type: table
+    format: parquet
+    description: As dp02_associations for the OU2024 sample. A candidate whose CModel radius is missing is dropped from SBW (no radius fallback).
+    inputs: [ou24_sample, ou24_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_associate.py --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --workers 16 --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: ou24_random_positions
+    type: table
+    format: parquet
+    description: As dp02_random_positions, one random position per ou24_sn_table transient inside its tract, drawn over the union of the tract's objectTable files (sn_id negated).
+    inputs: [ou24_sn_table, ou24_object]
+    decisions: []
+    recipe:
+      command: python src/dp02_random_positions.py --sne {inputs.ou24_sn_table} --objects {inputs.ou24_object} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: ou24_random_candidates
+    type: table
+    format: parquet
+    description: The ou24_candidates extraction run on ou24_random_positions.
+    inputs: [ou24_random_positions, ou24_object]
+    decisions: [search_radius]
+    recipe:
+      command: python src/dp02_candidates.py --positions {inputs.ou24_random_positions} --objects {inputs.ou24_object} --search-radius {decisions.search_radius} --output {output}
+      resources: {cpus: 16, memory: 56Gi}
+  - id: ou24_random_associations
+    type: table
+    format: parquet
+    description: SBW and DLR association of every OU2024 random position (host_objectId = -1).
+    inputs: [ou24_random_positions, ou24_random_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_associate.py --positions {inputs.ou24_random_positions} --candidates {inputs.ou24_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --workers 16 --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: ou24_recovery
+    type: metric
+    format: json
+    description: As dp02_recovery for OU2024 (population-averaged over OU2024's too-faint host population; see ou24_recovery_by_host_mag).
+    inputs: [ou24_associations, ou24_random_associations]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/dp02_fig.py recovery --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+  - id: ou24_recovery_by_host_mag
+    type: metric
+    format: json
+    description: >-
+      SBW and DLR recovery (Wilson intervals), SBW hostless (under
+      sbw_hostless_cut) and DLR hostless fractions, SBW-DLR agreement and
+      true-host-in-candidates in true-host r bins (< 20, 20-22, 22-23, 23-24,
+      24-25, 25-26, 26-27, > 27), for all transients and for z < 1, with the
+      host r < 24 summaries. OU2024 hosts are about 1 dex too light, so these
+      bins, not the headline, are what compares with DP0.2.
+    inputs: [ou24_associations]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/ou24_host_mag.py by_host_mag --associations {inputs.ou24_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+  - id: ou24_dp02_comparison
+    type: figure
+    format: pdf
+    description: >-
+      SBW and DLR recovery versus true-host r magnitude for DP0.2 and OU2024
+      (all z, and z < 1) in the same universe, the two host-magnitude
+      distributions, OU2024 recovery reweighted to DP0.2's host r
+      distribution, and both tiers at host r < 24. The DP0.2 association
+      table already carries the sample's host_mag_r, so dp02_sample is not
+      needed as a separate input.
+    inputs: [ou24_associations, dp02_associations]
+    decisions: []
+    recipe:
+      command: python src/ou24_host_mag.py dp02_comparison --associations {inputs.ou24_associations} --dp02-associations {inputs.dp02_associations} --output {output}
+  - id: ou24_calibration
+    type: figure
+    format: pdf
+    description: As dp02_calibration for OU2024.
+    inputs: [ou24_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py calibration --tier ou24 --associations {inputs.ou24_associations} --output {output}
+  - id: ou24_calibration_by_band
+    type: figure
+    format: pdf
+    description: As dp02_calibration_by_band for OU2024.
+    inputs: [ou24_sample, ou24_candidates]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_sweep.py band --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: ou24_calibration_by_profile
+    type: figure
+    format: pdf
+    description: As dp02_calibration_by_profile for OU2024.
+    inputs: [ou24_sample, ou24_candidates]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_sweep.py profile --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: ou24_agreement_matrix
+    type: figure
+    format: pdf
+    description: As dp02_agreement_matrix for OU2024 (3x3 on real transients, 2x2 on random positions).
+    inputs: [ou24_associations, ou24_random_associations]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/dp02_fig.py agreement_matrix --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+  - id: ou24_agreement_vs_ddlr
+    type: figure
+    format: pdf
+    description: As dp02_agreement_vs_ddlr for OU2024.
+    inputs: [ou24_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py agreement_vs_ddlr --tier ou24 --associations {inputs.ou24_associations} --output {output}
+  - id: ou24_recovery_vs_ddlr
+    type: figure
+    format: pdf
+    description: As dp02_recovery_vs_ddlr for OU2024.
+    inputs: [ou24_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py recovery_vs --tier ou24 --x ddlr --associations {inputs.ou24_associations} --output {output}
+  - id: ou24_recovery_vs_separation
+    type: figure
+    format: pdf
+    description: As dp02_recovery_vs_separation for OU2024.
+    inputs: [ou24_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py recovery_vs --tier ou24 --x separation --associations {inputs.ou24_associations} --output {output}
+  - id: ou24_recovery_vs_host_mag
+    type: figure
+    format: pdf
+    description: As dp02_recovery_vs_host_mag for OU2024 (skyCatalog host r).
+    inputs: [ou24_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py recovery_vs --tier ou24 --x host_mag --associations {inputs.ou24_associations} --output {output}
+  - id: ou24_recovery_vs_redshift
+    type: figure
+    format: pdf
+    description: As dp02_recovery_vs_redshift for OU2024, out to z = 3.
+    inputs: [ou24_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py recovery_vs --tier ou24 --x redshift --associations {inputs.ou24_associations} --output {output}
+  - id: ou24_p_true_host
+    type: figure
+    format: pdf
+    description: As dp02_p_true_host for OU2024.
+    inputs: [ou24_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py p_true_host --tier ou24 --associations {inputs.ou24_associations} --output {output}
+  - id: ou24_band_dependence
+    type: figure
+    format: pdf
+    description: As dp02_band_dependence for OU2024.
+    inputs: [ou24_sample, ou24_candidates]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_sweep.py band_dependence --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: ou24_profile_sweep
+    type: table
+    format: csv
+    description: As dp02_profile_sweep for OU2024 (exponential, de Vaucouleurs, moment Gaussian side by side).
+    inputs: [ou24_sample, ou24_candidates]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    recipe:
+      command: python src/dp02_sweep.py profile_table --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: ou24_hostless_indicator
+    type: figure
+    format: pdf
+    description: As dp02_hostless_indicator for OU2024 (real transients against ou24_random_positions).
+    inputs: [ou24_associations, ou24_random_associations]
+    decisions: [sbw_hostless_cut, dlr_max]
+    recipe:
+      command: python src/dp02_fig.py hostless_indicator --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+  - id: ou24_hostless_metrics
+    type: metric
+    format: json
+    description: As dp02_hostless_metrics for OU2024.
+    inputs: [ou24_associations, ou24_random_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py hostless_metrics --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --output {output}
+  - id: ou24_offset_diagnostic
+    type: figure
+    format: pdf
+    description: As dp02_offset_diagnostic for OU2024, with the offsets in skyCatalog bulge / disk / dominant-component half-light radii that ou24_sample carries (B/T_i from the component SEDs).
+    inputs: [ou24_associations]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/dp02_offsets.py --tier ou24 --associations {inputs.ou24_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+  - id: ou24_pa_check
+    type: figure
+    format: pdf
+    description: >-
+      Whether OU2024 transients follow the rendered galaxy or its mirror image
+      (the DC2 bug): for hosts with dominant-component q < 0.5 and transients
+      beyond 1 R_e, the distribution of the SN offset angle psi relative to the
+      skyCatalog major axis (psi - beta and the mirrored psi + beta) and
+      relative to the PSF-subtracted r-band moment axis phi of the matched
+      object (psi - phi, psi + phi; the model-free test), beta against phi, and
+      the alignment versus q.
+    inputs: [ou24_sn_table, ou24_truth_match]
+    decisions: []
+    recipe:
+      command: python src/ou24_pa_check.py figure --sn-table {inputs.ou24_sn_table} --match {inputs.ou24_truth_match} --output {output}
+      resources: {cpus: 2, memory: 16Gi}
+  - id: ou24_pa_check_metrics
+    type: metric
+    format: json
+    description: The ou24_pa_check alignment statistics <cos 2 Delta> with standard errors and N (overall and for q < 0.3, bulge- and disk-dominated hosts) and the verdict (rendered / mirror / inconclusive).
+    inputs: [ou24_sn_table, ou24_truth_match]
+    decisions: []
+    recipe:
+      command: python src/ou24_pa_check.py metrics --sn-table {inputs.ou24_sn_table} --match {inputs.ou24_truth_match} --output {output}
+      resources: {cpus: 2, memory: 16Gi}
+  # ---- Tier 2: DES ----
   - id: des_associations
     type: table
     format: parquet
@@ -560,8 +903,8 @@ decisions:
     default: exponential
     options:
       exponential:
-        label: Exponential (n = 1) fit; on DP0.2 the CModel disk component radius with the total cModel flux
-        insights: [dc2_sn_position_sampled_from_sersic_profile, legacy_tractor_model_set, legacy_single_shape_across_bands]
+        label: Exponential (n = 1) fit; on DP0.2 and OU2024 the CModel disk component radius with the total cModel flux
+        insights: [dc2_sn_position_sampled_from_sersic_profile, legacy_tractor_model_set, legacy_single_shape_across_bands, ou2024_lsst_pipeline_w_2024_22]
       sersic:
         label: Free-n Sersic fit; on DP0.2 the CModel de Vaucouleurs (n = 4) component radius with the total cModel flux (no fracDev is exported, so no composite)
         insights: [ou2024_hostlib_sb_weighted_placement, ou2024_galaxy_model_bulge_disk_knots, dc2_sn_position_sampled_from_sersic_profile, dc2_galaxy_model_bulge_disk_fixed_sersic, dc2_pipeline_runs_cmodel_photometry, legacy_tractor_model_set, legacy_single_shape_across_bands, qu2024_sim_sn_placement_intensity_weighted, qu2024_sersic_radii_scaled_0p8]
@@ -639,7 +982,7 @@ decisions:
         insights: [legacy_psf_type_contains_compact_galaxies, ghost_star_cut_is_deliberately_lenient, gupta16_compact_objects_removed_from_candidate_catalogue]
       none:
         label: Keep all objects
-        insights: [legacy_psf_type_contains_compact_galaxies]
+        insights: [legacy_psf_type_contains_compact_galaxies, ou2024_lsst_exposures_15s_shallower, ou2024_host_correlation_known_issue]
   sbw_hostless_cut:
     label: frac_light_beyond below which SBW declares a transient hostless
     rationale: >-
@@ -670,17 +1013,24 @@ decisions:
         label: Exclude suspect fits
         insights: [qu2024_sersic_radii_scaled_0p8]
   truth_match:
-    label: How the DC2 true host is linked to a pipeline object
+    label: How the simulated true host is linked to a pipeline object
+    rationale: >-
+      DP0.2 has Rubin's MatchesTruth table; OU2024 has none, so ou24_truth_match
+      builds both matchers by hand and matches_truth maps to its magnitude-aware
+      match, the closest analogue of MatchesTruth (which is also
+      magnitude-aware). On OU2024 the two differ for 0.1% of hosts matched by
+      both, but the nearest matcher also matches ~9% more faint hosts whose
+      nearest object is often unrelated.
     default: matches_truth
     options:
       matches_truth:
-        label: Rubin's DP0.2 truth-object match table (TAP MatchesTruth)
-        insights: [dc2_truth_match_magnitude_within_1arcsec, dc2_truth_table_single_entry_per_galaxy]
+        label: "DP0.2: Rubin's truth-object match table (TAP MatchesTruth). OU2024: the magnitude-aware match, primary objects within 1 arcsec with |m_r(cModel) - m_r(truth)| < 1, lowest chi2 = (sep/0.1\")^2 + (dm/0.2)^2"
+        insights: [dc2_truth_match_magnitude_within_1arcsec, dc2_truth_table_single_entry_per_galaxy, ou2024_truth_and_pipeline_catalog_products, ou2024_static_flux_throughput_version]
       nearest_1arcsec:
-        label: Nearest primary Object within 1 arcsec of the host truth position (among the SN's candidates)
-        insights: [dc2_truth_match_magnitude_within_1arcsec]
+        label: "Nearest primary Object within 1 arcsec of the host truth position (DP0.2: among the SN's candidates; OU2024: nearest_objectId of ou24_truth_match)"
+        insights: [dc2_truth_match_magnitude_within_1arcsec, ou2024_truth_and_pipeline_catalog_products]
   dp02_sample_cuts:
-    label: DP0.2 SN sample cleaning
+    label: Simulated-tier (DP0.2, OU2024) SN sample cleaning
     rationale: >-
       Every cut drops SNe whose host row is missing (~5%) or whose host has no
       DP0.2 object under truth_match; the options differ in how far from its
@@ -699,7 +1049,12 @@ decisions:
       The radius uses position_angle_true East of North and the truth axis
       ratio, the convention DC2 placed SNe with (the rendered galaxies are
       mirrored, see host_offsets in src/dp02_lib.py). The 3 arcsec cut is kept
-      for comparability with the first results.
+      for comparability with the first results. On OU2024 the same options
+      apply with the skyCatalog bulge/disk half-light radii, axis ratios and
+      B/T_i from the component SEDs; there the ellipse angle is the skyCatalog
+      beta (= SNANA a_rot), which both the transient offsets and the pipeline
+      moments follow (ou24_pa_check), and SNANA placed transients by host
+      surface brightness, so there is no untruncated-wing tail as in DC2.
     default: physical
     options:
       clean3:
@@ -710,7 +1065,7 @@ decisions:
         insights: [dc2_hostless_sn_fraction, dc2_sn_position_sampled_from_sersic_profile]
       physical:
         label: As clean3 but drop only SNe beyond N = 3 half-light radii of the host along its truth ellipse (bulge R_e for B/T_i > 0.5, disk R_e otherwise; N_RE in src/dp02_sample.py)
-        insights: [dc2_hostless_sn_fraction, dc2_sn_position_sampled_from_sersic_profile, dc2_sn_offsets_scale_with_hosting_component_size]
+        insights: [dc2_hostless_sn_fraction, dc2_sn_position_sampled_from_sersic_profile, dc2_sn_offsets_scale_with_hosting_component_size, ou2024_hostlib_sb_weighted_placement]
       all:
         label: Keep every SN truth row
         insights: [dc2_hostless_sn_fraction]
@@ -1009,6 +1364,78 @@ prior_insights:
         suffix: 6.3 Roman image processing and catalogs
       location:
         page: 17
+  ou2024_lsst_pipeline_w_2024_22:
+    claim: The OpenUniverse2024 LSST imaging was processed with the LSST Science Pipelines at weekly w_2024_22
+      (close to v27), through the same steps as DC2 (coadds, multiband detection, deblending, measurement,
+      merging into a six-band Object catalogue). OU2024 therefore offers the DP0.2 data products from a later
+      stack, so the DP0.2 association code applies to it unchanged.
+    created_at: '2026-10-27T21:00:00Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: The version of the pipeline used in this work corresponds to weekly snapshot w_2024_22, which
+          is close to version v27_0_0.
+      location:
+        page: 17
+    - id: ev2
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: The overall processing steps are very similar to those performed for the DC2 data
+      location:
+        page: 17
+    - id: ev3
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: This includes steps for source detection, deblending, source measurement (fluxes and shapes),
+          and merging of the sources across the six bands to produce an object catalog.
+      location:
+        page: 17
+    scope: OpenUniverse2024 LSST WFD coadd Object catalogues. The paper does not list column-level changes;
+      that every DP0.2 column exists and that the bdE1 functor bug persists was checked on the files (ou24_object).
+  ou2024_lsst_exposures_15s_shallower:
+    claim: OpenUniverse2024 LSST exposures were simulated at 15 s instead of the intended 30 s, halving the
+      effective WFD exposure time (about 0.37 mag shallower per visit); the coadds are the first five years
+      of WFD. Hosts are detected, deblended and classified on shallower coadds than a real five-year WFD, which
+      adds to the faint-host regime.
+    created_at: '2026-10-27T21:00:00Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: We had intended each LSST exposure to have 30 second duration, but because of an error in interpreting
+          the content of the Rubin observing cadence database, each LSST exposure was only 15 seconds long.
+      location:
+        page: 16
+    - id: ev2
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: This reduces the effective integrated exposure time of the simulated WFD survey by a factor of
+          two from what was intended, and causes a difference in single visit depth of approx. 0.37 mag.
+      location:
+        page: 16
+    - id: ev3
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: the first five years of the simulated observing sequence for LSST WFD
+      location:
+        page: 3
+    scope: OpenUniverse2024 LSST imaging only.
+  ou2024_static_flux_throughput_version:
+    claim: OpenUniverse2024 galaxy (static) fluxes were computed with LSST throughputs v1.7 while transient
+      fluxes used v1.9, so the skyCatalog galaxy magnitudes carry a small bandpass inconsistency; truth host
+      magnitudes (and a magnitude-aware truth match) inherit it, which is why the match allows 1 mag.
+    created_at: '2026-10-27T21:00:00Z'
+    evidence:
+    - id: ev1
+      doi: 10.48550/arXiv.2501.05632
+      quote:
+        exact: The version of the LSST bandpasses (specifically v1.7 of the LSST throughputs) that was used
+          to compute the fluxes for the non-variable objects, i.e., the stars and galaxies, differed from the
+          version (v1.9) used to compute the fluxes from the transient objects.
+      location:
+        page: 16
+    scope: OpenUniverse2024 skyCatalog fluxes.
   dc2_sn_position_sampled_from_sersic_profile:
     claim: In DC2 a hosted SN Ia is assigned to the bulge or disk with probability proportional to that
       component's stellar mass, and its position is drawn from the surface-brightness profile of that component
