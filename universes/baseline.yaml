@@ -1,7 +1,7 @@
 id: baseline
 description: 'Package defaults: exponential fit, r band, 30 arcsec, d_DLR<=4 on the
-  half-light ellipse, extendedness cut, suspect fits kept, DP0.2 MatchesTruth, cleaned
-  DP0.2 sample, 1 arcsec reference match, Legacy DR10 for DELIGHT, RC SALT3 sample
+  half-light ellipse, extendedness cut, suspect fits kept, DP0.2 MatchesTruth, 3 arcsec
+  DP0.2 sample cut (clean3, kept for comparability instead of the physical default), 1 arcsec reference match, Legacy DR10 for DELIGHT, RC SALT3 sample
   for DP2'
 decisions:
   sbw_profile: exponential
@@ -13,7 +13,7 @@ decisions:
   sbw_hostless_cut: flb01
   exclude_suspect: keep
   truth_match: matches_truth
-  dp02_sample_cuts: clean
+  dp02_sample_cuts: clean3   # 3 arcsec kept so results stay comparable with the first DP0.2 run; the spec default is physical
   dp2_sample: rc_salt
   reference_match: pos_1arcsec
   delight_catalogue: legacy_dr10

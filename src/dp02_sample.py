@@ -16,7 +16,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-FAR_ARCSEC = 3.0
+FAR_ARCSEC = {"clean3": 3.0, "clean10": 10.0}   # geometric cuts: drop SNe this far from the truth host
 
 
 def ang_sep(ra1, dec1, ra2, dec2):
@@ -52,7 +52,7 @@ def main(argv=None):
     ap.add_argument("--match", required=True)
     ap.add_argument("--candidates", required=True)
     ap.add_argument("--truth-match", required=True, choices=["matches_truth", "nearest_1arcsec"])
-    ap.add_argument("--cuts", required=True, choices=["clean", "all"])
+    ap.add_argument("--cuts", required=True, choices=["clean3", "clean10", "physical", "all"])
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "4")))
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
@@ -79,7 +79,12 @@ def main(argv=None):
     df["hostless"] = df.host_galaxy <= 0
     df["host_missing"] = (~df.hostless) & (df.host_ra.isna() | ~(df.host_flux_r > 0))
     df["sep_truth_arcsec"] = ang_sep(df.sn_ra, df.sn_dec, df.host_ra, df.host_dec)
-    df["far"] = df.sep_truth_arcsec > FAR_ARCSEC
+    if a.cuts in FAR_ARCSEC:
+        df["far"] = df.sep_truth_arcsec > FAR_ARCSEC[a.cuts]
+    elif a.cuts == "physical":
+        raise SystemExit("cuts=physical needs the host truth shapes (not implemented yet)")
+    else:
+        df["far"] = False
 
     # both truth matchers are always computed; host_objectId is the one the decision selects
     mm = m[["host_galaxy", "match_objectId", "match_chisq"]].copy()
@@ -99,7 +104,7 @@ def main(argv=None):
     df["host_unmatched"] = (~df.hostless) & (df.host_objectId < 0)
 
     # how the two matchers compare on hosted SNe with a host row, before the matcher-dependent cut
-    e = df[~df.hostless & ~df.host_missing & (~df.far if a.cuts != "all" else True)]
+    e = df[~df.hostless & ~df.host_missing & ~df.far]
     mt, nn = e.host_objectId_mt.to_numpy() >= 0, e.host_objectId_nn.to_numpy() >= 0
     precut = {"n": len(e), "both": int((mt & nn).sum()), "mt_only": int((mt & ~nn).sum()),
               "nn_only": int((~mt & nn).sum()), "neither": int((~mt & ~nn).sum()),
@@ -107,7 +112,7 @@ def main(argv=None):
     print(f"truth matchers before cuts: {precut}", file=sys.stderr)
 
     n0 = len(df)
-    if a.cuts == "clean":
+    if a.cuts != "all":
         df = df[~df.hostless & ~df.host_missing & ~df.host_unmatched & ~df.far]
     df = df.sort_values("sn_id").reset_index(drop=True)
     print(f"sample: {len(df)} of {n0} SNe after cuts={a.cuts} ({time.time() - t0:.0f}s)", file=sys.stderr)

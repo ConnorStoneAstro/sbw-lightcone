@@ -592,14 +592,28 @@ decisions:
   dp02_sample_cuts:
     label: DP0.2 SN sample cleaning
     rationale: >-
-      ~5% of SN truth rows point to an empty host row and ~9% sit > 3 arcsec from
-      the declared host because DC2 sampled positions from very large truth
-      profiles; these are unrecoverable from images.
-    default: clean
+      Every cut drops SNe whose host row is missing (~5%) or whose host has no
+      DP0.2 object under truth_match; the options differ in how far from its
+      host an SN may sit. DC2 drew SN positions from the host component's full
+      Sersic profile, so ~9% sit > 3 arcsec from the host centre, many far out
+      in n = 4 bulge wings where no catalogue method (nor a human) would assign
+      them. A fixed angular cut is unfair to large nearby hosts, which span
+      many arcsec (the recovery-vs-separation curve suggests a geometric cut
+      would have to be ~10 arcsec to stop hurting the results); a cut in units
+      of the host's own half-light radius removes the unphysical tail without
+      penalising large hosts, so it is the default. The 3 arcsec cut is kept for
+      comparability with the first results.
+    default: physical
     options:
-      clean:
-        label: Drop SNe whose host row is missing, unmatched to an object, or > 3 arcsec away
+      clean3:
+        label: Drop SNe whose host row is missing, unmatched to an object, or > 3 arcsec from the host truth position (the first results)
         insights: [dc2_hostless_sn_fraction, dc2_host_choice_proportional_to_stellar_mass]
+      clean10:
+        label: As clean3 but > 10 arcsec
+        insights: [dc2_hostless_sn_fraction, dc2_sn_position_sampled_from_sersic_profile]
+      physical:
+        label: As clean3 but drop only SNe beyond N half-light radii of the host along its truth ellipse (bulge R_e for B/T > 0.5, disk R_e otherwise; N set in src/dp02_sample.py)
+        insights: [dc2_hostless_sn_fraction, dc2_sn_position_sampled_from_sersic_profile, dc2_sn_offsets_scale_with_hosting_component_size]
       all:
         label: Keep every SN truth row
         insights: [dc2_hostless_sn_fraction]
@@ -918,6 +932,32 @@ prior_insights:
       location:
         page: 16
     scope: DC2/DP0.2 simulated SNe Ia only; real SN populations need not follow the host light exactly.
+  dc2_sn_offsets_scale_with_hosting_component_size:
+    claim: DC2 validated its SN-host offsets in units of the half-light size (semi-major or semi-minor axis)
+      of the component that hosts the SN, separately for disk- and bulge-hosted SNe, and describes no
+      truncation of the sampled Sersic profile. Offsets in units of the hosting component's R_e are therefore the
+      natural variable for a physical sample cut, and bulge-hosted SNe drawn from an untruncated n = 4 profile
+      can land many R_e out.
+    created_at: '2026-10-27T12:00:00Z'
+    evidence:
+    - id: ev1
+      doi: 10.3847/1538-4365/abd62c
+      quote:
+        exact: We consider different measures of the galaxy size by using the major and minor axes of the
+          component used to host the SN.
+        prefix: in the redshift range z < 1.
+        suffix: The SNe hosted by the disk are shown in the top panel
+      location:
+        page: 14
+    - id: ev2
+      doi: 10.3847/1538-4365/abd62c
+      quote:
+        exact: we assigned a position by sampling the surface brightness profile of the hosting component
+        prefix: Then, finally,
+        suffix: (which in the cosmoDC2
+      location:
+        page: 14
+    scope: DC2/DP0.2 simulated SNe Ia only.
   dc2_host_choice_proportional_to_stellar_mass:
     claim: DC2 host galaxies were drawn within each redshift bin with probability proportional to stellar
       mass, so the SN host population is biased to massive, bright, large galaxies relative to the field;
