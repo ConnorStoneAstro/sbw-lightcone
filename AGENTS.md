@@ -115,7 +115,7 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   committing on the laptop, otherwise the branches diverge (a rebase of the
   DATALAD commits worked but left the annexed file "modified"; `git restore
   --staged --worktree results/` cleared it). Small results are brought to the
-  laptop with scp + `git annex reinject --known`.
+  laptop with scp + `git annex reinject <copy> results/<universe>/<file>` (the `--known` form reports "not known content" for lc-made files; the explicit two-argument form works, then `git annex smudge --update`).
 - **DES tier.** 1623 Dovekie SNe Ia (IDSURVEY = 10) with HOSTGAL_RA/DEC from
   DES-SN5YR HEAD files; candidates from DES DR2 `des_dr2.main` via NOIRLab
   Data Lab TAP (use `q3c_radial_query(...) = 't'`; `phi = theta_j2000 + 90` in
