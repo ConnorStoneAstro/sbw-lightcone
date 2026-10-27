@@ -2,17 +2,18 @@
   "schema_version": 1,
   "output_id": "dp02_recovery",
   "universe_id": "truth_nearest",
-  "recipe": "python src/dp02_fig.py recovery --associations results/truth_nearest/dp02_associations.parquet --hostless-cut flb01 --output results/truth_nearest/dp02_recovery.json",
-  "definition_version": "sha256:e31a21356141a1d13ce168e16edde41d54c22abc37fe8cd6a7faf79356fa9087",
-  "env_version": "sha256:84de715ba076a4f19c42a54bda086c88f03224e680e46203146337f1a452c7c4",
-  "data_version": "sha256:edcf261fc2acd9032d70bdc9085c162cfd14cb9b7d87659b5300fd9961608760",
+  "recipe": "python src/dp02_fig.py recovery --associations results/truth_nearest/dp02_associations.parquet --random results/truth_nearest/dp02_random_associations.parquet --hostless-cut flb01 --output results/truth_nearest/dp02_recovery.json",
+  "definition_version": "sha256:6fa66b269b90da580dad8c9d9ac4c78f7dd77be9f9a44606d2183b50ff786d0e",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:87bb937760222e4b365040b8a8ae87cf0ebab19fbcb0efe161bbaacf01d1bc16",
   "decisions": {
     "sbw_hostless_cut": "flb01"
   },
   "input_versions": {
-    "dp02_associations": "sha256:092cae4877c5b556277a08f8fb1768cac8270aba5d3075a07009d0fa1f3be4ad"
+    "dp02_associations": "sha256:3793c305bd9b85036638ef8010ded9639ed81a6db651a452361d83f4d12cbc15",
+    "dp02_random_associations": "sha256:6dc047bd987b34439c19ad64c5e18df10c55e062e8d01bce1ca060b2f2da4a80"
   },
-  "git_sha": "0cc14c48d23040ff99a456c24a905f63a7ccbc8f",
+  "git_sha": "77c6095e253cc3eca2c8e871b2f09d1892cb04b0",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -22,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T15:36:28.326+00:00",
-  "finished_at": "2026-10-27T15:37:17.224+00:00",
+  "started_at": "2026-10-27T18:39:06.015+00:00",
+  "finished_at": "2026-10-27T18:39:47.538+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
