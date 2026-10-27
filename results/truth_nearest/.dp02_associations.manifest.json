@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_associations",
+  "universe_id": "truth_nearest",
+  "recipe": "python src/dp02_associate.py --sample results/truth_nearest/dp02_sample.parquet --candidates results/truth_nearest/dp02_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --workers 16 --output results/truth_nearest/dp02_associations.parquet",
+  "definition_version": "sha256:f18b6be91b1a78c7e56c8b3e79043288e5be158035ad8738331211838e5bc858",
+  "env_version": "sha256:84de715ba076a4f19c42a54bda086c88f03224e680e46203146337f1a452c7c4",
+  "data_version": "sha256:092cae4877c5b556277a08f8fb1768cac8270aba5d3075a07009d0fa1f3be4ad",
+  "decisions": {
+    "sbw_profile": "exponential",
+    "band": "r",
+    "search_radius": "r30",
+    "dlr_max": "d4",
+    "dlr_radius": "half_light",
+    "extendedness_cut": "ext05"
+  },
+  "input_versions": {
+    "dp02_sample": "sha256:e6da5ffab15196d0763e1decd72430db78c06ca5aeb17703a6a6eeb952b0a082",
+    "dp02_candidates": "sha256:fbc46d625de78e09083e9b1e965b7cc81d2d391c7fac44ef320de6da3756846a"
+  },
+  "git_sha": "0cc14c48d23040ff99a456c24a905f63a7ccbc8f",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-27T15:34:09.009+00:00",
+  "finished_at": "2026-10-27T15:36:27.468+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
