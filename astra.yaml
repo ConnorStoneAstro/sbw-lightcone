@@ -52,6 +52,20 @@ inputs:
       ixx/iyy/ixy(PSF), kronRad, extendedness. The v23 bdE1 column is unusable
       (the E1 functor lacked parentheses: xx - yy/(xx+yy)), so orientation and
       axis ratio come from the PSF-subtracted HSM moments instead.
+  - id: cosmodc2_hosts
+    type: data
+    source: "data/cosmodc2_v1.1.4_image_index.csv"
+    description: >-
+      cosmoDC2 v1.1.4 image catalogue at NERSC,
+      /global/cfs/cdirs/lsst/shared/xgal/cosmoDC2/cosmoDC2_v1.1.4_parquet_r2
+      (the target of the cosmoDC2_v1.1.4_parquet symlink GCRCatalogs reads),
+      131 healpix parquet files, 2.9 TB, 308 columns. Declared through an index
+      (path, size, mtime) like dp02_object, since hashing 2.9 TB per lc command
+      is not an option and cosmoDC2 is frozen. galaxy_id equals the DC2 merged
+      truth galaxy id and SN host_galaxy. Used for the true bulge and disk
+      half-light semi-axes (size_bulge_true, size_minor_bulge_true,
+      size_disk_true, size_minor_disk_true, arcsec), position_angle_true,
+      bulge_to_total_ratio_i, ellipticities, stellar masses and true magnitudes.
   - id: dp02_deblended_stamps
     type: data
     source: "RSP butler dp02 deepCoadd_deblendedModel / cutout service (not on NERSC)"
@@ -352,6 +366,34 @@ outputs:
     decisions: []
     recipe:
       command: python src/dp02_fig.py hostless_metrics --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --output {output}
+  - id: dp02_host_truth_shapes
+    type: table
+    format: parquet
+    description: >-
+      cosmoDC2 truth shape, B/T, stellar masses and true magnitudes of every
+      DC2 SN host galaxy (one row per galaxy_id), read from the healpix files
+      row group by row group, galaxy_id first and the other columns only where
+      a host is.
+    inputs: [dp02_sn_truth, cosmodc2_hosts]
+    decisions: []
+    recipe:
+      command: python src/dp02_host_shapes.py --truth {inputs.dp02_sn_truth} --cosmodc2 {inputs.cosmodc2_hosts} --workers 16 --output {output}
+      resources: {cpus: 16, memory: 56Gi}
+  - id: dp02_offset_diagnostic
+    type: figure
+    format: pdf
+    description: >-
+      SBW top host wrong, DLR host wrong or none, both wrong on the same object,
+      and SBW hostless fractions versus the SN's offset from its truth host in
+      units of the host's truth half-light semi-major axis, measured along the
+      truth ellipse, for the bulge R_e, the disk R_e and the dominant
+      component's R_e, split into bulge-dominated (B/T_i > 0.5) and
+      disk-dominated hosts, with the offset distributions of both classes. The
+      both-wrong upturn sets N of the physical sample cut.
+    inputs: [dp02_associations, dp02_host_truth_shapes]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/dp02_offsets.py --associations {inputs.dp02_associations} --shapes {inputs.dp02_host_truth_shapes} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: dp02_truth_match_comparison
     type: metric
     format: json

@@ -249,6 +249,37 @@ def matrix_cells(df, cut, truth_col="host_objectId"):
     return out
 
 
+# ---------------------------------------------------------------- cosmoDC2 host truth shapes
+BULGE_DOMINATED_BT = 0.5   # bulge_to_total_ratio_i above which a host counts as bulge-dominated
+
+
+def host_offsets(df, pa_convention="east_of_north"):
+    """SN offset from the truth host centre in units of the host's half-light semi-major axis, measured
+    along the truth ellipse (elliptical radius), for the bulge, the disk and the dominant component.
+
+    ``df`` needs sn_ra, sn_dec, host_ra, host_dec and the cosmoDC2 columns size_(minor_)bulge_true,
+    size_(minor_)disk_true (arcsec), position_angle_true (deg) and bulge_to_total_ratio_i."""
+    x, y = sky_to_plane(df["sn_ra"].to_numpy(), df["sn_dec"].to_numpy(),
+                        df["host_ra"].to_numpy(), df["host_dec"].to_numpy())   # arcsec, +x West, +y North
+    e, n = -x, y
+    th = np.deg2rad(df["position_angle_true"].to_numpy(dtype=float))
+    if pa_convention == "east_of_north":
+        u, v = e * np.sin(th) + n * np.cos(th), e * np.cos(th) - n * np.sin(th)
+    else:   # north_of_east
+        u, v = e * np.cos(th) + n * np.sin(th), -e * np.sin(th) + n * np.cos(th)
+    out = {}
+    for comp in ("bulge", "disk"):
+        a = df[f"size_{comp}_true"].to_numpy(dtype=float)
+        b = df[f"size_minor_{comp}_true"].to_numpy(dtype=float)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            q = np.where(a > 0, b / a, np.nan)
+            out[comp] = np.where(a > 0, np.hypot(u, v / q) / a, np.nan)
+    bd = df["bulge_to_total_ratio_i"].to_numpy(dtype=float) > BULGE_DOMINATED_BT
+    out["own"] = np.where(bd, out["bulge"], out["disk"])
+    out["bulge_dominated"] = bd
+    return out
+
+
 # ---------------------------------------------------------------- statistics helpers
 def wilson(k, n, z=1.0):
     k, n = np.asarray(k, float), np.asarray(n, float)
