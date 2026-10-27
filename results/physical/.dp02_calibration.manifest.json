@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_calibration",
+  "universe_id": "physical",
+  "recipe": "python src/dp02_fig.py calibration --associations results/physical/dp02_associations.parquet --output results/physical/dp02_calibration.pdf",
+  "definition_version": "sha256:28da0fbfa956e84881bad81ed3c9798596d1d176dda3abc021647d1904830ae6",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:4a0f7882feaab27768ebe791e3073fed753f2b16feffde3a8fa7e8c9ffe38d09",
+  "decisions": {},
+  "input_versions": {
+    "dp02_associations": "sha256:21eed7c8a91e262547ccbb79e1b936965ac6f7d4955fca1a5ed94715fdbec698"
+  },
+  "git_sha": "4dc2a7a2fea5e4ad0614efb2fe19cde25e2b8979",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-27T22:52:56.610+00:00",
+  "finished_at": "2026-10-27T22:53:38.584+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
