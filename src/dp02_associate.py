@@ -7,7 +7,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from dp02_lib import DLR_MAX, PROFILES, RADIUS, associate_all, load_candidates
+from dp02_lib import DLR_MAX, PROFILES, QUALITY, RADIUS, associate_all, load_candidates
 
 
 def main(argv=None):
@@ -22,8 +22,7 @@ def main(argv=None):
     ap.add_argument("--dlr-max", required=True, choices=sorted(DLR_MAX))
     ap.add_argument("--dlr-radius", required=True, choices=["half_light", "moments"])
     ap.add_argument("--extendedness", required=True, choices=["ext05", "none"])
-    ap.add_argument("--radius-fallback", action="store_true",
-                    help="missing CModel radius -> other component's radius -> moment radius (else the candidate gets p = 0)")
+    ap.add_argument("--candidate-quality", required=True, choices=QUALITY)
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
@@ -37,7 +36,7 @@ def main(argv=None):
     cand = load_candidates(a.candidates, bands=a.band)
     out = associate_all(sample, cand, band=a.band, profile=a.profile, search_radius=a.search_radius,
                         dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness,
-                        radius_fallback=a.radius_fallback, workers=a.workers)
+                        quality=a.candidate_quality, workers=a.workers)
     tab = pa.Table.from_pandas(out, preserve_index=False)
     tab = tab.replace_schema_metadata({k.encode(): str(v).encode() for k, v in out.attrs.items()})
     pq.write_table(tab, a.output, compression="zstd")

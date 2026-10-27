@@ -24,9 +24,13 @@ from scipy.spatial import cKDTree
 
 BANDS = "ugrizy"
 PER_BAND = ["cModelFlux", "bdReB", "bdReD", "bdFluxB", "bdFluxD",
-            "ixx", "iyy", "ixy", "ixxPSF", "iyyPSF", "ixyPSF", "kronRad", "extendedness"]
+            "ixx", "iyy", "ixy", "ixxPSF", "iyyPSF", "ixyPSF", "kronRad", "extendedness",
+            # quality columns for candidate_quality (DP0.2 has no deblend_tooManyPeaks / parentTooBig,
+            # and the CModel flag is {b}_cModel_flag, not {b}_cModelFlux_flag)
+            "cModelFluxErr", "cModel_flag", "blendedness", "blendedness_flag", "bdChi2"]
 GENERAL = ["objectId", "coord_ra", "coord_dec", "detect_isPrimary", "refExtendedness", "refBand",
-           "tract", "patch", "parentObjectId"]
+           "tract", "patch", "parentObjectId", "deblend_nChild", "deblend_skipped", "detect_fromBlend",
+           "detect_isIsolated"]
 RADIUS = {"r15": 15.0, "r30": 30.0, "r60": 60.0}
 
 
@@ -75,6 +79,11 @@ def one_tract(args):
     sep = np.rad2deg(2 * np.arcsin(np.linalg.norm(
         unit_vectors(sra[sn_rep], sdec[sn_rep]) - unit_vectors(ora[obj_idx], odec[obj_idx]), axis=1) / 2)) * 3600
     sub = t.take(pa.array(obj_idx)).drop_columns(["detect_isPrimary"]).to_pandas(ignore_metadata=True)
+    # deblend_nChild of the (non-primary) parent row, from the same tract file; 0 for isolated objects
+    par = pq.read_table(path, columns=["objectId", "deblend_nChild"]).to_pandas(ignore_metadata=True)
+    nchild = pd.Series(par["deblend_nChild"].to_numpy(), index=par["objectId"].to_numpy())
+    nchild = nchild[~nchild.index.duplicated()]
+    sub["parent_nChild"] = sub["parentObjectId"].map(nchild).fillna(0).astype(np.int32).to_numpy()
     out = pd.DataFrame({"sn_id": sid[sn_rep].astype(np.int64), "sep_arcsec": sep.astype(np.float32)})
     for c in sub.columns:
         v = sub[c]

@@ -22,7 +22,7 @@ XLAB = {"bulge": "offset / bulge $R_e$", "disk": "offset / disk $R_e$",
 
 def failure_flags(df, cut):
     s, d, t = df.sbw_objectId.to_numpy(), df.dlr_objectId.to_numpy(), df.host_objectId.to_numpy()
-    return {"SBW top host wrong": (COLORS["sbw"], "-", s != t),
+    return {"SBW most probable host wrong": (COLORS["sbw"], "-", s != t),
             "DLR host wrong or none": (COLORS["dlr"], "-", d != t),
             "both wrong, same object": ("#222222", "-", (s == d) & (s >= 0) & (s != t)),
             f"SBW hostless (flb < {cut:g})": (COLORS["sbw"], ":", sbw_hostless(df, cut))}

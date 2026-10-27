@@ -10,6 +10,8 @@ decisions:
   extendedness_cut: ext05
   sbw_hostless_cut: flb01
   exclude_suspect: keep
+  candidate_quality: none
+  p_true_threshold: p005
   truth_match: matches_truth
   dp02_sample_cuts: clean3   # as baseline
   dp2_sample: rc_salt

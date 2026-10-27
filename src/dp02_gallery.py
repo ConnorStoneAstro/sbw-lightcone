@@ -68,7 +68,7 @@ SN_COLOR = "#d62728"
 # name -> (marker, colour, size, legend label).  Open markers of different
 # sizes, so coincident picks stay visible as concentric symbols.
 MARKER_STYLES = {
-    "sbw": ("o", SBW_COLOR, 13, "SBW"),
+    "sbw": ("o", SBW_COLOR, 13, "SBW most probable"),
     "dlr": ("s", DLR_COLOR, 10, "DLR"),
     "truth_match": ("D", "black", 16, "MatchesTruth"),
     "truth_nearest": ("h", GREY, 21, "Nearest to truth host"),

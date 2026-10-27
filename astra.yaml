@@ -68,13 +68,14 @@ inputs:
       bulge_to_total_ratio_i, ellipticities, stellar masses and true magnitudes.
   - id: rsp_token
     type: data
-    source: "../.rsp_image_tap_token"
+    source: "/global/cfs/cdirs/m1727/cstone/.rsp_image_tap_token"
     description: >-
       Rubin Science Platform access token (read:tap and read:image scopes) on
-      the laptop, used by the cutout gallery to query
-      dp02_dc2_catalogs.ObsCore and the SODA cutout service at
-      data.lsst.cloud. Outside the repository and never committed; only its
-      hash enters the run records.
+      NERSC (mode 600), used by the cutout gallery and the PA-mirror figure to
+      query dp02_dc2_catalogs.ObsCore and the SODA cutout service at
+      data.lsst.cloud from Perlmutter compute nodes. Outside the repository and
+      never committed; recorded by content like the other NERSC inputs, so only
+      its hash enters the run records.
   - id: dp02_deblended_stamps
     type: data
     source: "RSP butler dp02 deepCoadd_deblendedModel / cutout service (not on NERSC)"
@@ -161,9 +162,15 @@ outputs:
     description: >-
       Every DP0.2 primary object within the search radius of any DC2 SN, one
       row per (SN, object) pair, carrying the per-band CModel component radii
-      and fluxes, HSM moments, extendedness and position. Extracted once from
-      the 157 tract files; everything downstream reads this instead of the
-      1 TB Object table.
+      and fluxes, HSM moments, extendedness and position, plus the
+      object-table quality columns the candidate_quality cut reads:
+      {b}_cModelFluxErr, {b}_cModel_flag, {b}_blendedness(_flag), {b}_bdChi2,
+      deblend_nChild, deblend_skipped, detect_fromBlend, detect_isIsolated,
+      parentObjectId and parent_nChild (deblend_nChild of the parent row,
+      0 for isolated objects). DP0.2 has no deblend_tooManyPeaks or
+      deblend_parentTooBig and names the CModel flag {b}_cModel_flag.
+      Extracted once from the 157 tract files; everything downstream reads
+      this instead of the 1 TB Object table.
     inputs: [dp02_sn_truth, dp02_object]
     decisions: [search_radius]
     recipe:
@@ -192,32 +199,51 @@ outputs:
     type: table
     format: parquet
     description: >-
-      One row per sample SN: true host objectId, SBW top host and its p_sbw,
-      p_sbw of the true host and its rank, frac_light_beyond, DLR host and
-      d_dlr, d_dlr of the true host, number of candidates, and the derived
-      flags sbw_correct, dlr_correct, agree. flb_max is the largest
-      frac_light_beyond over all candidates (an alternative hostless statistic
-      to flb_best, the SBW top host's).
+      One row per sample SN: true host objectId, the SBW most probable host
+      and its p_sbw, p_sbw of the true host and its rank, p_top (every
+      candidate probability above 0.001, descending), frac_light_beyond, DLR
+      host and d_dlr, d_dlr of the true host, and the derived flags
+      sbw_correct (most probable host = true host), dlr_correct, agree.
+      flb_max is the largest frac_light_beyond over all candidates (an
+      alternative hostless statistic to flb_best, the most probable host's).
+      Candidates are cut in order: search radius, extendedness_cut, no usable
+      radius or flux for the profile (always dropped: an object-table
+      failure, not patched), candidate_quality; n_cut_* count the candidates
+      each step removed and true_host_status records which step removed the
+      true host (absent / point_source / unusable / quality / kept). The
+      parquet metadata carries the fraction of candidates and of true hosts
+      removed by each step.
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_associate.py --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --workers 16 --radius-fallback --output {output}
+      command: python src/dp02_associate.py --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --workers 16 --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_recovery
     type: metric
     format: json
-    description: Fraction of SNe whose true host is the top-ranked host, per method, with binomial intervals, plus the SBW-DLR agreement rate and sample size, the fraction SBW declares hostless under sbw_hostless_cut and the SBW recovery with that cut applied, the 3x3 agreement-matrix cells, and the random-position 2x2 (SBW / DLR hostless or assigning a host) with the fraction each method correctly rejects.
+    description: >-
+      SBW as a distribution: mean P_SBW(true host) over the sample (the
+      expected recovery if each SN's host were drawn from the SBW
+      probabilities; P = 0 where the true host is not a surviving candidate),
+      with and without the hostless cut, and the fractions in the four bands
+      P(true) > 0.5 / p_true_threshold..0.5 / below the threshold (excluded) /
+      SBW hostless; argmax recovery (most probable host = true host) and DLR
+      recovery with binomial intervals as secondary numbers; the SBW-DLR
+      agreement rate, the fraction SBW declares hostless under
+      sbw_hostless_cut, the 4x3 probabilistic agreement-matrix cells (and the
+      old argmax 3x3), and the random-position 2x2 with the fraction each
+      method correctly rejects.
     inputs: [dp02_associations, dp02_random_associations]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_fig.py recovery --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_calibration
     type: figure
     format: pdf
     description: >-
-      SBW reliability curve: SNe binned by the top host's p_sbw, against the
-      fraction of those SNe whose top host is the true host. A calibrated
-      probability follows the 1:1 line.
+      SBW reliability curve: SNe binned by the p_sbw of the SBW most probable
+      host, against the fraction of those SNe whose most probable host is the
+      true host. A calibrated probability follows the 1:1 line.
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -227,40 +253,41 @@ outputs:
     format: pdf
     description: The reliability curve recomputed in each of u g r i z y with the headline profile, one panel per band, independent of the band decision.
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_sweep.py band --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
+      command: python src/dp02_sweep.py band --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_calibration_by_profile
     type: figure
     format: pdf
     description: The reliability curve recomputed for each analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian) in the headline band, independent of the sbw_profile decision.
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_sweep.py profile --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
+      command: python src/dp02_sweep.py profile --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_agreement_matrix
     type: figure
     format: pdf
     description: >-
-      3x3 matrix of SBW (host true / host wrong / hostless under
-      sbw_hostless_cut) against DLR (host true / host wrong / hostless):
-      counts and fractions of SNe in each cell, so the disagreements split
-      into who was right and both methods' hostless calls are visible. A
-      second panel applies the same cuts to dp02_random_positions as a 2x2
+      Probabilistic agreement matrix: rows are the SBW probability of the
+      true host, P_SBW(true) > 0.5 / in [p_true_threshold, 0.5] / below
+      p_true_threshold (excluded by SBW, including a true host that is not a
+      surviving candidate) / SBW hostless under sbw_hostless_cut, against DLR
+      host true / wrong / hostless: counts and fractions of SNe in each cell.
+      A second panel applies the same cuts to dp02_random_positions as a 2x2
       (SBW hostless = correct / assigns a host = wrong, against the same for
       DLR), so loosening the hostless cut is seen to cost random rejections;
       under each panel the real recovery with the cuts and the random
       fraction correctly rejected.
     inputs: [dp02_associations, dp02_random_associations]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py agreement_matrix --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_fig.py agreement_matrix --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_agreement_vs_ddlr
     type: figure
     format: pdf
-    description: Fraction of SNe where SBW and DLR pick the same host, as a function of the DLR host's d_DLR (and of the SBW host's d_DLR).
+    description: Fraction of SNe where the SBW most probable host is the DLR host, with mean P_SBW(true host) and DLR recovery, as a function of the DLR host's d_DLR (and of the SBW most probable host's d_DLR).
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -268,7 +295,7 @@ outputs:
   - id: dp02_recovery_vs_ddlr
     type: figure
     format: pdf
-    description: Recovery fraction per method as a function of the true host's d_DLR.
+    description: Mean P_SBW(true host) (with the argmax recovery dashed), DLR recovery and SBW-DLR agreement as a function of the true host's d_DLR.
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -276,7 +303,7 @@ outputs:
   - id: dp02_recovery_vs_separation
     type: figure
     format: pdf
-    description: Recovery fraction per method versus transient-host angular separation.
+    description: Mean P_SBW(true host), argmax and DLR recovery versus transient-host angular separation.
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -284,7 +311,7 @@ outputs:
   - id: dp02_recovery_vs_host_mag
     type: figure
     format: pdf
-    description: Recovery fraction per method versus true-host r magnitude (faint-host regime).
+    description: Mean P_SBW(true host), argmax and DLR recovery versus true-host r magnitude (faint-host regime).
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -292,7 +319,7 @@ outputs:
   - id: dp02_recovery_vs_redshift
     type: figure
     format: pdf
-    description: Recovery fraction per method versus SN redshift (hosts shrink and fade with z).
+    description: Mean P_SBW(true host), argmax and DLR recovery versus SN redshift (hosts shrink and fade with z).
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -308,24 +335,24 @@ outputs:
   - id: dp02_band_dependence
     type: figure
     format: pdf
-    description: SBW recovery and SBW-DLR agreement per band (u g r i z y), and how often the SBW top host changes between bands.
+    description: Mean P_SBW(true host), argmax and DLR recovery and SBW-DLR agreement per band (u g r i z y), and how often the SBW most probable host changes between bands.
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_sweep.py band_dependence --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
+      command: python src/dp02_sweep.py band_dependence --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_profile_sweep
     type: table
     format: csv
     description: >-
-      Recovery fraction, DLR agreement and calibration error for every
+      Mean P_SBW(true host), argmax recovery, DLR agreement and calibration error for every
       analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian)
       side by side, independent of the headline sbw_profile choice. The stamp
       form joins once dp02_deblended_stamps exists.
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
+      command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_random_positions
     type: table
@@ -353,11 +380,11 @@ outputs:
   - id: dp02_random_associations
     type: table
     format: parquet
-    description: SBW and DLR association of every random position, with the same columns as dp02_associations and no true host (host_objectId = -1).
+    description: SBW and DLR association of every random position, with the same columns and candidate cuts as dp02_associations and no true host (host_objectId = -1).
     inputs: [dp02_random_positions, dp02_random_candidates]
-    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_associate.py --positions {inputs.dp02_random_positions} --candidates {inputs.dp02_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --radius-fallback --output {output}
+      command: python src/dp02_associate.py --positions {inputs.dp02_random_positions} --candidates {inputs.dp02_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_hostless_indicator
     type: figure
@@ -368,7 +395,8 @@ outputs:
       rejected versus threshold for flb_best < t; (c) the same for the DLR rule
       d_DLR_min > t; (d) random positions rejected versus real SNe kept for
       SBW (flb_best, flb_max) and DLR, with the sbw_hostless_cut and dlr_max
-      operating points marked.
+      operating points marked. Panels (b) and (c) also carry Youden's J = real
+      kept + random rejected - 1 versus the threshold, with its maximum.
     inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
@@ -376,7 +404,7 @@ outputs:
   - id: dp02_hostless_metrics
     type: metric
     format: json
-    description: Real SNe kept and random positions rejected at flb_best and flb_max thresholds 0.001, 0.01, 0.05, 0.1 and d_DLR thresholds 3, 4, 5 (Wilson intervals), and the fraction of random positions whose SBW host has P > 0.5 (landing on a galaxy).
+    description: Real SNe kept and random positions rejected at flb_best and flb_max thresholds 0.001, 0.01, 0.05, 0.1 and d_DLR thresholds 3, 4, 5 (Wilson intervals), the fraction of random positions whose SBW most probable host has P > 0.5 (landing on a galaxy), and the Youden-J-optimal flb_best, flb_max and d_DLR thresholds with J, real kept and random rejected there.
     inputs: [dp02_associations, dp02_random_associations]
     decisions: []
     recipe:
@@ -427,20 +455,24 @@ outputs:
     type: table
     format: csv
     description: >-
-      Twelve seeded random SNe per disagreement class for the cutout gallery:
+      Twelve seeded random SNe per class for the cutout gallery:
       truth_matchers_disagree (MatchesTruth and nearest-within-1-arcsec name
-      different objects), sbw_wrong, dlr_wrong (including DLR hostless),
-      sbw_ne_dlr and both_wrong_same (SBW and DLR on the same wrong object).
+      different objects), sbw_excludes_true_host (true host survived the cuts
+      but P_SBW(true) < p_true_threshold), dlr_wrong_or_hostless,
+      sbw_most_probable_ne_dlr (SBW most probable host differs from the DLR
+      host) and true_host_cut_by_object_table (cat2: point source, unusable
+      radius or flux, or candidate_quality).
       Columns case_id, class, class_n (size of the class), sn_id, sn_ra,
       sn_dec, label, marker positions truth_pos (host truth position),
       truth_match, truth_nearest, sbw, dlr (_ra/_dec, NaN where absent),
-      p_sbw_max, d_dlr_min, sep_truth_arcsec and the objectIds. Both matchers
+      p_sbw_max, p_sbw_true, true_host_status, d_dlr_min, sep_truth_arcsec
+      and the objectIds. Both matchers
       come from the one sample (dp02_sample always carries both), so a single
       universe's associations suffice.
     inputs: [dp02_associations, dp02_candidates]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_cases.py --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --output {output}
+      command: python src/dp02_cases.py --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --p-threshold {decisions.p_true_threshold} --output {output}
       resources: {cpus: 4, memory: 24Gi}
   - id: dp02_disagreement_gallery
     type: figure
@@ -448,14 +480,95 @@ outputs:
     description: >-
       DP0.2 deep-coadd cutouts (30 arcsec, headline band, north up, east left)
       of dp02_disagreement_cases, one page per class, with markers for the SN,
-      the host truth position, both truth matchers' objects and the SBW and DLR
-      picks. Made with src/dp02_gallery.py (a verbatim copy of the cutout
-      prototype's gallery.py) over the RSP cutout service, so it runs on the
-      laptop, not NERSC.
+      the host truth position, both truth matchers' objects, the SBW most
+      probable host and the DLR host. Made with src/dp02_gallery.py (the
+      cutout prototype's gallery.py, with the SBW marker relabelled "SBW most
+      probable") over the RSP cutout service, from a NERSC compute node with
+      the rsp_token on NERSC.
     inputs: [dp02_disagreement_cases, rsp_token]
     decisions: [band]
     recipe:
-      command: bash -c 'python src/dp02_gallery.py {inputs.dp02_disagreement_cases} --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$TMPDIR/dp02_cutouts"'
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp02_disagreement_cases} --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp02_cutouts"'
+  - id: dp02_miss_accounting
+    type: metric
+    format: json
+    description: >-
+      Where the true host is lost, per method, over every hosted SN that
+      passed the sample cut's distance and host-row conditions (including the
+      SNe dropped because their true host has no DP0.2 object): cat1 true
+      host absent from the catalogue (no DP0.2 object under truth_match, or
+      not a primary object within the search radius); cat2 true host removed
+      by object-table cuts, split into point source (extendedness_cut),
+      unusable measurements (no usable radius or flux for the profile) and
+      failed candidate_quality; cat3 genuine association failure (the true
+      host survived but P_SBW(true) < p_true_threshold or SBW declared the SN
+      hostless under sbw_hostless_cut; for DLR another candidate is closer in
+      d_DLR or none is within dlr_max); else success. Counts, fractions and
+      Wilson 68% intervals for the headline association, and the same
+      recomputed in-process for every candidate_quality level (none, basic,
+      strict) with the fraction of candidates each cut removes.
+    inputs: [dp02_sample, dp02_associations, dp02_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, sbw_hostless_cut, p_true_threshold]
+    recipe:
+      command: python src/dp02_miss.py compute --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --workers 16 --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: dp02_miss_accounting_fig
+    type: figure
+    format: pdf
+    description: >-
+      (a) Stacked bars of success, cat3 (genuine failure), cat2 (object-table
+      cut) and cat1 (absent from the catalogue) for SBW and DLR side by side;
+      (b) the cat2 and cat3 fractions of both methods as candidate_quality
+      tightens (none, basic, strict). Drawn from dp02_miss_accounting.
+    inputs: [dp02_miss_accounting]
+    decisions: []
+    recipe:
+      command: python src/dp02_miss.py figure --accounting {inputs.dp02_miss_accounting} --output {output}
+  - id: dp02_credible_set
+    type: figure
+    format: pdf
+    description: >-
+      SBW credible sets: for t from 0.001 to 0.5 (log grid), the fraction of
+      SNe whose true host is in the set of surviving candidates with
+      P_SBW > t, versus t and versus the mean set size, over all SNe and
+      over SNe whose true host survived the object-table cuts; t = 0.01 and
+      0.05 marked, the knee of coverage versus size, and the coverage of the
+      top-k sets for k = 1, 2, 3.
+    inputs: [dp02_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py credible_set --associations {inputs.dp02_associations} --output {output}
+  - id: dp02_credible_set_metrics
+    type: metric
+    format: json
+    description: The dp02_credible_set curve (coverage, coverage given a surviving true host, mean set size, empty-set fraction per t), its values at t = 0.01 and 0.05, the knee (grid point farthest from the chord of coverage versus mean set size, axes scaled to [0, 1]) and the top-k coverages.
+    inputs: [dp02_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py credible_set_metrics --associations {inputs.dp02_associations} --output {output}
+  - id: dp02_pa_mirror
+    type: figure
+    format: pdf
+    description: >-
+      The DC2 position-angle mirror. Left: for elongated hosts (axis ratio
+      < 0.5 in both the cosmoDC2 truth of the dominant component and the
+      DP0.2 PSF-subtracted moments) with the SN beyond 1 R_e, the SN offset
+      angle (East of North, from the host truth position) relative to the
+      pipeline moment PA of the matched host, to its mirror image (-PA), and
+      to the cosmoDC2 position_angle_true. DC2 placed the SNe along
+      +position_angle_true while the rendered galaxies, as the pipeline
+      measures them, have PA = -position_angle_true, so the SNe line up with
+      the mirror of the measured galaxy and not with the galaxy itself.
+      Right: six deepCoadd cutouts (headline band, north up, east left) of
+      large elongated hosts whose two PAs differ by more than 60 degrees and
+      whose SN lies within 15 degrees of +PA at 1-3 R_e, with the cosmoDC2
+      ellipse (+PA, 2 R_e) and the pipeline moment ellipse (2 half-light
+      radii) drawn. No paper documents this; it is recorded in AGENTS.md.
+    inputs: [dp02_sample, dp02_associations, dp02_candidates, dp02_host_truth_shapes, rsp_token]
+    decisions: [band]
+    recipe:
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_pa_mirror.py --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --band {decisions.band} --token-file {inputs.rsp_token} --cache-dir "$T/dp02_cutouts" --output {output}'
+      resources: {cpus: 4, memory: 24Gi}
   # ---- Tier 2: DES ----  # ---- Tier 2: DES ----
   - id: des_associations
     type: table
@@ -659,6 +772,46 @@ decisions:
         label: "flb_best < 0.01"
       flb05:
         label: "flb_best < 0.05 (strict)"
+  candidate_quality:
+    label: Object-table quality cut on candidates before association
+    rationale: >-
+      Defined only from object-table columns (headline band), so the same cut
+      transfers unchanged to real data (DP2, OU2024); failing candidates are
+      dropped before SBW and DLR see them, and the miss accounting reports how
+      often that removes the true host (cat2) against the genuine failures it
+      prevents (cat3). Candidates with no usable radius or flux for the
+      profile are always dropped, under every option, as object-table
+      failures. Sibling counts (candidates sharing the parentObjectId within
+      the SN's search radius) barely separate true hosts from wrong picks on
+      DP0.2: 96% of true hosts are deblended children (median 10 siblings, 12
+      for wrong SBW picks), so the strict threshold is the smallest that
+      removes < 1% of true hosts (0.85% against 2.4% of wrong picks; baseline,
+      27 Oct 2026). Thresholds are chosen on DP0.2 and tested unchanged on
+      OU2024.
+    default: none
+    options:
+      none:
+        label: No quality cut (only the always-applied unusable-measurement drop)
+      basic:
+        label: "basic: drop {b}_cModel_flag set or cModelFlux / cModelFluxErr < 5"
+        insights: [gupta16_fitted_half_light_radius_degrades_dlr_matching]
+      strict:
+        label: "strict: basic plus {b}_blendedness > 0.5 or more than 50 siblings (same parentObjectId among the SN's candidates)"
+  p_true_threshold:
+    label: P_SBW below which the true host counts as excluded by SBW
+    rationale: >-
+      SBW returns a probability over candidates, so success is not "the most
+      probable host is the true host" but "the true host keeps a
+      non-negligible probability": below this P the true host is effectively
+      excluded by SBW. It splits the probabilistic agreement matrix and the
+      miss accounting (cat3); the credible-set figure shows coverage over a
+      continuous range of thresholds.
+    default: p005
+    options:
+      p001:
+        label: "P_SBW(true) < 0.01"
+      p005:
+        label: "P_SBW(true) < 0.05"
   exclude_suspect:
     label: Drop fits flagged as suspect (deblend-halo phantoms)
     default: keep

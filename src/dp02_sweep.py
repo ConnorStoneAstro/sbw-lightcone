@@ -12,7 +12,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from dp02_fig import plot_calibration, plt as _plt  # noqa: F401  (rcParams)
-from dp02_lib import BANDS, COLORS, DLR_MAX, PROFILES, PROFILE_LABEL, RADIUS, associate_all, calibration_curve, load_candidates, wilson
+from dp02_lib import BANDS, COLORS, DLR_MAX, PROFILES, PROFILE_LABEL, QUALITY, RADIUS, associate_all, p_true, calibration_curve, load_candidates, wilson
 
 
 def run(sample, candpath, bands, profiles, cfg, workers):
@@ -33,12 +33,13 @@ def panel_grid(res, keys, titles, out, suptitle):
     for ax, k, t in zip(axes.flat, keys, titles):
         df = res[k]
         _, ece = plot_calibration(ax, df)
-        rec = df.sbw_correct.mean()
-        ax.set_title(f"{t}\nrecovery {100 * rec:.2f}%  N={len(df):,}", fontsize=8)
+        ax.set_title(f"{t}\nmean P(true) {100 * p_true(df).mean():.2f}%, most probable = true "
+                     f"{100 * df.sbw_correct.mean():.2f}%  N={len(df):,}", fontsize=7)
         ax.set_xlabel(""); ax.set_ylabel("")
     for ax in axes.flat[n:]:
         ax.axis("off")
-    fig.supxlabel("top-host $P_{\\mathrm{SBW}}$", fontsize=9); fig.supylabel("fraction where top host is true host", fontsize=9)
+    fig.supxlabel("$P_{\\mathrm{SBW}}$ of the most probable host", fontsize=9)
+    fig.supylabel("fraction where the most probable host is the true host", fontsize=9)
     fig.suptitle(suptitle, fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
@@ -46,6 +47,7 @@ def panel_grid(res, keys, titles, out, suptitle):
 def band_dependence(res, profile, out, cfgtxt):
     bands = list(BANDS)
     rec = [res[(b, profile)].sbw_correct.mean() for b in bands]
+    mp = [p_true(res[(b, profile)]).mean() for b in bands]
     drec = [res[(b, profile)].dlr_correct.mean() for b in bands]
     agr = [res[(b, profile)].agree.mean() for b in bands]
     n = [len(res[(b, profile)]) for b in bands]
@@ -57,9 +59,12 @@ def band_dependence(res, profile, out, cfgtxt):
         changed.append(float((ref.reindex(s.index)[both] != s[both]).mean()))
     x = np.arange(6)
     fig, ax = plt.subplots(figsize=(5.2, 3.4))
-    for y, name, color, mk in [(rec, "SBW host = true host", COLORS["sbw"], "o"), (drec, "DLR host = true host", COLORS["dlr"], "s"),
-                               (agr, "SBW host = DLR host", COLORS["agree"], "^"), (changed, "SBW host differs from r band", "#7b4ea3", "d")]:
-        ax.plot(x, y, marker=mk, ms=5, color=color, label=name)
+    for y, name, color, mk, ls in [(mp, "mean $P_{\\mathrm{SBW}}$(true host)", COLORS["sbw"], "o", "-"),
+                                   (rec, "SBW most probable host = true host", COLORS["sbw"], "o", "--"),
+                                   (drec, "DLR host = true host", COLORS["dlr"], "s", "-"),
+                                   (agr, "SBW most probable host = DLR host", COLORS["agree"], "^", "-"),
+                                   (changed, "SBW most probable host differs from r band", "#7b4ea3", "d", "-")]:
+        ax.plot(x, y, marker=mk, ms=5, color=color, ls=ls, label=name, mfc="none" if ls == "--" else color)
     ax.set_xticks(x, bands); ax.set_xlabel("band"); ax.set_ylabel("fraction"); ax.set_ylim(0, 1.02)
     ax.legend(fontsize=7, loc="center right")
     ax.set_title(f"Band dependence ({PROFILE_LABEL[profile]})\n{cfgtxt}", fontsize=8)
@@ -74,6 +79,7 @@ def profile_table(res, band, out):
         _, ece = calibration_curve(df)
         ps, lo, hi = wilson(df.sbw_correct.sum(), n)
         rows.append({"profile": p, "label": PROFILE_LABEL[p], "band": band, "n": n,
+                     "mean_p_sbw_true": p_true(df).mean(),
                      "sbw_recovery": ps, "sbw_recovery_lo": lo, "sbw_recovery_hi": hi,
                      "dlr_recovery": df.dlr_correct.mean(), "agreement": df.agree.mean(),
                      "sbw_no_host": (df.sbw_objectId < 0).mean(), "median_p_true": np.nanmedian(df.p_sbw_true),
@@ -94,15 +100,14 @@ def main(argv=None):
     ap.add_argument("--dlr-max", required=True, choices=sorted(DLR_MAX))
     ap.add_argument("--dlr-radius", required=True, choices=["half_light", "moments"])
     ap.add_argument("--extendedness", required=True, choices=["ext05", "none"])
-    ap.add_argument("--radius-fallback", action="store_true",
-                    help="missing CModel radius -> other component's radius -> moment radius (else the candidate gets p = 0)")
+    ap.add_argument("--candidate-quality", required=True, choices=QUALITY)
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--max-sn", type=int, default=None, help="probe: subsample the SNe")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     cfg = dict(search_radius=a.search_radius, dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness,
-               radius_fallback=a.radius_fallback)
-    cfgtxt = f"{a.search_radius} | d_DLR<={a.dlr_max[1:]} ({a.dlr_radius}) | {a.extendedness}"
+               quality=a.candidate_quality)
+    cfgtxt = f"{a.search_radius} | d_DLR<={a.dlr_max[1:]} ({a.dlr_radius}) | {a.extendedness} | quality {a.candidate_quality}"
     sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     if a.max_sn:
         sample = sample.sample(a.max_sn, random_state=0)

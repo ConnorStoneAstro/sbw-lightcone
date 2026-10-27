@@ -40,8 +40,24 @@ SERSIC_N = {"exponential": 1.0, "sersic": 4.0, "moments": 0.5}
 COLORS = {"sbw": "#2a6fdb", "dlr": "#e07b39", "agree": "#555555", "ref": "#999999"}
 
 PER_BAND = ["cModelFlux", "bdReB", "bdReD", "bdFluxB", "bdFluxD",
-            "ixx", "iyy", "ixy", "ixxPSF", "iyyPSF", "ixyPSF", "extendedness"]
-GENERAL = ["sn_id", "objectId", "coord_ra", "coord_dec", "sep_arcsec", "refExtendedness"]
+            "ixx", "iyy", "ixy", "ixxPSF", "iyyPSF", "ixyPSF", "extendedness",
+            "cModelFluxErr", "cModel_flag", "blendedness"]
+GENERAL = ["sn_id", "objectId", "coord_ra", "coord_dec", "sep_arcsec", "refExtendedness",
+           "parentObjectId", "parent_nChild"]
+
+# candidate_quality: object-table cuts applied to candidates before association (headline band)
+QUALITY = ("none", "basic", "strict")
+SNR_MIN = 5.0          # basic: cModelFlux / cModelFluxErr
+BLEND_MAX = 0.5        # strict: blendedness above this is dropped
+# strict: more siblings (same parent among the SN's candidates within the search radius) than this is dropped.
+# Sibling counts barely separate true hosts from wrong picks on DP0.2 (baseline r30, 27 Oct 2026: 96% of true
+# hosts are deblended children, median 10 siblings vs 12 for wrong SBW picks; > 30 removes 8.7% of true hosts and
+# 14.5% of wrong picks); 50 is the smallest value that removes < 1% of true hosts (0.85%, wrong picks 2.4%).
+SIBLING_MAX = 50
+P_TRUE = {"p001": 0.01, "p005": 0.05}   # below this P_SBW the true host is effectively excluded
+P_TOP_MIN = 1e-3       # p_top keeps every candidate probability above this
+# true_host_status: why the true host is or is not among the candidates SBW and DLR see, first reason wins
+STATUS = ("absent", "point_source", "unusable", "quality", "kept")
 
 
 def load_candidates(path, bands=BANDS):
@@ -78,27 +94,21 @@ def moment_shape(ixx, iyy, ixy, pxx, pyy, pxy):
     return q, phi, l1, l2, valid
 
 
-def light_model(c, band, profile, radius_fallback=False):
-    """Semi-major half-light radius (arcsec), flux (nJy), n, q, phi and a validity mask.
-
-    With ``radius_fallback`` a candidate whose own CModel radius is missing or non-positive takes the other
-    CModel component's radius, then the moment half-light radius, instead of dropping out of SBW (p = 0),
-    which otherwise lets a galaxy far away take P = 1."""
+def light_model(c, band, profile):
+    """Semi-major half-light radius (arcsec), flux (nJy), n, q, phi and a validity mask. A candidate
+    without a usable radius or flux for the profile is an object-table failure and is dropped upstream."""
     g = lambda k: c[f"{band}_{k}"].to_numpy(dtype=float)
     flux = g("cModelFlux")
     q, phi, l1, l2, valid = moment_shape(g("ixx"), g("iyy"), g("ixy"), g("ixxPSF"), g("iyyPSF"), g("ixyPSF"))
     a_mom = GAUSS_HALF_LIGHT * np.sqrt(l1) * PIX
     if profile == "exponential":
-        a, a2 = g("bdReD") * PIX / np.sqrt(q), g("bdReB") * PIX / np.sqrt(q)
+        a = g("bdReD") * PIX / np.sqrt(q)
     elif profile == "sersic":
-        a, a2 = g("bdReB") * PIX / np.sqrt(q), g("bdReD") * PIX / np.sqrt(q)
+        a = g("bdReB") * PIX / np.sqrt(q)
     elif profile == "moments":
-        a = a2 = a_mom
+        a = a_mom
     else:
         raise ValueError(f"profile {profile!r} is not one of {PROFILES} (stamps need images, not available here)")
-    if radius_fallback:
-        good = lambda r: np.isfinite(r) & (r > 0)
-        a = np.where(good(a), a, np.where(good(a2), a2, a_mom))
     ok = valid & np.isfinite(a) & (a > 0) & np.isfinite(flux) & (flux > 0)
     return a, flux, SERSIC_N[profile], q, phi, ok
 
@@ -122,21 +132,71 @@ def dlr_ellipse(c, band, dlr_radius, q, l1, l2):
     return a, b, ok
 
 
+def siblings(parent):
+    """Number of other rows in ``parent`` with the same non-zero parentObjectId (0 = not deblended)."""
+    parent = np.nan_to_num(np.asarray(parent, dtype=float), nan=0.0).astype(np.int64)
+    _, inv, cnt = np.unique(parent, return_inverse=True, return_counts=True)
+    return np.where(parent > 0, cnt[inv] - 1, 0)
+
+
+def quality_mask(c, band, level, n_sib):
+    """True for candidates that pass the candidate_quality cut, from object-table columns only."""
+    keep = np.ones(len(c), bool)
+    if level == "none":
+        return keep
+    g = lambda k: c[f"{band}_{k}"].to_numpy(dtype=float)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        snr = g("cModelFlux") / g("cModelFluxErr")
+    keep &= ~c[f"{band}_cModel_flag"].fillna(True).to_numpy(dtype=bool) & (snr >= SNR_MIN)
+    if level == "strict":
+        if SIBLING_MAX is None:
+            raise ValueError("SIBLING_MAX is not set in dp02_lib.py")
+        keep &= ~(g("blendedness") > BLEND_MAX) & (n_sib <= SIBLING_MAX)
+    elif level != "basic":
+        raise ValueError(level)
+    return keep
+
+
 def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_max, dlr_radius, extendedness,
-                  radius_fallback=False):
-    """Associate one SN against its candidate rows ``c`` (a DataFrame slice)."""
-    out = {"n_cand": len(c), "n_cand_used": 0, "true_in_cand": False,
-           "sbw_objectId": -1, "p_sbw_max": np.nan, "p_sbw_true": np.nan, "rank_true": -1,
+                  quality="none"):
+    """Associate one SN against its candidate rows ``c`` (a DataFrame slice).
+
+    The candidate list is cut in order: search radius, extendedness_cut (point sources), no usable radius or
+    flux for the profile (always), candidate_quality; ``true_host_status`` records which step removed the
+    true host (``absent`` when it is not a primary object within the search radius) and n_cut_* how many
+    candidates each step removed."""
+    out = {"n_cand": len(c), "n_cand_radius": 0, "n_cut_point_source": 0, "n_cut_unusable": 0, "n_cut_quality": 0,
+           "n_cand_used": 0, "true_in_cand": False, "true_host_status": "absent", "n_sib_true": -1,
+           "sbw_objectId": -1, "p_sbw_max": np.nan, "p_sbw_true": np.nan, "rank_true": -1, "n_sib_sbw": -1,
+           "p_top": [],
            "flb_best": np.nan, "flb_max": np.nan, "flb_true": np.nan, "m_true": np.nan, "sep_sbw": np.nan,
            "dlr_objectId": -1, "d_dlr_min": np.nan, "d_dlr_true": np.nan, "d_dlr_sbw": np.nan, "sep_dlr": np.nan,
            "sep_true": np.nan}
     if len(c) == 0:
         return out
-    keep = c["sep_arcsec"].to_numpy() <= radius
+    c = c[c["sep_arcsec"].to_numpy() <= radius]
+    out["n_cand_radius"] = len(c)
+    if len(c) == 0:
+        return out
+    n_sib = siblings(c["parentObjectId"].to_numpy())
+    istrue = c["objectId"].to_numpy() == host_objectId
+    if istrue.any():
+        out["true_host_status"] = "kept"
+        out["n_sib_true"] = int(n_sib[istrue][0])
+    steps = []
     if extendedness == "ext05":
-        ext = c["refExtendedness"].to_numpy(dtype=float)
-        keep &= ext >= 0.5
-    c = c[keep]
+        steps.append(("point_source", c["refExtendedness"].to_numpy(dtype=float) >= 0.5))
+    ok_all = light_model(c, band, profile)[-1]
+    steps.append(("unusable", ok_all))
+    steps.append(("quality", quality_mask(c, band, quality, n_sib)))
+    keep = np.ones(len(c), bool)
+    for name, m in steps:
+        drop = keep & ~m
+        out[f"n_cut_{name}"] = int(drop.sum())
+        if (drop & istrue).any():
+            out["true_host_status"] = name
+        keep &= m
+    c, n_sib = c[keep], n_sib[keep]
     oid = c["objectId"].to_numpy()
     out["n_cand_used"] = len(c)
     if len(c) == 0:
@@ -148,23 +208,23 @@ def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_ma
     if it >= 0:
         out["sep_true"] = sep[it]
     x, y = sky_to_plane(c["coord_ra"].to_numpy(), c["coord_dec"].to_numpy(), sn_ra, sn_dec)
-    a, flux, n, q, phi, ok = light_model(c, band, profile, radius_fallback)
+    a, flux, n, q, phi, ok = light_model(c, band, profile)
     _, _, l1, l2, _ = moment_shape(*(c[f"{band}_{k}"].to_numpy(dtype=float)
                                      for k in ("ixx", "iyy", "ixy", "ixxPSF", "iyyPSF", "ixyPSF")))
-    # ---- SBW
-    if ok.any():
-        res = sbw_model(0.0, 0.0, x[ok], y[ok], r_eff=a[ok], flux=flux[ok], n=n, q=q[ok], phi=phi[ok])
-        p = np.full(len(c), 0.0); p[ok] = np.nan_to_num(res.p_sbw)
-        flb = np.full(len(c), np.nan); flb[ok] = res.frac_light_beyond
-        m = np.full(len(c), np.nan); m[ok] = res.m
-        out["flb_max"] = float(np.nanmax(flb)) if np.isfinite(flb).any() else np.nan
-        k = int(np.argmax(p))
-        if p[k] > 0:
-            out["sbw_objectId"] = int(oid[k]); out["p_sbw_max"] = p[k]; out["flb_best"] = flb[k]
-            out["sep_sbw"] = sep[k]
-        if it >= 0:
-            out["p_sbw_true"] = p[it]; out["flb_true"] = flb[it]; out["m_true"] = m[it]
-            out["rank_true"] = int((p > p[it]).sum()) + 1
+    # ---- SBW (every remaining candidate has a usable light model)
+    res = sbw_model(0.0, 0.0, x, y, r_eff=a, flux=flux, n=n, q=q, phi=phi)
+    p = np.nan_to_num(np.asarray(res.p_sbw, dtype=float))
+    flb = np.asarray(res.frac_light_beyond, dtype=float)
+    m = np.asarray(res.m, dtype=float)
+    out["flb_max"] = float(np.nanmax(flb)) if np.isfinite(flb).any() else np.nan
+    out["p_top"] = np.sort(p[p > P_TOP_MIN])[::-1].astype(np.float32).tolist()
+    k = int(np.argmax(p))
+    if p[k] > 0:
+        out["sbw_objectId"] = int(oid[k]); out["p_sbw_max"] = p[k]; out["flb_best"] = flb[k]
+        out["sep_sbw"] = sep[k]; out["n_sib_sbw"] = int(n_sib[k])
+    if it >= 0:
+        out["p_sbw_true"] = p[it]; out["flb_true"] = flb[it]; out["m_true"] = m[it]
+        out["rank_true"] = int((p > p[it]).sum()) + 1
     # ---- DLR
     da, db, dok = dlr_ellipse(c, band, dlr_radius, q, l1, l2)
     d = np.full(len(c), np.inf)
@@ -186,7 +246,7 @@ _G = {}
 
 
 def associate_all(sample: pd.DataFrame, cand: pd.DataFrame, *, band, profile, search_radius, dlr_max,
-                  dlr_radius, extendedness, radius_fallback=False, workers=None) -> pd.DataFrame:
+                  dlr_radius, extendedness, quality="none", workers=None) -> pd.DataFrame:
     """Associate every SN of ``sample`` using its rows in ``cand`` (both keyed by sn_id)."""
     workers = workers or int(os.environ.get("DP02_WORKERS", "16"))
     t0 = time.time()
@@ -201,7 +261,7 @@ def associate_all(sample: pd.DataFrame, cand: pd.DataFrame, *, band, profile, se
     _G["cand"] = cand
     _G["starts"] = np.column_stack([starts, ends])
     _G["cfg"] = dict(band=band, profile=profile, radius=RADIUS[search_radius], dlr_max=DLR_MAX[dlr_max],
-                     dlr_radius=dlr_radius, extendedness=extendedness, radius_fallback=radius_fallback)
+                     dlr_radius=dlr_radius, extendedness=extendedness, quality=quality)
     n = len(sample)
     chunks = [(lo, min(lo + 2000, n)) for lo in range(0, n, 2000)]
     rows = []
@@ -215,8 +275,17 @@ def associate_all(sample: pd.DataFrame, cand: pd.DataFrame, *, band, profile, se
     out["dlr_hostless"] = out["dlr_objectId"] < 0
     out["agree"] = (out["sbw_objectId"] >= 0) & (out["sbw_objectId"] == out["dlr_objectId"])
     for k, v in dict(band=band, profile=profile, search_radius=search_radius, dlr_max=dlr_max,
-                     dlr_radius=dlr_radius, extendedness=extendedness, radius_fallback=radius_fallback).items():
+                     dlr_radius=dlr_radius, extendedness=extendedness, candidate_quality=quality).items():
         out.attrs[k] = v
+    # what the object-table cuts removed: candidates (pairs within the search radius) and true hosts
+    nr = max(int(out.n_cand_radius.sum()), 1)
+    for k in ("point_source", "unusable", "quality"):
+        out.attrs[f"frac_candidates_cut_{k}"] = float(out[f"n_cut_{k}"].sum() / nr)
+    hosted = out.host_objectId.to_numpy() >= 0
+    if hosted.any():
+        st = out.true_host_status.to_numpy()[hosted]
+        for k in STATUS:
+            out.attrs[f"frac_true_hosts_{k}"] = float((st == k).mean())
     print(f"associated {n} SNe ({band}, {profile}) in {time.time() - t0:.0f}s", file=sys.stderr)
     return out
 
@@ -256,6 +325,62 @@ def matrix_cells(df, cut, truth_col="host_objectId"):
     out["both_wrong_same_object"] = int((rows["sbw_wrong"] & cols["dlr_wrong"] & (s == d)).sum())
     out["n"] = len(df)
     return out
+
+
+def p_true(df):
+    """P_SBW of the true host, 0 where it is not among the surviving candidates."""
+    return np.nan_to_num(df["p_sbw_true"].to_numpy(dtype=float), nan=0.0)
+
+
+def prob_rows(df, cut, t):
+    """SBW outcome rows of the probabilistic matrix: hostless (flb < cut) first, otherwise the band of
+    P_SBW(true host): > 0.5, t..0.5, < t (excluded, including a true host that is not a candidate)."""
+    hl = sbw_hostless(df, cut)
+    p = p_true(df)
+    return {"p_gt_0p5": ~hl & (p > 0.5), "p_t_to_0p5": ~hl & (p >= t) & (p <= 0.5),
+            "p_lt_t": ~hl & (p < t), "sbw_hostless": hl}
+
+
+def dlr_cols(df, truth_col="host_objectId"):
+    t, d = df[truth_col].to_numpy(), df["dlr_objectId"].to_numpy()
+    return {"dlr_true": (d == t) & (t >= 0), "dlr_wrong": (d >= 0) & (d != t), "dlr_hostless": d < 0}
+
+
+def prob_matrix_cells(df, cut, t):
+    """4x3 counts: SBW P_SBW(true) band / hostless x DLR true / wrong / hostless."""
+    rows, cols = prob_rows(df, cut, t), dlr_cols(df)
+    out = {f"{r}/{c}": int((rm & cm).sum()) for r, rm in rows.items() for c, cm in cols.items()}
+    out.update(n=len(df), p_true_threshold=t, sbw_hostless_cut=cut)
+    return out
+
+
+MISS = ("success", "genuine", "cut", "absent")
+MISS_LABEL = {"success": "success", "genuine": "cat3: genuine association failure",
+              "cut": "cat2: true host removed by object-table cuts",
+              "absent": "cat1: true host absent from the catalogue"}
+
+
+def miss_categories(df, cut, t):
+    """Per-SN outcome for SBW and DLR (one of MISS) plus the sub-category, from an association table.
+
+    absent: the true host is not a primary object within the search radius; cut: removed by the extendedness
+    cut, by having no usable radius / flux, or by candidate_quality; genuine: the true host survived but SBW
+    gives it P < t or declares the SN hostless (flb < cut), resp. DLR assigns another candidate or nothing."""
+    st = df["true_host_status"].to_numpy()
+    absent, kept = st == "absent", st == "kept"
+    cutm = ~absent & ~kept
+    hl = sbw_hostless(df, cut)
+    p = p_true(df)
+    sbw = np.where(absent, "absent", np.where(cutm, "cut", np.where(hl | (p < t), "genuine", "success")))
+    sbw_sub = np.where(absent, "absent", np.where(cutm, st, np.where(hl, "sbw_hostless",
+                                                                      np.where(p < t, "p_below_threshold", "success"))))
+    d, tr = df["dlr_objectId"].to_numpy(), df["host_objectId"].to_numpy()
+    dlr_unusable = kept & ~np.isfinite(df["d_dlr_true"].to_numpy(dtype=float))
+    dlr = np.where(absent, "absent", np.where(cutm | dlr_unusable, "cut",
+                                              np.where((d == tr) & (tr >= 0), "success", "genuine")))
+    dlr_sub = np.where(absent, "absent", np.where(cutm, st, np.where(dlr_unusable, "unusable",
+                       np.where(dlr == "success", "success", np.where(d >= 0, "other_closer", "beyond_dlr_max")))))
+    return {"sbw": sbw, "sbw_sub": sbw_sub, "dlr": dlr, "dlr_sub": dlr_sub}
 
 
 def random_cells(rnd, cut):
