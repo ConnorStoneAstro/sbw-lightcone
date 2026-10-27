@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_candidates",
+  "universe_id": "dlr_moments",
+  "recipe": "python src/dp02_candidates.py --truth /global/cfs/cdirs/lsst/shared/DC2-prod/Run2.2i/truth/truth_merged_summary_v1-0-0/match_dr6_v2 --objects data/dp02_objectTable_index.csv --search-radius r30 --output results/dlr_moments/dp02_candidates.parquet",
+  "definition_version": "sha256:58c2f4fa4d16d2f1402a2166126a6208f8b3ce1e6d3fe071e5e25c9c257a4b54",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:fbc46d625de78e09083e9b1e965b7cc81d2d391c7fac44ef320de6da3756846a",
+  "decisions": {
+    "search_radius": "r30"
+  },
+  "input_versions": {
+    "dp02_sn_truth": "sha256:83069a3b7ef404ad82d272050951efad4b60a3835d4a11fa6d2a03be434edb0a",
+    "dp02_object": "sha256:94713f6f20ab2e5b74df190eb00a69044261dffc2823a6d778b07162c6468af7"
+  },
+  "git_sha": "77c6095e253cc3eca2c8e871b2f09d1892cb04b0",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-27T17:33:30.762+00:00",
+  "finished_at": "2026-10-27T17:44:12.406+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
