@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_calibration_by_band",
+  "universe_id": "physical",
+  "recipe": "python src/dp02_sweep.py band --sample results/physical/dp02_sample.parquet --candidates results/physical/dp02_candidates.parquet --profile exponential --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --candidate-quality none --output results/physical/dp02_calibration_by_band.pdf",
+  "definition_version": "sha256:2c2e5ad3e3be2f88889d9b1b95f6e944efaa09faadfbd1a726dda16464db6e71",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:37ddccaafb79c14cfe44589f1f3f432a5d65a2c52b60347cdbe64dbb97941b13",
+  "decisions": {
+    "sbw_profile": "exponential",
+    "search_radius": "r30",
+    "dlr_max": "d4",
+    "dlr_radius": "half_light",
+    "extendedness_cut": "ext05",
+    "candidate_quality": "none"
+  },
+  "input_versions": {
+    "dp02_sample": "sha256:bd0d4a27837a04c5229b932e69f4232865fdf254bfa4a4e87a2d3ef46af1bc51",
+    "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
+  },
+  "git_sha": "4dc2a7a2fea5e4ad0614efb2fe19cde25e2b8979",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-27T22:33:21.641+00:00",
+  "finished_at": "2026-10-27T22:44:05.222+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
