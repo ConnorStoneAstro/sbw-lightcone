@@ -36,10 +36,13 @@ def account(df, cut, t, n_unmatched):
     for m in ("sbw", "dlr"):
         cat, sub = mc[m], mc[f"{m}_sub"]
         r, entered = {}, n
-        for c in STAGES + ("success",):
+        for c in STAGES:
             k = int((cat == c).sum()) + (n_unmatched if c == "absent" else 0)
             r[c] = {**frac(k, n), "n_entered": entered, "conditional": frac(k, entered)}
             entered -= k
+        k = int((cat == "success").sum())   # conditional: of the SNe that entered cat4 (a host was assigned)
+        r["success"] = {**frac(k, n), "n_entered": r["genuine"]["n_entered"],
+                        "conditional": frac(k, r["genuine"]["n_entered"])}
         r["sub"] = {"absent": {"host_unmatched": n_unmatched, "not_primary_in_radius": int((sub == "absent").sum())},
                     "cut": {k: int((sub == k).sum()) for k in ("point_source", "unusable", "quality")},
                     "hostless": {"no_host_cut": int((sub == "hostless").sum())},
@@ -132,7 +135,7 @@ def figure(a):
                       "cat4\ngenuine\nfailure"], fontsize=7)
     ac.set_ylabel("fraction lost, of the SNe reaching the stage"); ac.legend(fontsize=7)
     ac.grid(axis="x", visible=False)
-    ac.set_title("(b) conditional loss per stage [%]", fontsize=9, loc="left")
+    ac.set_title("(b) conditional loss per stage (labels in %)", fontsize=9, loc="left")
     qs = list(res["quality_sweep"])
     xq = np.arange(len(qs))
     for m, color, dx in (("sbw", COLORS["sbw"], -0.06), ("dlr", COLORS["dlr"], 0.06)):
@@ -142,7 +145,7 @@ def figure(a):
             aq.errorbar(xq + dx, f, yerr=[f - e[:, 0], e[:, 1] - f], color=color, ls=ls, marker=mk, ms=4, capsize=2,
                         lw=1.2, label=f"{m.upper()} {SHORT[c]}")
     aq.set_xticks(xq, qs); aq.set_xlabel("candidate_quality"); aq.set_ylabel("fraction of hosted SNe")
-    aq.set_ylim(0, None); aq.legend(fontsize=6)
+    aq.set_ylim(0, None); aq.legend(fontsize=6, loc="center right")
     aq.set_title("(c) cat2-cat4 as the object-table cuts tighten", fontsize=9, loc="left")
     s = res["settings"]
     fig.suptitle(f"Where the true host is lost on {cat}: catalogue, object-table cuts, no-host cut, or the association\n"
