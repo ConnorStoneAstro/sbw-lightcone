@@ -8,7 +8,9 @@ that holds at least one primary object; the rest are redrawn.  This keeps
 random positions off the unobserved corners of edge tracts, where they would
 be trivially hostless.  SNe in tracts without an objectTable file get no
 random position.  The random ids are the negated truth SN ids, so they never
-collide with a real sn_id.
+collide with a real sn_id.  With ``--sne`` the transients (sn_id, tract) come
+from a table instead (OU2024: ou24_sn_table), and a tract split over several
+objectTable files (OU2024 runs hold disjoint patches) is drawn over their union.
 """
 from __future__ import annotations
 
@@ -33,11 +35,11 @@ def _sne(f):
 
 
 def _draw(args):
-    path, tract, n, seed = args
-    t = pq.read_table(path, columns=["coord_ra", "coord_dec", "detect_isPrimary"],
-                      filters=[("detect_isPrimary", "==", True)])
-    ra = t["coord_ra"].to_numpy(zero_copy_only=False)
-    dec = t["coord_dec"].to_numpy(zero_copy_only=False)
+    paths, tract, n, seed = args
+    ts = [pq.read_table(p, columns=["coord_ra", "coord_dec", "detect_isPrimary"],
+                        filters=[("detect_isPrimary", "==", True)]) for p in paths]
+    ra = np.concatenate([t["coord_ra"].to_numpy(zero_copy_only=False) for t in ts])
+    dec = np.concatenate([t["coord_dec"].to_numpy(zero_copy_only=False) for t in ts])
     if len(ra) == 0:
         return tract, None
     cosd = np.cos(np.deg2rad(np.median(dec)))
@@ -61,7 +63,9 @@ def _draw(args):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--truth", required=True, help="directory of DC2 merged truth tract parquet files")
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--truth", help="directory of DC2 merged truth tract parquet files")
+    src.add_argument("--sne", help="parquet of transients (sn_id, tract), e.g. ou24_sn_table")
     ap.add_argument("--objects", required=True, help="csv index of the DP0.2 objectTable tract files")
     ap.add_argument("--seed", type=int, default=20261027)
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "16")))
@@ -69,12 +73,17 @@ def main(argv=None):
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     t0 = time.time()
-    tfiles = sorted(glob.glob(os.path.join(a.truth, "truth_tract*.parquet")))
-    with Pool(a.workers) as pool:
-        sn = pd.concat(pool.map(_sne, tfiles), ignore_index=True).drop_duplicates("id")
+    if a.sne:
+        sn = pd.read_parquet(a.sne, columns=["sn_id", "tract"]).rename(columns={"sn_id": "id"})
+        sn = sn.astype({"id": np.int64}).drop_duplicates("id")
+    else:
+        tfiles = sorted(glob.glob(os.path.join(a.truth, "truth_tract*.parquet")))
+        with Pool(a.workers) as pool:
+            sn = pd.concat(pool.map(_sne, tfiles), ignore_index=True).drop_duplicates("id")
     sn = sn.sort_values("id").reset_index(drop=True)
-    files = {int(re.search(r"objectTable_tract_(\d+)_", p).group(1)): p
-             for p in pd.read_csv(a.objects)["path"]}
+    files = {}
+    for p in pd.read_csv(a.objects)["path"]:
+        files.setdefault(int(re.search(r"objectTable_tract_(\d+)_", p).group(1)), []).append(p)
     counts = sn.groupby("tract").size()
     tracts = [int(t) for t in counts.index if int(t) in files]
     if a.max_tracts:
