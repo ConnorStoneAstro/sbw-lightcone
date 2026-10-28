@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "ou24_recovery_vs_redshift",
+  "universe_id": "dlr_moments",
+  "recipe": "python src/dp02_fig.py recovery_vs --tier ou24 --x redshift --associations results/dlr_moments/ou24_associations.parquet --output results/dlr_moments/ou24_recovery_vs_redshift.pdf",
+  "definition_version": "sha256:48d24040bcc1cd58fb2499a93278ad64c5db35d6e91a420f7dbe2c5d5d677e05",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:d3363e9eb8bda231728460049772302178960080ee81ec5dfdc2d78edbddde85",
+  "decisions": {},
+  "input_versions": {
+    "ou24_associations": "sha256:9cdf425a14b18b537c122c01faad1554cc8f8718c8c90ffb23c4cfb743e0a259"
+  },
+  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-28T15:03:33.252+00:00",
+  "finished_at": "2026-10-28T15:04:16.423+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
