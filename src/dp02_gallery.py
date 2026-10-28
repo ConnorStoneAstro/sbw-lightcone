@@ -151,6 +151,9 @@ def patch_table(band: str, tap_token: str, cache_dir: Path) -> pd.DataFrame:
         raise RuntimeError(f"ObsCore returned no {COADD_SUBTYPE} rows for band {band!r}.")
     df["dataset_id"] = [parse_qs(urlparse(str(u)).query)["ID"][0] for u in df["access_url"]]
     corners = [np.array(_POLY_RE.match(str(r)).group(1).split(), float).reshape(-1, 2) for r in df["s_region"]]
+    for c in corners:   # a patch straddling RA = 0: unwrap to a contiguous range (ra_min < 0)
+        if np.ptp(c[:, 0]) > 180:
+            c[:, 0] = np.where(c[:, 0] > 180, c[:, 0] - 360, c[:, 0])
     df["ra_min"] = [c[:, 0].min() for c in corners]
     df["ra_max"] = [c[:, 0].max() for c in corners]
     df["dec_min"] = [c[:, 1].min() for c in corners]
@@ -164,10 +167,10 @@ def patch_table(band: str, tap_token: str, cache_dir: Path) -> pd.DataFrame:
 def best_patch(patches: pd.DataFrame, ra: float, dec: float) -> pd.Series:
     """Patch containing (ra, dec) with the largest margin to its edges (least clipping)."""
     cosd = np.cos(np.radians(dec))
-    margin = np.minimum.reduce([
-        (ra - patches["ra_min"].to_numpy()) * cosd, (patches["ra_max"].to_numpy() - ra) * cosd,
+    margin = np.maximum.reduce([np.minimum.reduce([
+        (r - patches["ra_min"].to_numpy()) * cosd, (patches["ra_max"].to_numpy() - r) * cosd,
         dec - patches["dec_min"].to_numpy(), patches["dec_max"].to_numpy() - dec,
-    ])
+    ]) for r in (ra, ra - 360)])
     i = int(np.argmax(margin))
     if margin[i] <= 0:
         raise LookupError(f"No {TITLE} covers ({ra:.5f}, {dec:.5f}).")
