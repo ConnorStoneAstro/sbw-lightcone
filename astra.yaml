@@ -715,7 +715,7 @@ outputs:
     inputs: [ou24_sn_table, ou24_object]
     decisions: [search_radius]
     recipe:
-      command: python src/dp02_candidates.py --positions {inputs.ou24_sn_table} --objects {inputs.ou24_object} --search-radius {decisions.search_radius} --output {output}
+      command: python src/dp02_candidates.py --positions {inputs.ou24_sn_table} --objects {inputs.ou24_object} --search-radius {decisions.search_radius} --workers 16 --output {output}
       resources: {cpus: 16, memory: 56Gi}
   - id: ou24_sample
     type: table
@@ -760,7 +760,7 @@ outputs:
     inputs: [ou24_random_positions, ou24_object]
     decisions: [search_radius]
     recipe:
-      command: python src/dp02_candidates.py --positions {inputs.ou24_random_positions} --objects {inputs.ou24_object} --search-radius {decisions.search_radius} --output {output}
+      command: python src/dp02_candidates.py --positions {inputs.ou24_random_positions} --objects {inputs.ou24_object} --search-radius {decisions.search_radius} --workers 16 --output {output}
       resources: {cpus: 16, memory: 56Gi}
   - id: ou24_random_associations
     type: table
