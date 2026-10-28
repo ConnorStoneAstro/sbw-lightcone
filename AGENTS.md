@@ -279,6 +279,14 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
     flb_best. 0.0215 is > 2x from 0.01 and from 0.05, so `sbw_hostless_cut`
     gained `flb02` (0.02); the default stays flb01. Do not retune these on
     DP0.2 before OU2024; they are meant to transfer unchanged.
+  * *Other universes.* truth_nearest (310,796): mean P 0.9693, argmax 97.30%,
+    DLR 91.14%, SBW cat3 7.14%, knee t 0.042, J flb 0.0215 / d 2.7.
+    sep10 (333,265): mean P 0.9260, argmax 92.94%, DLR 85.12%, SBW cat3
+    13.56% vs DLR 13.64%, knee t 0.028 (cov 95.34%, size 1.093), J flb 0.018
+    / d 2.9. dlr_moments: SBW as baseline, DLR 89.19%, DLR cat3 9.73%,
+    J-optimal d_DLR 3.6 (J 0.773). The J-optimal flb is 0.018-0.032 in every
+    universe, which is the case for flb02. Whole run: baseline+physical 2 h
+    25 min, the other three 3 h 50 min on 16 CPUs (two 4 h allocations).
   * *PA mirror, as a prior-insight-like note* (`dp02_pa_mirror`, no
     literature quote yet). 7,664 elongated hosts (q < 0.5 in truth and in
     moments, SN beyond 1 R_e). SN offset angle against the pipeline moment
