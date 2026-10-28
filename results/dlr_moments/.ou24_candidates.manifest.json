@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "ou24_candidates",
   "universe_id": "dlr_moments",
-  "recipe": "python src/dp02_candidates.py --positions results/dlr_moments/ou24_sn_table.parquet --objects data/ou24_objectTable_index.csv --search-radius r30 --output results/dlr_moments/ou24_candidates.parquet",
-  "definition_version": "sha256:381685f95837afb022b00be83092d716b833efbd2fbe7b251e583f11a62cd02b",
+  "recipe": "python src/dp02_candidates.py --positions results/dlr_moments/ou24_sn_table.parquet --objects data/ou24_objectTable_index.csv --search-radius r30 --workers 16 --output results/dlr_moments/ou24_candidates.parquet",
+  "definition_version": "sha256:d66f0b1aa35cc8f4a584a094fff8540ca7e57620f9961ab8218dfa14825d58cb",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:ae0b65b6f0cec0212ebf608976b09b5750309a63d361ccb33fceaa64b50709cd",
+  "data_version": "sha256:03cb20801d8df4469ba3225e7c56951588f29ef25b42cfa303cefbe0af78f83f",
   "decisions": {
     "search_radius": "r30"
   },
@@ -13,7 +13,7 @@
     "ou24_sn_table": "sha256:787f2c2cf90994d47b909d83d5368375aca447ada33568f016dbab25a5890010",
     "ou24_object": "sha256:9952f961603a6d8162fd99f6ab588f2a01cef90efff722298781ddb55c38647d"
   },
-  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
+  "git_sha": "72bced872e881980f3722e3bb3bd7c9e1b954a18",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -23,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T14:23:16.507+00:00",
-  "finished_at": "2026-10-28T14:28:17.274+00:00",
+  "started_at": "2026-10-28T18:20:17.663+00:00",
+  "finished_at": "2026-10-28T18:29:10.291+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
