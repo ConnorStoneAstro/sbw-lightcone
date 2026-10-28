@@ -2,15 +2,15 @@
   "schema_version": 1,
   "output_id": "dp02_credible_set",
   "universe_id": "baseline",
-  "recipe": "python src/dp02_fig.py credible_set --associations results/baseline/dp02_associations.parquet --output results/baseline/dp02_credible_set.pdf",
-  "definition_version": "sha256:be9d198d46e540a4787bf72f3d0a08cbdf7177b1a83860fc6280f86971ba6c6a",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:17082c0337126869dbc9a9b1344c2214bd4b66c5fd6e64a82662e862ec90ac1e",
+  "recipe": "python src/dp02_fig.py credible_set --tier dp02 --associations results/baseline/dp02_associations.parquet --output results/baseline/dp02_credible_set.pdf",
+  "definition_version": "sha256:e9511e605eb919e008f7504b0aea47615743339db2da1aa2ccecade13a81b4d7",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:f9bf7add9d66d242e22d8adee029d9a4586716d0b8a93581e8852527a77d16f7",
   "decisions": {},
   "input_versions": {
     "dp02_associations": "sha256:7936fad192e6fbc5fc66f229556e550e7e5779f3a2a07303fff845c1a2b2e9ff"
   },
-  "git_sha": "4dc2a7a2fea5e4ad0614efb2fe19cde25e2b8979",
+  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T21:17:15.742+00:00",
-  "finished_at": "2026-10-27T21:19:40.434+00:00",
+  "started_at": "2026-10-28T15:53:35.053+00:00",
+  "finished_at": "2026-10-28T15:53:58.719+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
