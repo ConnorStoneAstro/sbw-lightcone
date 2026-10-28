@@ -418,6 +418,72 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   Connor's earlier SBW csvs (8k and 122k); `dp2_cross_method_agreement`
   compares SBW with those. Candidates come from the DP2 Object table (both
   MultiProFit fits) over grouped TAP or the NERSC HATS `object_collection`.
+- **DP2 clean-sample chain (28 Oct 2026, branch `dp2-tier`, NERSC clone
+  `$PROJECT/host_association/paper-dp2`; not merged into main).** Inputs are
+  index csvs: `dp2_transients` = `data/dp2_sn_candidates_index.csv` (the four
+  EDP2 sample files; `src/dp2_sample.py` refuses to run if size/mtime moved)
+  and `dp2_object` = `data/dp2_object_hats_index.csv` (the 8840 HATS
+  partitions of `shared/rubin/DP2/HATS/object_collection/object_lc`; no
+  lsdb: `src/dp2_candidates.py` reads whole partitions whose
+  per_partition_statistics bounding box, padded by the radius, holds a
+  position, so there is no margin cache). `src/dp2_lib.py` `install()` swaps
+  MultiProFit light models into `dp02_lib` (exponential / free-n Sersic fits
+  as the fitted Gaussian mixture, `SBW_CURVE`; DLR half_light = the
+  exponential fit's half-light ellipse for every profile; moments as DP0.2)
+  and `--tier dp2` in `dp02_associate/sweep/fig/gallery` uses it.
+  `associate_one` gained `p_sbw_dlr` and a DLR-ellipse angle hook. New
+  outputs: dp2_sample, dp2_candidates, dp2_association_sweep (all bands x
+  profiles), dp2_random_positions (10 per transient in its own patch; DP2
+  patches are ~10'), dp2_random_candidates/associations,
+  dp2_hostless_indicator/metrics, dp2_p_top_host, dp2_disagreement_cases
+  (+ ellipses), plus recipes for the declared ones. Materialized: baseline,
+  physical (every DP2 file byte-identical to baseline except dp2_p_top_host,
+  whose DP0.2 reference differs) and dlr_moments. Run cost: baseline ~40
+  min on 16 CPUs, most of it lc hashing the DP0.2/OU2024 inputs; the
+  recipes themselves take seconds to minutes.
+  * *Sample (rc_salt, 690):* candidates 43,770 pairs within 30" (median 64
+    per transient), ext05 removes 34% of them, none unusable.
+  * *SBW vs DLR (r, exponential, flb 0.01, d 4 half-light):* same host
+    85.65%, different 0.29% (2), SBW-only hostless 0.72% (5), DLR-only 0,
+    both hostless 13.33% (92). P band of the DLR host: > 0.5 for 591/593
+    hosted pairs. Near-identity is by construction: DLR half_light uses the
+    same exponential ellipse SBW evaluates, so they differ only by flux
+    weighting, and the 5 SBW-only hostless sit at d_DLR 3.7-4.0 (flb 0.01
+    vs d 4 boundary). The informative comparison is `dlr_moments`: same
+    83.91%, different 0.43%, SBW-only hostless 0.72%, DLR-only hostless
+    1.59% (11), both 13.33%; there DLR-only hostless are mostly transients
+    on a faint compact galaxy (flb 0.5-0.9) whose PSF-subtracted moment
+    ellipse is tiny (d_DLR 5-18), plus a few where SBW's host is a large
+    low-SB model.
+  * *Hostless:* real kept / random rejected at flb 0.01 85.9 / 83.0%, flb
+    0.0215 84.9 / 86.4%, flb 0.05 83.0 / 90.0%; d_DLR 2.7 82.3 / 90.5%, d 4
+    86.7 / 81.3% (moments: 2.7 79.9 / 91.8%). DP2's own J optima are flb
+    0.091 (J 0.733) and d_DLR 2.2 (0.734). The DP0.2 optima transfer at a
+    cost of J 0.019 (flb 0.0215) and 0.006 (d 2.7); the defaults flb 0.01 / d
+    4 lose 0.043 / 0.055. On DP2 SBW and DLR lie on the same ROC. 13-14% of
+    the SALT sample is hostless for both (median nearest d_DLR 7.7; 25% at
+    z > 0.6 vs 11-13% below). 99.7% of random positions still get a P > 0.5
+    host, so hostlessness must come from flb, as on DP0.2.
+  * *Top P:* SBW-hosted DP2 transients have median P_max 1.000, P > 0.9
+    99.0% (DP0.2 97.8%), mean credible-set size at t 0.034 1.020 (DP0.2
+    1.039): real-data SBW is at least as decisive as on DC2.
+  * *Bands / profiles:* SBW host changes vs r in u 1.7%, other bands <=
+    0.3%; DLR (half-light) 0.2% in u; hostless fraction u 40% (no u flux), g-y
+    14-15%. Exponential vs Sersic same SBW host 100% (both hosted), vs
+    moments 99.8%; the light models differ only in hostless calls (Sersic
+    10.6%, exponential 14.1%, moments 19.3% SBW hostless).
+  * *Gallery:* band flips are mostly within a deblended blend (siblings) or
+    a large low-SB model winning in a faint band; sbw_ne_dlr are a compact
+    object under the SN versus a larger neighbour's extended model.
+    `src/dp02_gallery.py` now unwraps ObsCore patches straddling RA = 0
+    (DP2 cutouts 422'd on one).
+  * *Operational.* The laptop worktree shows annex-filter "modified" files
+    that block `git pull --rebase`; push a wip ref, cherry-pick on NERSC,
+    then `git reset --keep nersc/dp2-tier`. The DP0.2 inputs and
+    dp02_associations content in the clone were reinjected from copies of
+    the main clone's files (no `mainclone` remote). `pkill -f`/`pgrep -f`
+    over ssh match their own command line.
+    dp2_cross_method_agreement is still without a recipe (not started).
 - **Compute: NERSC Perlmutter via `lc`, set up 2026-10-26.** Lightcone runs
   `lc` *on the login node* and launches recipes into Slurm allocations from
   `~/.lightcone/compute.yaml` (local compute is refused on login nodes). On
