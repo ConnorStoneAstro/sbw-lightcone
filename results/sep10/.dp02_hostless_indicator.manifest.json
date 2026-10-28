@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "dp02_hostless_indicator",
   "universe_id": "sep10",
-  "recipe": "python src/dp02_fig.py hostless_indicator --associations results/sep10/dp02_associations.parquet --random results/sep10/dp02_random_associations.parquet --hostless-cut flb01 --dlr-max d4 --output results/sep10/dp02_hostless_indicator.pdf",
-  "definition_version": "sha256:aa82cfa7c315cc4d7624dd44ad2ecb1530b4db72718eaabe2b7156d9a118ba9a",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:07c4af1d33aad82dc01e8f2b7ca229940fe8dcc7a5f5d86ab87eee51d6ee58ac",
+  "recipe": "python src/dp02_fig.py hostless_indicator --tier dp02 --associations results/sep10/dp02_associations.parquet --random results/sep10/dp02_random_associations.parquet --hostless-cut flb01 --dlr-max d4 --output results/sep10/dp02_hostless_indicator.pdf",
+  "definition_version": "sha256:5eaa7867437c8891d2a25d4050089b9a95367cdc55f092a28347571f1abef325",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:57a0b6caa72b19376cbc6b8401707b25ed35bf7ff6900368c3c67c07781b392c",
   "decisions": {
     "sbw_hostless_cut": "flb01",
     "dlr_max": "d4"
@@ -14,7 +14,7 @@
     "dp02_associations": "sha256:7775eb41aa528b123bb199225fa5a114f468c28f6ca56de6c2a5437b2ccf90cc",
     "dp02_random_associations": "sha256:10cdf8ed3be1d3d31e02982cd5b87d64b22439abe6533970d228af4d831cba15"
   },
-  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -24,8 +24,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T02:44:51.386+00:00",
-  "finished_at": "2026-10-28T02:45:55.703+00:00",
+  "started_at": "2026-10-28T15:16:53.111+00:00",
+  "finished_at": "2026-10-28T15:17:22.497+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
