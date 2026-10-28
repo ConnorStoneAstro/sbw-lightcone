@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "output_id": "ou24_profile_sweep",
+  "universe_id": "dlr_moments",
+  "recipe": "python src/dp02_sweep.py profile_table --sample results/dlr_moments/ou24_sample.parquet --candidates results/dlr_moments/ou24_candidates.parquet --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --candidate-quality none --output results/dlr_moments/ou24_profile_sweep.csv",
+  "definition_version": "sha256:4a51a272e1aa95018cd0768b62605e83ac4f67d3556b541fc1b9cc5a80c2fccd",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:23a556cdd26d8a51005f100c2ca36c8e82cebccdef43daae36f2d2bb2d5fcc5d",
+  "decisions": {
+    "band": "r",
+    "search_radius": "r30",
+    "dlr_max": "d4",
+    "dlr_radius": "moments",
+    "extendedness_cut": "ext05",
+    "candidate_quality": "none"
+  },
+  "input_versions": {
+    "ou24_sample": "sha256:82837aede0eec2512bee0a077078409e2b9de8cfa50b7b03992f0f2cea957632",
+    "ou24_candidates": "sha256:ae0b65b6f0cec0212ebf608976b09b5750309a63d361ccb33fceaa64b50709cd"
+  },
+  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-28T14:38:30.646+00:00",
+  "finished_at": "2026-10-28T14:42:28.691+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
