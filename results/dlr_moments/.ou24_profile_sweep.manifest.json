@@ -16,9 +16,9 @@
   },
   "input_versions": {
     "ou24_sample": "sha256:82837aede0eec2512bee0a077078409e2b9de8cfa50b7b03992f0f2cea957632",
-    "ou24_candidates": "sha256:ae0b65b6f0cec0212ebf608976b09b5750309a63d361ccb33fceaa64b50709cd"
+    "ou24_candidates": "sha256:03cb20801d8df4469ba3225e7c56951588f29ef25b42cfa303cefbe0af78f83f"
   },
-  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
+  "git_sha": "72bced872e881980f3722e3bb3bd7c9e1b954a18",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -28,8 +28,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T14:38:30.646+00:00",
-  "finished_at": "2026-10-28T14:42:28.691+00:00",
+  "started_at": "2026-10-28T18:51:21.173+00:00",
+  "finished_at": "2026-10-28T18:56:31.461+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
