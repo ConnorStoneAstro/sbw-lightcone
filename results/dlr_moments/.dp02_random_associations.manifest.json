@@ -2,23 +2,24 @@
   "schema_version": 1,
   "output_id": "dp02_random_associations",
   "universe_id": "dlr_moments",
-  "recipe": "python src/dp02_associate.py --positions results/dlr_moments/dp02_random_positions.parquet --candidates results/dlr_moments/dp02_random_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --radius-fallback --output results/dlr_moments/dp02_random_associations.parquet",
-  "definition_version": "sha256:fc61ea45b3942bc6aeb04516adb8c4e9e6fe13fcc62732734187b97f55437bfe",
+  "recipe": "python src/dp02_associate.py --positions results/dlr_moments/dp02_random_positions.parquet --candidates results/dlr_moments/dp02_random_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --candidate-quality none --output results/dlr_moments/dp02_random_associations.parquet",
+  "definition_version": "sha256:e989d5f49dc3cf96e7a5cd66f33715dddc27635f22b00de9a385aad773f137c2",
   "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:e6d2092939b32968be484509cda97df79052b460a2d436c8b161490fdf675038",
+  "data_version": "sha256:4629353c327d27f44a9b53d227b40313ffa6c94da0fdf38aff88684c5bd1e502",
   "decisions": {
     "sbw_profile": "exponential",
     "band": "r",
     "search_radius": "r30",
     "dlr_max": "d4",
     "dlr_radius": "moments",
-    "extendedness_cut": "ext05"
+    "extendedness_cut": "ext05",
+    "candidate_quality": "none"
   },
   "input_versions": {
     "dp02_random_positions": "sha256:e24e471eec460c66d34fc93c5c5c649fb4617529c81e799e4731cdaeceab7099",
-    "dp02_random_candidates": "sha256:6fc2c94eee16b324acbb101f73dba7ac2a09d6001396350311b2b4c7d0afc7ea"
+    "dp02_random_candidates": "sha256:7b84110076dab1c657559fcd52cada8610cdad509edb3a26ae703c5d482f2909"
   },
-  "git_sha": "77c6095e253cc3eca2c8e871b2f09d1892cb04b0",
+  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -28,8 +29,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T19:20:04.715+00:00",
-  "finished_at": "2026-10-27T19:22:21.502+00:00",
+  "started_at": "2026-10-28T01:11:56.859+00:00",
+  "finished_at": "2026-10-28T01:14:30.738+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
