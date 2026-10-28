@@ -462,7 +462,7 @@ outputs:
     inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
-      command: python src/dp02_fig.py hostless_indicator --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+      command: python src/dp02_fig.py hostless_indicator --tier dp02 --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
   - id: dp02_hostless_metrics
     type: metric
     format: json
@@ -470,7 +470,7 @@ outputs:
     inputs: [dp02_associations, dp02_random_associations]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py hostless_metrics --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --output {output}
+      command: python src/dp02_fig.py hostless_metrics --tier dp02 --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --output {output}
   - id: dp02_host_truth_shapes
     type: table
     format: parquet
@@ -606,7 +606,7 @@ outputs:
     inputs: [dp02_associations]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py credible_set --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py credible_set --tier dp02 --associations {inputs.dp02_associations} --output {output}
   - id: dp02_credible_set_metrics
     type: metric
     format: json
@@ -614,7 +614,7 @@ outputs:
     inputs: [dp02_associations]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py credible_set_metrics --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py credible_set_metrics --tier dp02 --associations {inputs.dp02_associations} --output {output}
   - id: dp02_pa_mirror
     type: figure
     format: pdf
@@ -650,7 +650,7 @@ outputs:
     inputs: [dp02_sample, dp02_associations, dp02_candidates, dp02_host_truth_shapes, rsp_token]
     decisions: [band]
     recipe:
-      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_pa_mirror.py --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --band {decisions.band} --token-file {inputs.rsp_token} --cache-dir "$T/dp02_cutouts" --output {output}'
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_pa_mirror.py --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --band {decisions.band} --token-file {inputs.rsp_token} --cache-dir "$T/dp02_cutouts" --radius-page --output {output}'
       resources: {cpus: 4, memory: 24Gi}
   - id: dp02_pa_mirror_metrics
     type: metric

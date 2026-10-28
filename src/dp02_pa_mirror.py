@@ -184,6 +184,7 @@ def main(argv=None):
     ap.add_argument("--band", required=True, choices=list("ugrizy"))
     ap.add_argument("--token-file", help="RSP token file (figure only)")
     ap.add_argument("--metrics", action="store_true", help="write the json of the selection and radius checks only")
+    ap.add_argument("--radius-page", action="store_true", help="add page 2, the SN radii on the mirrored ellipse")
     ap.add_argument("--cache-dir", default="cutout_cache")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
@@ -264,8 +265,9 @@ def main(argv=None):
     fig.tight_layout(rect=(0, 0.04, 1, 1))
     with PdfPages(a.output) as pdf:
         pdf.savefig(fig); plt.close(fig)
-        fig2 = radius_page(df)
-        pdf.savefig(fig2); plt.close(fig2)
+        if a.radius_page:
+            fig2 = radius_page(df)
+            pdf.savefig(fig2); plt.close(fig2)
 
 
 def radius_page(df):
