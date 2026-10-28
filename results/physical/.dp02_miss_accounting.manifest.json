@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "dp02_miss_accounting",
   "universe_id": "physical",
-  "recipe": "python src/dp02_miss.py compute --sample results/physical/dp02_sample.parquet --associations results/physical/dp02_associations.parquet --candidates results/physical/dp02_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --hostless-cut flb01 --p-threshold p005 --workers 16 --output results/physical/dp02_miss_accounting.json",
-  "definition_version": "sha256:75d4b6620655473e779a89939f62e328cd3df8c6fd0e91a02f5c219ac8daeede",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:bc4e91d006a477e708f21059aa78579a1af6e04031f60ef33716e1563f693219",
+  "recipe": "python src/dp02_miss.py compute --sample results/physical/dp02_sample.parquet --associations results/physical/dp02_associations.parquet --candidates results/physical/dp02_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --hostless-cut flb01 --p-threshold p005 --tier dp02 --workers 16 --output results/physical/dp02_miss_accounting.json",
+  "definition_version": "sha256:0913417a77d03449aefeefcdd380c3ffac90b67788336d30b1f88c93352b2275",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:d793aba053e534f5c9ba30caafb1547249abf149a919e26952c21d1f84070a0e",
   "decisions": {
     "sbw_profile": "exponential",
     "band": "r",
@@ -21,7 +21,7 @@
     "dp02_associations": "sha256:21eed7c8a91e262547ccbb79e1b936965ac6f7d4955fca1a5ed94715fdbec698",
     "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
   },
-  "git_sha": "4dc2a7a2fea5e4ad0614efb2fe19cde25e2b8979",
+  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -31,8 +31,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T22:48:04.963+00:00",
-  "finished_at": "2026-10-27T22:52:55.914+00:00",
+  "started_at": "2026-10-28T15:28:18.371+00:00",
+  "finished_at": "2026-10-28T15:33:03.266+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
