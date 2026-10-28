@@ -1,6 +1,6 @@
 # ASTRA Analysis Specification
 
-version: "0.0.14"
+version: "0.0.15"
 name: "SBW host association performance"
 description: >-
   Tests the surface-brightness-weighted (SBW) host-association method for
@@ -455,8 +455,10 @@ outputs:
       rejected versus threshold for flb_best < t; (c) the same for the DLR rule
       d_DLR_min > t; (d) random positions rejected versus real SNe kept for
       SBW (flb_best, flb_max) and DLR, with the sbw_hostless_cut and dlr_max
-      operating points marked. Panels (b) and (c) also carry Youden's J = real
-      kept + random rejected - 1 versus the threshold, with its maximum.
+      operating points marked, and the frozen DP0.2 baseline J optima (flb_best
+      0.0215, d_DLR 2.7) as open diamonds. Panels (b) and (c) also carry
+      Youden's J = real kept + random rejected - 1 versus the threshold, with
+      its maximum.
     inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
@@ -464,7 +466,7 @@ outputs:
   - id: dp02_hostless_metrics
     type: metric
     format: json
-    description: Real SNe kept and random positions rejected at flb_best and flb_max thresholds 0.001, 0.01, 0.05, 0.1 and d_DLR thresholds 3, 4, 5 (Wilson intervals), the fraction of random positions whose SBW most probable host has P > 0.5 (landing on a galaxy), and the Youden-J-optimal flb_best, flb_max and d_DLR thresholds with J, real kept and random rejected there.
+    description: Real SNe kept and random positions rejected at flb_best and flb_max thresholds 0.001, 0.01, 0.05, 0.1 and d_DLR thresholds 3, 4, 5 (Wilson intervals), the fraction of random positions whose SBW most probable host has P > 0.5 (landing on a galaxy), and the Youden-J-optimal flb_best, flb_max and d_DLR thresholds with J, real kept and random rejected there; dp02_optima_transfer gives real kept, random rejected and J at flb_best 0.01, 0.0215 and 0.05 and at d_DLR 2.7 and 4 (0.0215 and 2.7 are the baseline J optima of 27 Oct 2026, frozen in src/dp02_fig.py) and the J lost against this table's own optimum, so every tier is scored at the DP0.2 thresholds.
     inputs: [dp02_associations, dp02_random_associations]
     decisions: []
     recipe:
@@ -555,31 +557,38 @@ outputs:
     description: >-
       Where the true host is lost, per method, over every hosted SN that
       passed the sample cut's distance and host-row conditions (including the
-      SNe dropped because their true host has no DP0.2 object): cat1 true
-      host absent from the catalogue (no DP0.2 object under truth_match, or
-      not a primary object within the search radius); cat2 true host removed
-      by object-table cuts, split into point source (extendedness_cut),
-      unusable measurements (no usable radius or flux for the profile) and
-      failed candidate_quality; cat3 genuine association failure (the true
-      host survived but P_SBW(true) < p_true_threshold or SBW declared the SN
-      hostless under sbw_hostless_cut; for DLR another candidate is closer in
-      d_DLR or none is within dlr_max); else success. Counts, fractions and
-      Wilson 68% intervals for the headline association, and the same
-      recomputed in-process for every candidate_quality level (none, basic,
-      strict) with the fraction of candidates each cut removes.
+      SNe dropped because their true host has no DP0.2 object), in four
+      sequential categories, each counted only on the SNe that passed the
+      previous one: cat1 true host absent from the catalogue (no DP0.2 object
+      under truth_match, or not a primary object within the search radius);
+      cat2 true host removed by object-table cuts, split into point source
+      (extendedness_cut), unusable measurements (no usable radius or flux for
+      the profile; for DLR also no DLR ellipse) and failed
+      candidate_quality; cat3 removed by the no-host cut (SBW: no SBW host or
+      flb_best < sbw_hostless_cut; DLR: no candidate with d_DLR <= dlr_max);
+      cat4 genuine association failure (a host is assigned but P_SBW(true)
+      < p_true_threshold; DLR assigns another, closer candidate); else
+      success. Counts, fractions of all hosted SNe and conditional fractions
+      (of the SNe that entered the stage) with Wilson 68% intervals for the
+      headline association, and the same recomputed in-process for every
+      candidate_quality level (none, basic, strict) with the fraction of
+      candidates each cut removes.
     inputs: [dp02_sample, dp02_associations, dp02_candidates]
     decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_miss.py compute --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --workers 16 --output {output}
+      command: python src/dp02_miss.py compute --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --tier dp02 --workers 16 --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_miss_accounting_fig
     type: figure
     format: pdf
     description: >-
-      (a) Stacked bars of success, cat3 (genuine failure), cat2 (object-table
-      cut) and cat1 (absent from the catalogue) for SBW and DLR side by side;
-      (b) the cat2 and cat3 fractions of both methods as candidate_quality
-      tightens (none, basic, strict). Drawn from dp02_miss_accounting.
+      (a) Stacked bars of success, cat4 (genuine failure), cat3 (no-host
+      cut), cat2 (object-table cut) and cat1 (absent from the catalogue) for
+      SBW and DLR side by side, as fractions of all hosted SNe; (b) the
+      conditional loss at each stage (of the SNe that reached it) for both
+      methods; (c) the cat2, cat3 and cat4 fractions of both methods as
+      candidate_quality tightens (none, basic, strict). Drawn from
+      dp02_miss_accounting.
     inputs: [dp02_miss_accounting]
     decisions: []
     recipe:
@@ -601,7 +610,7 @@ outputs:
   - id: dp02_credible_set_metrics
     type: metric
     format: json
-    description: The dp02_credible_set curve (coverage, coverage given a surviving true host, mean set size, empty-set fraction per t), its values at t = 0.01 and 0.05, the knee (grid point farthest from the chord of coverage versus mean set size, axes scaled to [0, 1]) and the top-k coverages.
+    description: The dp02_credible_set curve (coverage, coverage given a surviving true host, mean set size, empty-set fraction per t), its values at t = 0.01, 0.034 and 0.05, the knee (grid point farthest from the chord of coverage versus mean set size, axes scaled to [0, 1]) and the top-k coverages; dp02_knee_transfer compares the coverage and size at the frozen DP0.2 baseline knee t = 0.034 with this table's own knee.
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -630,10 +639,39 @@ outputs:
       No paper documents this; it is recorded in AGENTS.md as a
       prior-insight-like note. Offset-shape analyses must use +PA; the
       association itself, which sees only the rendered image, is unaffected.
+      Page 2 asks whether the SNe sit on the mirrored ellipse at the truth
+      radii or on a smaller or rounder one, for every host with truth q <
+      0.5 and no offset cap: (a) SN radius in units of the semi-major R_e for
+      SNe within 30 degrees of the +PA major axis and of the minor axis, (b)
+      the same in elliptical radius on the truth ellipse, (c) measured
+      (moment and CModel) over cosmoDC2 half-light sizes, (d) the axis ratio
+      of the stacked SN distribution about +PA versus the truth q, with q and
+      q^0.4 drawn. Numbers in dp02_pa_mirror_metrics.
     inputs: [dp02_sample, dp02_associations, dp02_candidates, dp02_host_truth_shapes, rsp_token]
     decisions: [band]
     recipe:
       command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_pa_mirror.py --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --band {decisions.band} --token-file {inputs.rsp_token} --cache-dir "$T/dp02_cutouts" --output {output}'
+      resources: {cpus: 4, memory: 24Gi}
+  - id: dp02_pa_mirror_metrics
+    type: metric
+    format: json
+    description: >-
+      The dp02_pa_mirror numbers without the cutouts: the angle statistics of
+      the elongated-host selection; radii (hosts with truth q < 0.5, no
+      offset cap): quantiles of the SN radius over the semi-major R_e and of
+      the elliptical radius on the truth ellipse for SNe within 30 degrees
+      of the +PA major and minor axes, and their minor/major median ratios,
+      also for the subset whose 6 R_e lies inside the sample's separation
+      cut; measured over cosmoDC2 sizes (moment half-light semi-axes over the
+      truth semi-axes, q_mom / q_true, CModel sqrt(ab) of the dominant
+      component over the truth sqrt(ab)); the SN distribution's axis ratio
+      per truth-q bin with the exponent alpha of q_SN = q^alpha; and the
+      example selection rule with the offsets of the chosen and of all
+      eligible hosts, so the figure's selection can be judged.
+    inputs: [dp02_sample, dp02_associations, dp02_candidates, dp02_host_truth_shapes]
+    decisions: [band]
+    recipe:
+      command: python src/dp02_pa_mirror.py --metrics --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --band {decisions.band} --output {output}
       resources: {cpus: 4, memory: 24Gi}
   # ---- Tier 1b: OpenUniverse2024 (mirrors the DP0.2 chain; same scripts where only the inputs differ) ----
   - id: ou24_sn_table
@@ -702,9 +740,9 @@ outputs:
     format: parquet
     description: As dp02_associations for the OU2024 sample. A candidate whose CModel radius is missing is dropped from SBW (no radius fallback).
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_associate.py --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --workers 16 --output {output}
+      command: python src/dp02_associate.py --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --workers 16 --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_random_positions
     type: table
@@ -729,23 +767,24 @@ outputs:
     format: parquet
     description: SBW and DLR association of every OU2024 random position (host_objectId = -1).
     inputs: [ou24_random_positions, ou24_random_candidates]
-    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_associate.py --positions {inputs.ou24_random_positions} --candidates {inputs.ou24_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --workers 16 --output {output}
+      command: python src/dp02_associate.py --positions {inputs.ou24_random_positions} --candidates {inputs.ou24_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --workers 16 --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_recovery
     type: metric
     format: json
-    description: As dp02_recovery for OU2024 (population-averaged over OU2024's too-faint host population; see ou24_recovery_by_host_mag).
+    description: As dp02_recovery for OU2024 (mean P_SBW(true host), the four P bands, argmax and DLR recovery as secondary numbers, the 4x3 matrix cells and the random 2x2), population-averaged over OU2024's too-faint host population; see ou24_recovery_by_host_mag.
     inputs: [ou24_associations, ou24_random_associations]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_fig.py recovery --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_recovery_by_host_mag
     type: metric
     format: json
     description: >-
-      SBW and DLR recovery (Wilson intervals), SBW hostless (under
+      Mean P_SBW(true host) (with and without the hostless cut), SBW argmax
+      and DLR recovery (Wilson intervals), SBW hostless (under
       sbw_hostless_cut) and DLR hostless fractions, SBW-DLR agreement and
       true-host-in-candidates in true-host r bins (< 20, 20-22, 22-23, 23-24,
       24-25, 25-26, 26-27, > 27), for all transients and for z < 1, with the
@@ -759,9 +798,9 @@ outputs:
     type: figure
     format: pdf
     description: >-
-      SBW and DLR recovery versus true-host r magnitude for DP0.2 and OU2024
-      (all z, and z < 1) in the same universe, the two host-magnitude
-      distributions, OU2024 recovery reweighted to DP0.2's host r
+      SBW mean P_SBW(true host) and DLR recovery versus true-host r magnitude
+      for DP0.2 and OU2024 (all z, and z < 1) in the same universe, the two
+      host-magnitude distributions, OU2024 reweighted to DP0.2's host r
       distribution, and both tiers at host r < 24. The DP0.2 association
       table already carries the sample's host_mag_r, so dp02_sample is not
       needed as a separate input.
@@ -782,27 +821,27 @@ outputs:
     format: pdf
     description: As dp02_calibration_by_band for OU2024.
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_sweep.py band --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_sweep.py band --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_calibration_by_profile
     type: figure
     format: pdf
     description: As dp02_calibration_by_profile for OU2024.
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_sweep.py profile --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_sweep.py profile --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_agreement_matrix
     type: figure
     format: pdf
-    description: As dp02_agreement_matrix for OU2024 (3x3 on real transients, 2x2 on random positions).
+    description: As dp02_agreement_matrix for OU2024 (4x3 P_SBW(true)-band layout on real transients, 2x2 on random positions).
     inputs: [ou24_associations, ou24_random_associations]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py agreement_matrix --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_fig.py agreement_matrix --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_agreement_vs_ddlr
     type: figure
     format: pdf
@@ -856,23 +895,23 @@ outputs:
     format: pdf
     description: As dp02_band_dependence for OU2024.
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_sweep.py band_dependence --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_sweep.py band_dependence --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_profile_sweep
     type: table
     format: csv
     description: As dp02_profile_sweep for OU2024 (exponential, de Vaucouleurs, moment Gaussian side by side).
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
-      command: python src/dp02_sweep.py profile_table --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --output {output}
+      command: python src/dp02_sweep.py profile_table --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_hostless_indicator
     type: figure
     format: pdf
-    description: As dp02_hostless_indicator for OU2024 (real transients against ou24_random_positions).
+    description: As dp02_hostless_indicator for OU2024 (real transients against ou24_random_positions), with the frozen DP0.2 J optima marked on the ROC.
     inputs: [ou24_associations, ou24_random_associations]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
@@ -880,11 +919,51 @@ outputs:
   - id: ou24_hostless_metrics
     type: metric
     format: json
-    description: As dp02_hostless_metrics for OU2024.
+    description: As dp02_hostless_metrics for OU2024, including its own Youden-J optima and dp02_optima_transfer, the held-out test of the frozen DP0.2 baseline optima (flb_best 0.0215, d_DLR 2.7) against the defaults (flb 0.01, d_DLR 4) and OU2024's own optimum.
     inputs: [ou24_associations, ou24_random_associations]
     decisions: []
     recipe:
       command: python src/dp02_fig.py hostless_metrics --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --output {output}
+  - id: ou24_credible_set
+    type: figure
+    format: pdf
+    description: As dp02_credible_set for OU2024.
+    inputs: [ou24_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py credible_set --tier ou24 --associations {inputs.ou24_associations} --output {output}
+  - id: ou24_credible_set_metrics
+    type: metric
+    format: json
+    description: As dp02_credible_set_metrics for OU2024; dp02_knee_transfer is the held-out test of the frozen DP0.2 baseline knee t = 0.034 against OU2024's own knee.
+    inputs: [ou24_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py credible_set_metrics --tier ou24 --associations {inputs.ou24_associations} --output {output}
+  - id: ou24_miss_accounting
+    type: metric
+    format: json
+    description: >-
+      As dp02_miss_accounting for OU2024: the four sequential categories
+      (absent from the OU2024 Object table under truth_match or not a
+      primary object within the search radius; object-table cuts; no-host
+      cut; genuine failure) for SBW and DLR, fractions of all hosted
+      transients and conditional on reaching each stage, and the
+      candidate_quality sweep. Under ext05 most of cat2 is the faint compact
+      true hosts with refExtendedness < 0.5 (compare universe ext_none).
+    inputs: [ou24_sample, ou24_associations, ou24_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, sbw_hostless_cut, p_true_threshold]
+    recipe:
+      command: python src/dp02_miss.py compute --sample {inputs.ou24_sample} --associations {inputs.ou24_associations} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --tier ou24 --workers 16 --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: ou24_miss_accounting_fig
+    type: figure
+    format: pdf
+    description: As dp02_miss_accounting_fig for OU2024, drawn from ou24_miss_accounting.
+    inputs: [ou24_miss_accounting]
+    decisions: []
+    recipe:
+      command: python src/dp02_miss.py figure --accounting {inputs.ou24_miss_accounting} --output {output}
   - id: ou24_offset_diagnostic
     type: figure
     format: pdf

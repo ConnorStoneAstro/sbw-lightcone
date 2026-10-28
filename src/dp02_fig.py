@@ -232,6 +232,11 @@ def p_true_host(df, out):
 # ---------------------------------------------------------------- hostless indicator
 FLB_GRID = np.geomspace(1e-5, 1, 121)
 DLR_GRID = np.linspace(0, 12, 121)
+# Thresholds frozen from the DP0.2 baseline (27 Oct 2026: Youden-J optima of dp02_hostless_metrics and the knee
+# of dp02_credible_set_metrics), next to the defaults; every tier reports itself at these values, so OU2024
+# is a held-out test of whether the DP0.2 optima transfer.
+DP02_OPTIMA = {"flb_best": 0.0215, "d_dlr_min": 2.7, "credible_set_t": 0.034}
+TRANSFER = {"flb_best": (0.01, DP02_OPTIMA["flb_best"], 0.05), "d_dlr_min": (DP02_OPTIMA["d_dlr_min"], 4.0)}
 
 
 def rejected(flag):
@@ -260,6 +265,21 @@ def youden(df, rnd, rule, grid):
                "random_rejected": float(rand[k, 0])}
 
 
+def transfer(df, rnd):
+    """Real kept, random rejected and J at the frozen DP0.2 thresholds and the defaults, next to this table's own
+    J optimum and the J lost by using the DP0.2 value instead."""
+    out = {"dp02_optima": DP02_OPTIMA}
+    for rule, ts in TRANSFER.items():
+        _, own = youden(df, rnd, rule, FLB_GRID if rule != "d_dlr_min" else DLR_GRID)
+        pts = []
+        for t in ts:
+            k, r = float((~RULES[rule](df, t)).mean()), float(RULES[rule](rnd, t).mean())
+            pts.append({"threshold": t, "real_kept": k, "random_rejected": r, "J": k + r - 1,
+                        "J_minus_own_max": k + r - 1 - own["J_max"]})
+        out[rule] = {"own_optimum": own, "at": pts}
+    return out
+
+
 def hostless_metrics(df, rnd, out):
     def point(rule, t):
         kept = ~RULES[rule](df, t); rej = RULES[rule](rnd, t)
@@ -285,6 +305,7 @@ def hostless_metrics(df, rnd, out):
                         "dlr_d_dlr_min": youden(df, rnd, "d_dlr_min", DLR_GRID)[1],
                         "flb_grid": [float(FLB_GRID[0]), float(FLB_GRID[-1]), len(FLB_GRID), "log"],
                         "d_dlr_grid": [float(DLR_GRID[0]), float(DLR_GRID[-1]), len(DLR_GRID), "linear"]},
+           "dp02_optima_transfer": transfer(df, rnd),
            "rule": "real kept = not hostless; SBW hostless = no SBW host or flb < t; DLR hostless = no candidate with d_DLR <= t",
            "settings": df.attrs}
     with open(out, "w") as f:
@@ -346,6 +367,12 @@ def hostless_indicator(df, rnd, out, hostless_cut, dlr_max):
                               ("d_dlr_min", dmax, COLORS["dlr"], f"$d_{{DLR}}$ = {dmax:g}")]:
         k = (~RULES[rule](df, t)).mean(); r = RULES[rule](rnd, t).mean()
         ad.plot(k, r, "o", color=col, ms=6, mec="black", mew=0.6, label=f"{lab}: kept {100 * k:.1f}%, rejected {100 * r:.1f}%")
+    for rule, col in (("flb_best", COLORS["sbw"]), ("d_dlr_min", COLORS["dlr"])):   # frozen DP0.2 J optima
+        t = DP02_OPTIMA[rule]
+        k = (~RULES[rule](df, t)).mean(); r = RULES[rule](rnd, t).mean()
+        ad.plot(k, r, "D", color="none", ms=6, mec=col, mew=1.2,
+                label=f"DP0.2 J optimum {'flb_best' if rule == 'flb_best' else '$d_{DLR}$'} = {t:g}: "
+                      f"kept {100 * k:.1f}%, rejected {100 * r:.1f}%")
     ad.set_xlabel("fraction of real SNe kept (have a host)"); ad.set_ylabel("fraction of random positions rejected")
     ad.set_xlim(0.8, 1.002); ad.set_ylim(0, 1.02)
     ad.legend(fontsize=7, loc="lower left"); ad.set_title("(d) hostless indicators compared", fontsize=9, loc="left")
@@ -395,9 +422,13 @@ def knee(r):
 
 def credible_set_metrics(df, out):
     r, topk = credible_sets(df)
-    at = {f"t_{t:g}": credible_sets(df, [t])[0].iloc[0].to_dict() for t in T_MARK}
+    at = {f"t_{t:g}": credible_sets(df, [t])[0].iloc[0].to_dict() for t in T_MARK + (DP02_OPTIMA["credible_set_t"],)}
+    kn = knee(r)
     res = {"n": len(df), "frac_true_host_kept": float((df.true_host_status == "kept").mean()),
-           "at_marked_thresholds": at, "top_k": topk, "knee": knee(r),
+           "at_marked_thresholds": at, "top_k": topk, "knee": kn,
+           "dp02_knee_transfer": {"t": DP02_OPTIMA["credible_set_t"], **at[f"t_{DP02_OPTIMA['credible_set_t']:g}"],
+                                  "own_knee_t": kn["t"],
+                                  "coverage_minus_own_knee": at[f"t_{DP02_OPTIMA['credible_set_t']:g}"]["coverage"] - kn["coverage"]},
            "knee_definition": "grid point of coverage vs mean set size farthest from the chord between its ends (axes scaled to [0, 1])",
            "curve": r.round(6).to_dict(orient="list"), "settings": df.attrs}
     with open(out, "w") as f:
@@ -431,7 +462,7 @@ def credible_set(df, out):
             label="top-k, k = " + ", ".join(f"{k['k']}: {100 * k['coverage']:.2f}%" for k in topk))
     ab.set_xlabel("mean set size"); ab.set_ylabel("coverage"); ab.set_ylim(ylo, 1.002)
     ab.legend(fontsize=7, loc="lower right"); ab.set_title("(b) coverage versus set size", fontsize=9, loc="left")
-    fig.suptitle("SBW credible sets on DC2 truth (true host not a surviving candidate = not covered)\n" + subtitle(df), fontsize=8)
+    fig.suptitle(f"SBW credible sets on {LABEL['tier']} truth (true host not a surviving candidate = not covered)\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 

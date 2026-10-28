@@ -354,32 +354,35 @@ def prob_matrix_cells(df, cut, t):
     return out
 
 
-MISS = ("success", "genuine", "cut", "absent")
-MISS_LABEL = {"success": "success", "genuine": "cat3: genuine association failure",
+MISS = ("success", "genuine", "hostless", "cut", "absent")   # stacking order; cat1..cat4 run absent -> genuine
+MISS_LABEL = {"success": "success", "genuine": "cat4: genuine association failure",
+              "hostless": "cat3: removed by the no-host cut",
               "cut": "cat2: true host removed by object-table cuts",
               "absent": "cat1: true host absent from the catalogue"}
 
 
 def miss_categories(df, cut, t):
     """Per-SN outcome for SBW and DLR (one of MISS) plus the sub-category, from an association table.
+    The categories are sequential: each applies only to SNe that passed the previous one.
 
     absent: the true host is not a primary object within the search radius; cut: removed by the extendedness
-    cut, by having no usable radius / flux, or by candidate_quality; genuine: the true host survived but SBW
-    gives it P < t or declares the SN hostless (flb < cut), resp. DLR assigns another candidate or nothing."""
+    cut, by having no usable radius / flux, or by candidate_quality (for DLR also a kept true host with no DLR
+    ellipse); hostless: the true host survived but the no-host cut fires (SBW: no SBW host or flb_best < cut;
+    DLR: no candidate with d_DLR <= dlr_max); genuine: a host is assigned but SBW gives the true host P < t,
+    resp. DLR assigns another, closer candidate."""
     st = df["true_host_status"].to_numpy()
     absent, kept = st == "absent", st == "kept"
     cutm = ~absent & ~kept
     hl = sbw_hostless(df, cut)
     p = p_true(df)
-    sbw = np.where(absent, "absent", np.where(cutm, "cut", np.where(hl | (p < t), "genuine", "success")))
-    sbw_sub = np.where(absent, "absent", np.where(cutm, st, np.where(hl, "sbw_hostless",
-                                                                      np.where(p < t, "p_below_threshold", "success"))))
+    sbw = np.where(absent, "absent", np.where(cutm, "cut", np.where(hl, "hostless",
+                                                                    np.where(p < t, "genuine", "success"))))
+    sbw_sub = np.where(cutm, st, np.where(sbw == "genuine", "p_below_threshold", sbw))
     d, tr = df["dlr_objectId"].to_numpy(), df["host_objectId"].to_numpy()
     dlr_unusable = kept & ~np.isfinite(df["d_dlr_true"].to_numpy(dtype=float))
-    dlr = np.where(absent, "absent", np.where(cutm | dlr_unusable, "cut",
-                                              np.where((d == tr) & (tr >= 0), "success", "genuine")))
-    dlr_sub = np.where(absent, "absent", np.where(cutm, st, np.where(dlr_unusable, "unusable",
-                       np.where(dlr == "success", "success", np.where(d >= 0, "other_closer", "beyond_dlr_max")))))
+    dlr = np.where(absent, "absent", np.where(cutm | dlr_unusable, "cut", np.where(
+        d < 0, "hostless", np.where((d == tr) & (tr >= 0), "success", "genuine"))))
+    dlr_sub = np.where(cutm, st, np.where(dlr_unusable, "unusable", np.where(dlr == "genuine", "other_closer", dlr)))
     return {"sbw": sbw, "sbw_sub": sbw_sub, "dlr": dlr, "dlr_sub": dlr_sub}
 
 

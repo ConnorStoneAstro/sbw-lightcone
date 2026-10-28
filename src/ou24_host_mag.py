@@ -21,8 +21,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dp02_fig import binned_fraction, load, subtitle
-from dp02_lib import COLORS, HOSTLESS_CUT, sbw_hostless, wilson
+from dp02_fig import binned_fraction, binned_mean, load, subtitle
+from dp02_lib import COLORS, HOSTLESS_CUT, p_true, sbw_hostless, wilson
 
 MAG_EDGES = [10, 20, 22, 23, 24, 25, 26, 27, 35]
 FINE = np.arange(16, 29.01, 0.5)
@@ -33,7 +33,10 @@ def stats(d, cut):
     hl = sbw_hostless(d, cut)
     ps, ls, hs = wilson(int(d.sbw_correct.sum()), n)
     pd_, ld, hd = wilson(int(d.dlr_correct.sum()), n)
-    return {"n": n, "sbw_recovery": ps, "sbw_recovery_ci68": [ls, hs], "dlr_recovery": pd_, "dlr_recovery_ci68": [ld, hd],
+    pt = p_true(d)
+    return {"n": n, "mean_p_sbw_true": float(pt.mean()) if n else np.nan,
+            "mean_p_sbw_true_with_hostless_cut": float(np.where(hl, 0.0, pt).mean()) if n else np.nan,
+            "sbw_recovery": ps, "sbw_recovery_ci68": [ls, hs], "dlr_recovery": pd_, "dlr_recovery_ci68": [ld, hd],
             "sbw_recovery_with_hostless_cut": float((d.sbw_correct.to_numpy() & ~hl).mean()) if n else np.nan,
             "sbw_hostless_fraction": float(hl.mean()) if n else np.nan,
             "dlr_hostless_fraction": float(d.dlr_hostless.mean()) if n else np.nan,
@@ -56,8 +59,10 @@ def by_host_mag(df, cut, out):
 
 
 def reweighted(ou, dp, flag):
-    """OU2024 recovery reweighted to DP0.2's host-r distribution (bins of FINE; empty OU2024 bins dropped)."""
-    k_ou, _ = np.histogram(ou.host_mag_r[ou[flag]], FINE)
+    """OU2024 recovery (or mean P_SBW(true) for flag "p_true") reweighted to DP0.2's host-r distribution
+    (bins of FINE; empty OU2024 bins dropped)."""
+    y = p_true(ou) if flag == "p_true" else ou[flag].to_numpy(float)
+    k_ou, _ = np.histogram(ou.host_mag_r, FINE, weights=y)
     n_ou, _ = np.histogram(ou.host_mag_r, FINE)
     n_dp, _ = np.histogram(dp.host_mag_r, FINE)
     ok = n_ou > 0
@@ -69,19 +74,24 @@ def dp02_comparison(ou, dp, out):
     fig, axes = plt.subplots(1, 3, figsize=(12.6, 4.2), width_ratios=[1, 1, 0.9])
     for ax, (oname, o) in zip(axes[:2], [("OU2024, all z", ou), ("OU2024, z < 1", ou[ou.sn_redshift < 1])]):
         for d, tier, ls in [(dp, "DP0.2", "-"), (o, oname, "--")]:
-            for flag, meth, color in [("sbw_correct", "SBW", COLORS["sbw"]), ("dlr_correct", "DLR", COLORS["dlr"])]:
-                c, p, lo, hi, n = binned_fraction(d.host_mag_r.to_numpy(float), d[flag].to_numpy(), FINE)
-                ok = n >= 30
-                ax.fill_between(c[ok], lo[ok], hi[ok], color=color, alpha=0.12, lw=0)
-                ax.plot(c[ok], p[ok], color=color, ls=ls, label=f"{meth}, {tier}")
-        rs, miss = reweighted(o, dp, "sbw_correct")
+            x = d.host_mag_r.to_numpy(float)
+            c, m, se = binned_mean(x, p_true(d), FINE)
+            _, _, _, _, n = binned_fraction(x, d.dlr_correct.to_numpy(), FINE)
+            ok = n >= 30
+            ax.fill_between(c[ok], (m - se)[ok], (m + se)[ok], color=COLORS["sbw"], alpha=0.12, lw=0)
+            ax.plot(c[ok], m[ok], color=COLORS["sbw"], ls=ls, label=f"SBW mean P(true), {tier}")
+            c, p, lo, hi, n = binned_fraction(x, d.dlr_correct.to_numpy(), FINE)
+            ax.fill_between(c[ok], lo[ok], hi[ok], color=COLORS["dlr"], alpha=0.12, lw=0)
+            ax.plot(c[ok], p[ok], color=COLORS["dlr"], ls=ls, label=f"DLR host = true, {tier}")
+        rs, miss = reweighted(o, dp, "p_true")
         rd, _ = reweighted(o, dp, "dlr_correct")
-        b24 = lambda d, f: 100 * d[f][d.host_mag_r < 24].mean()
-        ax.text(0.02, 0.03, f"{oname} reweighted to DP0.2 host r: SBW {100 * rs:.1f}%, DLR {100 * rd:.1f}%\n"
-                            f"host r < 24: DP0.2 SBW {b24(dp, 'sbw_correct'):.1f} / DLR {b24(dp, 'dlr_correct'):.1f}%, "
-                            f"OU2024 {b24(o, 'sbw_correct'):.1f} / {b24(o, 'dlr_correct'):.1f}%",
+        b24 = lambda d, f: 100 * (p_true(d) if f == "p_true" else d[f].to_numpy(float))[d.host_mag_r.to_numpy() < 24].mean()
+        ax.text(0.02, 0.03, f"{oname} reweighted to DP0.2 host r: SBW mean P {100 * rs:.1f}%, DLR {100 * rd:.1f}%\n"
+                            f"host r < 24: DP0.2 SBW {b24(dp, 'p_true'):.1f} / DLR {b24(dp, 'dlr_correct'):.1f}%, "
+                            f"OU2024 {b24(o, 'p_true'):.1f} / {b24(o, 'dlr_correct'):.1f}%",
                 transform=ax.transAxes, fontsize=7, va="bottom")
-        ax.set_ylim(0, 1.02); ax.set_xlabel("true host $r$ [mag]"); ax.set_ylabel("fraction top host = true host")
+        ax.set_ylim(0, 1.02); ax.set_xlabel("true host $r$ [mag]")
+        ax.set_ylabel("SBW mean $P_{\\mathrm{SBW}}$(true host); DLR fraction correct")
         ax.set_title(f"DP0.2 (N = {len(dp):,}) vs {oname} (N = {len(o):,})", fontsize=8)
         ax.legend(fontsize=7, loc="center left")
     ah = axes[2]
