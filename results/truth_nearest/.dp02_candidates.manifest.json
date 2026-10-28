@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "dp02_candidates",
   "universe_id": "truth_nearest",
-  "recipe": "python src/dp02_candidates.py --truth /global/cfs/cdirs/lsst/shared/DC2-prod/Run2.2i/truth/truth_merged_summary_v1-0-0/match_dr6_v2 --objects data/dp02_objectTable_index.csv --search-radius r30 --output results/truth_nearest/dp02_candidates.parquet",
-  "definition_version": "sha256:3fa81e3142b632c609c66de97a9987b7c75bccb8ef04703b197f18a9ad2f6691",
-  "env_version": "sha256:84de715ba076a4f19c42a54bda086c88f03224e680e46203146337f1a452c7c4",
-  "data_version": "sha256:fbc46d625de78e09083e9b1e965b7cc81d2d391c7fac44ef320de6da3756846a",
+  "recipe": "python src/dp02_candidates.py --truth /global/cfs/cdirs/lsst/shared/DC2-prod/Run2.2i/truth/truth_merged_summary_v1-0-0/match_dr6_v2 --objects data/dp02_objectTable_index.csv --search-radius r30 --workers 16 --output results/truth_nearest/dp02_candidates.parquet",
+  "definition_version": "sha256:2c836e26c8d6351cdea722d27673d45a9fa9cf671030279e601276a07ee57304",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1",
   "decisions": {
     "search_radius": "r30"
   },
@@ -13,7 +13,7 @@
     "dp02_sn_truth": "sha256:83069a3b7ef404ad82d272050951efad4b60a3835d4a11fa6d2a03be434edb0a",
     "dp02_object": "sha256:94713f6f20ab2e5b74df190eb00a69044261dffc2823a6d778b07162c6468af7"
   },
-  "git_sha": "0cc14c48d23040ff99a456c24a905f63a7ccbc8f",
+  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -23,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T15:23:57.825+00:00",
-  "finished_at": "2026-10-27T15:31:44.994+00:00",
+  "started_at": "2026-10-28T01:01:40.229+00:00",
+  "finished_at": "2026-10-28T01:11:30.410+00:00",
   "uv_version": "0.13.5",
   "image": null
 }

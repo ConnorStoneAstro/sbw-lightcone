@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_calibration_by_band",
+  "universe_id": "sep10",
+  "recipe": "python src/dp02_sweep.py band --sample results/sep10/dp02_sample.parquet --candidates results/sep10/dp02_candidates.parquet --profile exponential --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --candidate-quality none --output results/sep10/dp02_calibration_by_band.pdf",
+  "definition_version": "sha256:16d866f3de00573906071e0c2acb31cb0a8c1ee3d7606ecf5223de5a8fe24e9e",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:4d3379a50b4705ed16d4901d61707a33ac8ab2a99550c0aae15288e5914e39c1",
+  "decisions": {
+    "sbw_profile": "exponential",
+    "search_radius": "r30",
+    "dlr_max": "d4",
+    "dlr_radius": "half_light",
+    "extendedness_cut": "ext05",
+    "candidate_quality": "none"
+  },
+  "input_versions": {
+    "dp02_sample": "sha256:67ef26738603c2c69ea0af84a553738f6312db44a5a2db2b9cd5e27a8656cf8a",
+    "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
+  },
+  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-28T01:52:30.982+00:00",
+  "finished_at": "2026-10-28T02:05:43.998+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}

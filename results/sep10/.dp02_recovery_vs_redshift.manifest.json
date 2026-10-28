@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_recovery_vs_redshift",
+  "universe_id": "sep10",
+  "recipe": "python src/dp02_fig.py recovery_vs --x redshift --associations results/sep10/dp02_associations.parquet --output results/sep10/dp02_recovery_vs_redshift.pdf",
+  "definition_version": "sha256:a423a48f61c3e4cfda7835ca1b6226c4814eef11757a3099b3cb0a6ec4417828",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:953c0e68a2b1185d356c89ea4cb92e91220323c3f1c96b45b7073a9beb65ba2c",
+  "decisions": {},
+  "input_versions": {
+    "dp02_associations": "sha256:7775eb41aa528b123bb199225fa5a114f468c28f6ca56de6c2a5437b2ccf90cc"
+  },
+  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-28T02:44:51.355+00:00",
+  "finished_at": "2026-10-28T02:45:54.123+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
