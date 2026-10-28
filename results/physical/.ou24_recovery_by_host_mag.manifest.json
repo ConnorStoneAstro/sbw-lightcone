@@ -5,14 +5,14 @@
   "recipe": "python src/ou24_host_mag.py by_host_mag --associations results/physical/ou24_associations.parquet --hostless-cut flb01 --output results/physical/ou24_recovery_by_host_mag.json",
   "definition_version": "sha256:87bbefef2ffe1a83650db76aad7710290ee24e72fbca0ae3fb4947603d62ca5c",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:b0167c0fea297e1e23ff333e1db3218e0d599f7ca24c30abb9ba4ed26f55a5ff",
+  "data_version": "sha256:b3ee5e6040515fd69d88661edec5c0602ac49446c8d03e5bcbb8887c4007ddf4",
   "decisions": {
     "sbw_hostless_cut": "flb01"
   },
   "input_versions": {
-    "ou24_associations": "sha256:68306a271fea4cdada2ad11280c5d487edf76fbb668196a88ac1cac50192b41e"
+    "ou24_associations": "sha256:771650180d037c1a609d8f356d507f9577ae268de8ef87dc0f34cef6526770a0"
   },
-  "git_sha": "f3b944d9254997faddf4a8d36797f9383056cbcd",
+  "git_sha": "72bced872e881980f3722e3bb3bd7c9e1b954a18",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -22,8 +22,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T22:03:44.616+00:00",
-  "finished_at": "2026-10-27T22:04:40.603+00:00",
+  "started_at": "2026-10-28T20:02:50.172+00:00",
+  "finished_at": "2026-10-28T20:03:35.148+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
