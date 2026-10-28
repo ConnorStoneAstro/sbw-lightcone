@@ -5,12 +5,12 @@
   "recipe": "python src/dp02_fig.py recovery_vs --tier ou24 --x separation --associations results/physical/ou24_associations.parquet --output results/physical/ou24_recovery_vs_separation.pdf",
   "definition_version": "sha256:a95c7906e98084d70c14fbbb3abf112f257c2af92dbb8a45c9b212432e58d4f9",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:6af33dcee7caa06a75018235e088504f47e072b1908b7ec25968310129188dc5",
+  "data_version": "sha256:36b6b30e91dfae099a4266b50738fa6edac3b3e584e6355ce8a08329f4bb0534",
   "decisions": {},
   "input_versions": {
-    "ou24_associations": "sha256:68306a271fea4cdada2ad11280c5d487edf76fbb668196a88ac1cac50192b41e"
+    "ou24_associations": "sha256:771650180d037c1a609d8f356d507f9577ae268de8ef87dc0f34cef6526770a0"
   },
-  "git_sha": "f3b944d9254997faddf4a8d36797f9383056cbcd",
+  "git_sha": "72bced872e881980f3722e3bb3bd7c9e1b954a18",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T22:03:44.594+00:00",
-  "finished_at": "2026-10-27T22:04:45.186+00:00",
+  "started_at": "2026-10-28T20:02:50.242+00:00",
+  "finished_at": "2026-10-28T20:03:38.332+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
