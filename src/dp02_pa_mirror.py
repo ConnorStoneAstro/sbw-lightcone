@@ -130,7 +130,15 @@ def radii(df):
         "moment_minor_half_light_over_re_minor": quant(GAUSS_HALF_LIGHT * m.b_mom / re_min),
         "q_moment_over_q_true": quant(m.q_mom / m.q_true),
         "cmodel_dominant_component_over_truth_sqrt_ab": quant(meas_comp / np.sqrt(m.re * re_min)),
-        "note": "moments: PSF-subtracted rms semi-axes x 1.1774 (Gaussian half-light); CModel: bdReB for "
+        "by_component_and_size": {f"{c}_re_{lo:g}_{hi:g}": {
+            "n": int(sel.sum()),
+            "moment_major_over_re_major_q50": float(np.median(GAUSS_HALF_LIGHT * m.a_mom[sel] / m.re[sel])),
+            "cmodel_over_truth_sqrt_ab_q50": float(np.nanmedian(meas_comp[sel] / np.sqrt(m.re * re_min)[sel])),
+            "q_moment_over_q_true_q50": float(np.median(m.q_mom[sel] / m.q_true[sel]))}
+            for c in ("bulge", "disk") for lo, hi in ((0, 0.5), (0.5, 1), (1, 99))
+            for sel in [((m.comp == c) & (m.re >= lo) & (m.re < hi)).to_numpy()] if sel.sum() >= 20},
+        "note": "moments: PSF-subtracted rms semi-axes x 1.1774 (Gaussian half-light; for a pure exponential this "
+                "is 1.21 x the true half-light radius, more for n = 4); CModel: bdReB for "
                 "bulge-dominated, bdReD for disk-dominated hosts, both determinant radii sqrt(ab), against the "
                 "cosmoDC2 sqrt(a b) of the dominant component"}
     rows = []
