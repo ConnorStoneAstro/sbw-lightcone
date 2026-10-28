@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "dp02_miss_accounting",
   "universe_id": "truth_nearest",
-  "recipe": "python src/dp02_miss.py compute --sample results/truth_nearest/dp02_sample.parquet --associations results/truth_nearest/dp02_associations.parquet --candidates results/truth_nearest/dp02_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --hostless-cut flb01 --p-threshold p005 --workers 16 --output results/truth_nearest/dp02_miss_accounting.json",
-  "definition_version": "sha256:003bf6748ffe775297c51750cdefbefa6897f1af87622edbacf13e6938dff585",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:7221228f966437a854f85651a10181e8c26408b247eb5a41fcfe17ff0289cbba",
+  "recipe": "python src/dp02_miss.py compute --sample results/truth_nearest/dp02_sample.parquet --associations results/truth_nearest/dp02_associations.parquet --candidates results/truth_nearest/dp02_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --hostless-cut flb01 --p-threshold p005 --tier dp02 --workers 16 --output results/truth_nearest/dp02_miss_accounting.json",
+  "definition_version": "sha256:1739be7d1b03e30f3e0a03b2e45395ca844f71c1437534b10e8c4fa5a1b9fce9",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:1ce600188099fdb41ea33507276aa05e9b9aafafb8d88a452129e6a0d9282b95",
   "decisions": {
     "sbw_profile": "exponential",
     "band": "r",
@@ -21,7 +21,7 @@
     "dp02_associations": "sha256:5b387f75f30e858c32cd5dfc2b0f528d491fe21679f8564c265447a62435e7d5",
     "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
   },
-  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -31,8 +31,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T02:05:44.664+00:00",
-  "finished_at": "2026-10-28T02:11:32.544+00:00",
+  "started_at": "2026-10-28T15:09:12.189+00:00",
+  "finished_at": "2026-10-28T15:14:26.797+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
