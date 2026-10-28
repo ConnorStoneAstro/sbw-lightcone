@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_recovery_vs_ddlr",
+  "universe_id": "truth_nearest",
+  "recipe": "python src/dp02_fig.py recovery_vs --x ddlr --associations results/truth_nearest/dp02_associations.parquet --output results/truth_nearest/dp02_recovery_vs_ddlr.pdf",
+  "definition_version": "sha256:5d8af7a5363fc4e9f4659dc4b877f9e6591c85c4438d5af8c274fdab9c146c53",
+  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
+  "data_version": "sha256:7fe35638dab0dd2e77299734f9cc53dba29bcd9e67cc8425bf5a6f00b3c001ba",
+  "decisions": {},
+  "input_versions": {
+    "dp02_associations": "sha256:5b387f75f30e858c32cd5dfc2b0f528d491fe21679f8564c265447a62435e7d5"
+  },
+  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-28T02:12:18.013+00:00",
+  "finished_at": "2026-10-28T02:12:52.461+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
