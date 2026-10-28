@@ -37,6 +37,7 @@ PROFILE_LABEL = {"exponential": "exponential (n = 1, CModel disk radius)",
                  "sersic": "de Vaucouleurs (n = 4, CModel bulge radius)",
                  "moments": "Gaussian (PSF-subtracted moments)"}
 SERSIC_N = {"exponential": 1.0, "sersic": 4.0, "moments": 0.5}
+SBW_CURVE = {}                 # profile -> sbw_host.core curve, "analytic" unless set (DP2 fits: "mixture")
 COLORS = {"sbw": "#2a6fdb", "dlr": "#e07b39", "agree": "#555555", "ref": "#999999"}
 
 PER_BAND = ["cModelFlux", "bdReB", "bdReD", "bdFluxB", "bdFluxD",
@@ -170,7 +171,7 @@ def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_ma
            "sbw_objectId": -1, "p_sbw_max": np.nan, "p_sbw_true": np.nan, "rank_true": -1, "n_sib_sbw": -1,
            "p_top": [],
            "flb_best": np.nan, "flb_max": np.nan, "flb_true": np.nan, "m_true": np.nan, "sep_sbw": np.nan,
-           "dlr_objectId": -1, "d_dlr_min": np.nan, "d_dlr_true": np.nan, "d_dlr_sbw": np.nan, "sep_dlr": np.nan,
+           "dlr_objectId": -1, "p_sbw_dlr": np.nan, "d_dlr_min": np.nan, "d_dlr_true": np.nan, "d_dlr_sbw": np.nan, "sep_dlr": np.nan,
            "sep_true": np.nan}
     if len(c) == 0:
         return out
@@ -212,7 +213,7 @@ def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_ma
     _, _, l1, l2, _ = moment_shape(*(c[f"{band}_{k}"].to_numpy(dtype=float)
                                      for k in ("ixx", "iyy", "ixy", "ixxPSF", "iyyPSF", "ixyPSF")))
     # ---- SBW (every remaining candidate has a usable light model)
-    res = sbw_model(0.0, 0.0, x, y, r_eff=a, flux=flux, n=n, q=q, phi=phi)
+    res = sbw_model(0.0, 0.0, x, y, r_eff=a, flux=flux, n=n, q=q, phi=phi, profile=SBW_CURVE.get(profile, "analytic"))
     p = np.nan_to_num(np.asarray(res.p_sbw, dtype=float))
     flb = np.asarray(res.frac_light_beyond, dtype=float)
     m = np.asarray(res.m, dtype=float)
@@ -226,14 +227,16 @@ def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_ma
         out["p_sbw_true"] = p[it]; out["flb_true"] = flb[it]; out["m_true"] = m[it]
         out["rank_true"] = int((p > p[it]).sum()) + 1
     # ---- DLR
-    da, db, dok = dlr_ellipse(c, band, dlr_radius, q, l1, l2)
+    ell = dlr_ellipse(c, band, dlr_radius, q, l1, l2)
+    da, db, dok = ell[:3]
+    dphi = ell[3] if len(ell) > 3 else phi    # a tier whose DLR ellipse has its own orientation returns it
     d = np.full(len(c), np.inf)
-    d[dok] = d_dlr(-x[dok], -y[dok], da[dok], db[dok], phi[dok])
+    d[dok] = d_dlr(-x[dok], -y[dok], da[dok], db[dok], dphi[dok])
     if np.isfinite(d).any():
         k = int(np.argmin(d))
         out["d_dlr_min"] = d[k]
         if d[k] <= dlr_max:
-            out["dlr_objectId"] = int(oid[k]); out["sep_dlr"] = sep[k]
+            out["dlr_objectId"] = int(oid[k]); out["sep_dlr"] = sep[k]; out["p_sbw_dlr"] = p[k]
     if it >= 0 and np.isfinite(d[it]):
         out["d_dlr_true"] = d[it]
     if out["sbw_objectId"] >= 0:

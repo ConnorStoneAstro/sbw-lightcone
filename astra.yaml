@@ -173,19 +173,34 @@ inputs:
   # ---- Tier 4: Rubin DP2, no truth ----
   - id: dp2_transients
     type: data
-    source: "NERSC /global/cfs/cdirs/lsst/groups/TD/SN/EDP2/SN_candidates/{RC_sample,final_sample,parsnip_ddf,RC_lcfit_input_122k}.parquet (file chosen by decision dp2_sample)"
+    source: "data/dp2_sn_candidates_index.csv"
     description: >-
-      DP2 SN candidate samples from the EDP2 transient working group (Mi Dai,
-      R. Chen; README and README_RC.md in that directory). RC_sample.parquet:
-      690 objects with a successful SALT3 fit (FITPROB > 0.01, |x1| < 3,
-      |c| < 0.3) after nightly coadd, baseline correction and S/N cuts;
-      final_sample.parquet: Mi Dai's 617 candidates with a SALT fit (overlap of
-      102 with RC); parsnip_ddf.parquet: the 7823 DDF DiaObjects run through
-      ParSNIP (also the set the three collaborator host-association runs
-      cover); RC_lcfit_input_122k.parquet: all 122,465 objects passing the
-      detection, reliability, |b| > 10 and S/N cuts before any fit. A local
-      copy of the parsnip_ddf ids and positions is data/dp2_transients.csv
-      (verified identical id set, 2026-10-26).
+      DP2 SN candidate samples from the EDP2 transient working group at NERSC,
+      /global/cfs/cdirs/lsst/groups/TD/SN/EDP2/SN_candidates (Mi Dai, R. Chen;
+      README and README_RC.md there), declared through an index (path, size,
+      mtime; src/ou24_index_files.py) of the four sample files because the
+      directory is shared and keeps growing; src/dp2_sample.py checks size and
+      mtime against it. The decision dp2_sample picks the file.
+      RC_sample.parquet (rc_salt, R. Chen, 8 Oct 2026): 690 objects. Built
+      from for_fastdb/subsample.hats (363,339 DiaObjects with ndet >= 7, >= 3
+      positive detections after removing isDipole / psfFlux_flag / edge /
+      saturatedCenter / bad / centroid / cr detections, max reliability >=
+      0.486, >= 3 bands and >= 3 detections in one of griz); |b| > 10 deg
+      (195,043); forced psfDiffFlux cleaned (visits with pixel or PSF flags
+      dropped, psfDiffFluxErr_corrected, 5 sigma clip within nights of >= 3
+      visits) and coadded per night (inverse variance); S/N > 5 on >= 3
+      nights in >= 2 bands (122,465, = RC_lcfit_input_122k.parquet, rc_all);
+      a per-band baseline correction (applied only where the baseline B < 0,
+      its error added in quadrature); SNANA snlc_fit with SALT3.DOVEKIE (EDP2
+      bandpasses, z fitted from the light curve over 0.01-1.5 with a +-0.5
+      mag LCDM distance prior, >= 2 bands with S/N > 5, SNRSUM >= 20, >= 6
+      epochs, one epoch before peak and one >= +5 rest-frame days after,
+      epochs within -15..+35 rest-frame days); kept FITPROB > 0.01, |x1| < 3,
+      |c| < 0.3. final_sample.parquet (md_final): Mi Dai's 617 SALT-fit
+      candidates (102 in common with RC); parsnip_ddf.parquet: the 7823 DDF
+      DiaObjects classified with ParSNIP (also the set the collaborator
+      host associations cover; a local copy of its ids and positions is
+      data/dp2_transients.csv, identical id set, 2026-10-26).
   - id: dp2_parsnip_ddf_sample
     type: data
     source: "NERSC /global/cfs/cdirs/lsst/groups/TD/SN/EDP2/SN_candidates/parsnip_ddf.parquet (local copy data/dp2_transients.csv)"
@@ -209,11 +224,22 @@ inputs:
       counterparts and redshifts in the companion file.
   - id: dp2_object
     type: data
-    source: "tap://data.lsst.cloud/api/tap dp2 Object (MultiProFit sersic_* and exponential_* fits) | NERSC HATS object_collection"
+    source: "data/dp2_object_hats_index.csv"
     description: >-
-      DP2 Object table rows with both MultiProFit fits, queried per transient
-      region (grouped TAP) or via the LSDB HATS copy at NERSC.
-
+      DP2 Object table at NERSC as the HATS catalogue
+      /global/cfs/cdirs/lsst/shared/rubin/DP2/HATS/object_collection/object_lc
+      (hats-import 0.10.0, 786,420,720 rows, 8840 healpix partitions of order
+      2-8, 3.6 TB with the nested forced-source light curves; every row is a
+      primary object). Declared through an index of the partition files
+      (path, size, mtime; src/dp02_index_objects.py) because lc hashes inputs
+      by content and the release is frozen; the scripts read the catalogue's
+      per_partition_statistics.parquet beside them for partition bounding
+      boxes and refuse to run if a partition is missing from the index. Both
+      MultiProFit fits (exponential_* with n = 1 and sersic_* with free n:
+      reff_x, reff_y, rho in 0.2" tract pixels, a Gaussian-mixture model
+      whose half-light radius is ~1.386 reff; per-band {b}_exponentialFlux,
+      {b}_sersicFlux), cModel fluxes and flags, HSM moments, blendedness,
+      extendedness and the deblend columns.
 outputs:
   # ---- Tier 1: DP0.2 ----
   - id: dp02_candidates
@@ -1042,36 +1068,224 @@ outputs:
     inputs: [delight_associations]
     decisions: []
   # ---- Tier 4: DP2 ----
+  - id: dp2_sample
+    type: table
+    format: parquet
+    description: >-
+      The DP2 transients of the dp2_sample option, one row each: sn_id (the
+      DiaObject id), sn_ra, sn_dec, host_objectId = -1 (no truth) and the
+      light-curve fit columns the file carries (SALT3 z, x1, c, mB, FITPROB,
+      MWEBV, PKMJD, S/N summaries and Mi Dai's overlap flags for rc_salt).
+      src/dp2_sample.py refuses to run if the file's size or mtime no longer
+      match data/dp2_sn_candidates_index.csv.
+    inputs: [dp2_transients]
+    decisions: [dp2_sample]
+    recipe:
+      command: python src/dp2_sample.py --index {inputs.dp2_transients} --sample {decisions.dp2_sample} --output {output}
+  - id: dp2_candidates
+    type: table
+    format: parquet
+    description: >-
+      Every DP2 Object (all rows are primary) within the search radius of any
+      dp2_sample transient, one row per (transient, object) pair, read from
+      the HATS object_collection by bounding-box partition lookup (whole
+      neighbouring partitions, so no margin cache is involved). Columns:
+      position, sep_arcsec, refExtendedness, tract, patch, parentObjectId,
+      parent_nChild (deblend_parentNChild), deblend_blendNChild,
+      detect_fromBlend, detect_isIsolated, shape_xx/yy/xy and shape_flag,
+      both MultiProFit fits (exponential_* and sersic_*: ra, dec, reff_x,
+      reff_y, rho, chi2_reduced, unknown_flag, no_data_flag, sersic_index,
+      exponential_delta_lnL_fit_ps) and per band exponentialFlux(Err),
+      sersicFlux(Err), cModelFlux(Err), cModel_flag, blendedness, the HSM
+      source and PSF moments ixx/iyy/ixy(PSF) and extendedness, i.e. the DP2
+      names of every column the DP0.2 candidate_quality cuts read.
+    inputs: [dp2_sample, dp2_object]
+    decisions: [search_radius]
+    recipe:
+      command: python src/dp2_candidates.py --positions {inputs.dp2_sample} --objects {inputs.dp2_object} --search-radius {decisions.search_radius} --workers 16 --output {output}
+      resources: {cpus: 16, memory: 56Gi}
   - id: dp2_associations
     type: table
     format: parquet
-    description: One row per DP2 transient with SBW and DLR hosts, all bands, both MultiProFit fits.
-    inputs: [dp2_transients, dp2_object]
-    decisions: [dp2_sample, sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, exclude_suspect]
+    description: >-
+      One row per DP2 transient with the same columns as dp02_associations
+      (SBW most probable host, p_sbw_max, flb_best, flb_max, the P_SBW list
+      p_top, d_DLR of the SBW host, the DLR host and d_DLR_min, candidate
+      counts per cut) plus p_sbw_dlr, the SBW probability of the DLR host;
+      truth columns are empty. Made by src/dp02_associate.py --tier dp2, which
+      swaps in src/dp2_lib.py: sbw_profile exponential / sersic use the
+      MultiProFit exponential / free-n Sersic fit (one multiband shape,
+      per-band flux) evaluated as the fitted Gaussian mixture with half-light
+      radius 1.386 reff (for n = 1), moments the band's PSF-subtracted HSM
+      moments; DLR half_light is the exponential fit's half-light ellipse for
+      every profile, moments the rms moment ellipse; exclude_suspect = drop
+      removes sbw_host's suspect fits. Every band and profile is in
+      dp2_association_sweep.
+    inputs: [dp2_sample, dp2_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, exclude_suspect, candidate_quality]
+    recipe:
+      command: python src/dp02_associate.py --tier dp2 --sample {inputs.dp2_sample} --candidates {inputs.dp2_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --exclude-suspect {decisions.exclude_suspect} --workers 16 --output {output}
+      resources: {cpus: 16, memory: 24Gi}
+  - id: dp2_association_sweep
+    type: table
+    format: parquet
+    description: >-
+      The dp2_associations computation for every band (ugrizy) and SBW light
+      model (exponential fit, free-n Sersic fit, moment Gaussian), one row per
+      (transient, band, profile) with the SBW and DLR picks (sbw_objectId,
+      p_sbw_max, flb_best, flb_max, sep_sbw, dlr_objectId, p_sbw_dlr,
+      d_dlr_min, d_dlr_sbw, sep_dlr, agree); the other settings are those of
+      dp2_associations.
+    inputs: [dp2_sample, dp2_candidates]
+    decisions: [search_radius, dlr_max, dlr_radius, extendedness_cut, exclude_suspect, candidate_quality]
+    recipe:
+      command: python src/dp02_sweep.py table --tier dp2 --sample {inputs.dp2_sample} --candidates {inputs.dp2_candidates} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --exclude-suspect {decisions.exclude_suspect} --workers 16 --output {output}
+      resources: {cpus: 16, memory: 24Gi}
+  - id: dp2_random_positions
+    type: table
+    format: parquet
+    description: >-
+      Ten random sky positions per dp2_sample transient, in the transient's
+      own DP2 patch (that of its nearest object): uniform on the sphere inside
+      the bounding box of the patch's objects and redrawn unless a 1 arcmin
+      cell there holds one, so they share the transient's field and depth and
+      never land on unobserved sky, as dp02_random_positions does per tract.
+      Ten per transient because the clean sample is small; parent_sn_id,
+      tract and patch are kept; seeded.
+    inputs: [dp2_sample, dp2_object]
+    decisions: []
+    recipe:
+      command: python src/dp2_random_positions.py --sample {inputs.dp2_sample} --objects {inputs.dp2_object} --per-sn 10 --output {output}
+      resources: {cpus: 16, memory: 40Gi}
+  - id: dp2_random_candidates
+    type: table
+    format: parquet
+    description: The dp2_candidates extraction run on dp2_random_positions instead of the transients.
+    inputs: [dp2_random_positions, dp2_object]
+    decisions: [search_radius]
+    recipe:
+      command: python src/dp2_candidates.py --positions {inputs.dp2_random_positions} --objects {inputs.dp2_object} --search-radius {decisions.search_radius} --workers 16 --output {output}
+      resources: {cpus: 16, memory: 56Gi}
+  - id: dp2_random_associations
+    type: table
+    format: parquet
+    description: SBW and DLR association of every DP2 random position, with the same columns, light models and candidate cuts as dp2_associations.
+    inputs: [dp2_random_positions, dp2_random_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, exclude_suspect, candidate_quality]
+    recipe:
+      command: python src/dp02_associate.py --tier dp2 --positions {inputs.dp2_random_positions} --candidates {inputs.dp2_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --exclude-suspect {decisions.exclude_suspect} --workers 16 --output {output}
+      resources: {cpus: 16, memory: 24Gi}
+  - id: dp2_hostless_indicator
+    type: figure
+    format: pdf
+    description: >-
+      dp02_hostless_indicator for DP2: (a) flb_best of the real transients
+      (one population, there is no truth) and of the random positions; (b),
+      (c) fraction rejected and Youden J versus the flb_best and d_DLR_min
+      thresholds; (d) the random-position ROC with the sbw_hostless_cut and
+      dlr_max operating points and the frozen DP0.2 J optima (flb_best
+      0.0215, d_DLR 2.7) as open diamonds. "Real kept" is not a recovery
+      here: some DP2 transients are truly hostless or have undetected hosts.
+    inputs: [dp2_associations, dp2_random_associations]
+    decisions: [sbw_hostless_cut, dlr_max]
+    recipe:
+      command: python src/dp02_fig.py hostless_indicator --tier dp2 --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+  - id: dp2_hostless_metrics
+    type: metric
+    format: json
+    description: dp02_hostless_metrics for DP2 (real transients kept, random positions rejected, Youden J optima, and dp02_optima_transfer at flb_best 0.01, 0.0215, 0.05 and d_DLR 2.7, 4); the *_sbw_correct entries are meaningless without truth.
+    inputs: [dp2_associations, dp2_random_associations]
+    decisions: []
+    recipe:
+      command: python src/dp02_fig.py hostless_metrics --tier dp2 --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --output {output}
   - id: dp2_disagreement_rate
     type: metric
     format: json
-    description: Fraction of DP2 transients where SBW and DLR pick different hosts, overall and per band.
-    inputs: [dp2_associations]
-    decisions: []
+    description: >-
+      SBW versus DLR on DP2 without truth. Categories per transient: same
+      host, different hosts, SBW hostless only (flb_best < sbw_hostless_cut),
+      DLR hostless only (no d_DLR <= dlr_max), both hostless; the P-band
+      matrix (rows: P_SBW of the DLR host > 0.5, in [t, 0.5], < t with t =
+      p_true_threshold, or SBW hostless; columns: DLR host is / is not the SBW
+      most probable host, and DLR hostless); the same for the random
+      positions; per band (headline profile) and per profile (headline band)
+      from the sweep; band_flip, the fraction whose SBW (and DLR) host differs
+      from the headline band's; and the pairwise SBW-host agreement of the
+      three light models.
+    inputs: [dp2_associations, dp2_association_sweep, dp2_random_associations]
+    decisions: [sbw_hostless_cut, p_true_threshold]
+    recipe:
+      command: python src/dp2_fig.py disagreement_rate --associations {inputs.dp2_associations} --sweep {inputs.dp2_association_sweep} --random {inputs.dp2_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp2_agreement_vs_ddlr
     type: figure
     format: pdf
-    description: SBW-DLR agreement versus d_DLR of the DLR host and versus p_sbw of the SBW host.
+    description: SBW most probable host = DLR host, mean P_SBW of the DLR host and the SBW hostless fraction versus d_DLR of the DLR host, versus d_DLR of the SBW host and versus P_SBW of the SBW host, with counts.
     inputs: [dp2_associations]
-    decisions: []
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/dp2_fig.py agreement_vs_ddlr --associations {inputs.dp2_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: dp2_band_consistency
     type: figure
     format: pdf
-    description: How often the SBW top host changes with band, and the exponential-versus-Sersic fit agreement.
-    inputs: [dp2_associations]
-    decisions: []
+    description: >-
+      From dp2_association_sweep: (a) per band, how often the SBW most
+      probable host (each light model) and the DLR host differ from the
+      headline band's when both name one; (b) the SBW-DLR categories per band;
+      (c) SBW and DLR hostless fractions per band and light model; (d) SBW
+      host agreement between the exponential fit, the free-n Sersic fit and
+      the moment Gaussian per band.
+    inputs: [dp2_associations, dp2_association_sweep]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/dp2_fig.py band_consistency --associations {inputs.dp2_associations} --sweep {inputs.dp2_association_sweep} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+  - id: dp2_p_top_host
+    type: figure
+    format: pdf
+    description: >-
+      Without truth, the shape of SBW's output: (a) the distribution of
+      P_SBW of the most probable host for SBW-hosted DP2 transients, DP2
+      random positions and (dashed) the DP0.2 SNe of the same universe; (b)
+      mean credible-set size (candidates with P_SBW > t) versus t for the same
+      three, with the DP0.2 knee t = 0.034 marked.
+    inputs: [dp2_associations, dp2_random_associations, dp02_associations]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/dp2_fig.py p_top_host --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --reference {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+  - id: dp2_disagreement_cases
+    type: table
+    format: csv
+    description: >-
+      Twelve seeded transients per class for the DP2 gallery: sbw_ne_dlr
+      (both name a host, different objects), sbw_hostless_only,
+      dlr_hostless_only and band_flip (SBW hosted in the headline band and in
+      another band, with a different most probable host; the first such band
+      in ugrizy order). Columns case_id, class, class_n, sn_id, sn_ra, sn_dec,
+      label, and for the SBW host, the DLR host and the other band's SBW host
+      (flip) the position and ellipse (_ra, _dec, _a, _b, _phi in arcsec and
+      degrees from West toward North; SBW: the profile's half-light ellipse,
+      DLR: the ellipse d_DLR is measured on), plus p_sbw_max, p_sbw_dlr,
+      flb_best, d_dlr_min, separations, flip_band, the objectIds and z.
+    inputs: [dp2_associations, dp2_association_sweep, dp2_candidates]
+    decisions: [sbw_hostless_cut, exclude_suspect]
+    recipe:
+      command: python src/dp2_cases.py --associations {inputs.dp2_associations} --sweep {inputs.dp2_association_sweep} --candidates {inputs.dp2_candidates} --hostless-cut {decisions.sbw_hostless_cut} --exclude-suspect {decisions.exclude_suspect} --output {output}
   - id: dp2_disagreement_gallery
     type: figure
     format: pdf
-    description: Cutout gallery of representative DP2 disagreements on deep_coadd images.
-    inputs: [dp2_associations]
-    decisions: []
+    description: >-
+      DP2 deep_coadd cutouts (30 arcsec, headline band, north up, east left)
+      of dp2_disagreement_cases, one page per class, with the SBW most
+      probable host and its half-light ellipse (solid), the DLR host and its
+      DLR ellipse (dashed), both drawn at 4 x their axes (d_DLR = 4 for the
+      DLR one, the DLR hostless boundary), and, for band flips, the other
+      band's SBW host;
+      src/dp02_gallery.py --tier dp2 over ivoa.ObsCore (obs_collection
+      LSST.DP2, lsst.deep_coadd) and the RSP cutout service, from a NERSC
+      compute node with the rsp_token.
+    inputs: [dp2_disagreement_cases, rsp_token]
+    decisions: [band]
+    recipe:
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_disagreement_cases} --tier dp2 --ellipse-scale 4 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
   - id: dp2_cross_method_agreement
     type: table
     format: csv

@@ -1,4 +1,4 @@
-"""Gallery of Rubin DP0.2 deep-coadd cutouts with host-candidate markers.
+"""Gallery of Rubin DP0.2 (or, with ``--tier dp2``, DP2) deep-coadd cutouts with host-candidate markers.
 
 Reads a csv of cases and renders one panel per case: a ``deepCoadd_calexp``
 cutout centred on the supernova, north up and east left, with a marker for
@@ -25,6 +25,10 @@ Usage::
 
 Input columns: ``case_id``, ``sn_ra``, ``sn_dec``, optional ``label``, and any
 number of ``<name>_ra`` / ``<name>_dec`` marker pairs (blank = not drawn).
+A marker with ``<name>_a``, ``<name>_b`` and ``<name>_phi`` columns (semi-axes in arcsec, angle in degrees
+counter-clockwise from +x = West toward North) also gets that ellipse drawn about its position.
+With ``--tier dp2`` the patch table is ``ivoa.ObsCore`` rows of ``obs_collection = 'LSST.DP2'`` and subtype
+``lsst.deep_coadd``.
 With ``--lookup sbw,dlr`` a marker may instead be given as ``<name>_objectId``
 (Int64; blank or negative = not drawn) and its position is read from
 ``dp02_dc2_catalogs.Object`` over TAP.
@@ -56,12 +60,15 @@ from astropy.wcs import WCS  # noqa: E402
 from matplotlib import patheffects  # noqa: E402
 from matplotlib.backends.backend_pdf import PdfPages  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
+from matplotlib.patches import Ellipse  # noqa: E402
 
 RSP_BASE = "https://data.lsst.cloud"
 TAP_URL = f"{RSP_BASE}/api/tap"
 CUTOUT_URL = f"{RSP_BASE}/api/cutout/sync"
-OBSCORE_TABLE = "dp02_dc2_catalogs.ObsCore"
-COADD_SUBTYPE = "lsst.deepCoadd_calexp"
+# tier -> (ObsCore table, extra WHERE clause, coadd subtype, title)
+TIERS = {"dp02": ("dp02_dc2_catalogs.ObsCore", "", "lsst.deepCoadd_calexp", "DP0.2 deepCoadd"),
+         "dp2": ("ivoa.ObsCore", " AND obs_collection = 'LSST.DP2'", "lsst.deep_coadd", "DP2 deep_coadd")}
+OBSCORE_TABLE, OBS_WHERE, COADD_SUBTYPE, TITLE = TIERS["dp02"]
 
 SBW_COLOR, DLR_COLOR, GREY = "#2a6fdb", "#e07b39", "#555555"
 SN_COLOR = "#d62728"
@@ -73,6 +80,7 @@ MARKER_STYLES = {
     "truth_match": ("D", "black", 16, "MatchesTruth"),
     "truth_nearest": ("h", GREY, 21, "Nearest to truth host"),
     "truth_pos": ("+", "#999999", 7, "Truth host position"),
+    "flip": ("^", "#2ca02c", 11, "SBW most probable, other band"),
 }
 EXTRA_STYLES = [("v", "#2ca02c"), ("h", "#9467bd"), ("<", "#8c564b"), (">", "#e377c2"), ("*", "#17becf")]
 
@@ -130,14 +138,14 @@ _POLY_RE = re.compile(r"POLYGON\s+(?:ICRS\s+)?(.*)", re.I)
 
 def patch_table(band: str, tap_token: str, cache_dir: Path) -> pd.DataFrame:
     """All DP0.2 deep-coadd patches in ``band`` with their ra/dec bounding boxes (cached)."""
-    cache = cache_dir / f"obscore_dp02_{COADD_SUBTYPE.split('.')[-1]}_{band}.parquet"
+    cache = cache_dir / f"obscore_{OBSCORE_TABLE.split('.')[0]}_{COADD_SUBTYPE.split('.')[-1]}_{band}.parquet"
     if cache.exists():
         return pd.read_parquet(cache)
     import pyvo
 
     tap = pyvo.dal.TAPService(TAP_URL, session=_session(tap_token))
     q = (f"SELECT access_url, lsst_tract, lsst_patch, s_ra, s_dec, s_region FROM {OBSCORE_TABLE} "
-         f"WHERE dataproduct_subtype = '{COADD_SUBTYPE}' AND lsst_band = '{band}'")
+         f"WHERE dataproduct_subtype = '{COADD_SUBTYPE}' AND lsst_band = '{band}'{OBS_WHERE}")
     df = tap.search(q, maxrec=200000).to_table().to_pandas()
     if df.empty:
         raise RuntimeError(f"ObsCore returned no {COADD_SUBTYPE} rows for band {band!r}.")
@@ -162,7 +170,7 @@ def best_patch(patches: pd.DataFrame, ra: float, dec: float) -> pd.Series:
     ])
     i = int(np.argmax(margin))
     if margin[i] <= 0:
-        raise LookupError(f"No DP0.2 deep coadd covers ({ra:.5f}, {dec:.5f}).")
+        raise LookupError(f"No {TITLE} covers ({ra:.5f}, {dec:.5f}).")
     return patches.iloc[i]
 
 
@@ -326,6 +334,11 @@ def draw_panel(ax, case, image, error, names, styles, size, args):
             continue
         x, y = tangent_offsets(float(r), float(d), sn_ra, sn_dec)
         m, c, s, _ = styles[n]
+        ea, eb, ephi = (case.get(f"{n}_{k}") for k in ("a", "b", "phi"))
+        if not any(pd.isna(v) for v in (ea, eb, ephi)):   # angle from West toward North -> from East (+x here)
+            k = 2 * args.ellipse_scale
+            ax.add_patch(Ellipse((x, y), k * float(ea), k * float(eb), angle=180.0 - float(ephi), fill=False,
+                                 ec=c, lw=1.0, ls="--" if n == "dlr" else "-", zorder=3))
         far = max(abs(x), abs(y))
         if far > 0.95 * half:  # off-panel: arrow at the edge pointing to it, with its distance
             f = 0.93 * half / far
@@ -389,7 +402,8 @@ def render(cases: pd.DataFrame, images: dict, errors: dict, args):
         for ax in axes.flat[len(page):]:
             ax.axis("off")
         fig.legend(handles=handles, loc="outside lower center", ncol=len(handles), fontsize=7, frameon=False)
-        fig.suptitle(f"DP0.2 deepCoadd {args.band}-band, {args.size:g}\" cutouts"
+        fig.suptitle(f"{TITLE} {args.band}-band, {args.size:g}\" cutouts"
+                     + (f", ellipses at {args.ellipse_scale:g} x the drawn axes" if args.ellipse_scale != 1 else "")
                      + (f" (page {ip + 1}/{len(pages)})" if len(pages) > 1 else ""), fontsize=9)
         if pdf:
             pdf.savefig(fig, dpi=args.dpi)
@@ -427,10 +441,14 @@ def main(argv=None):
     p.add_argument("--dpi", type=int, default=150)
     p.add_argument("--lookup", help="comma-separated marker names given as <name>_objectId; "
                    "positions are looked up in the DP0.2 Object table")
+    p.add_argument("--ellipse-scale", type=float, default=1.0, help="draw <name>_a/_b ellipses scaled by this")
+    p.add_argument("--tier", default="dp02", choices=sorted(TIERS), help="which release's coadds")
     p.add_argument("--token-file", help="token file with both read:tap and read:image scopes")
     p.add_argument("--tap-token-file")
     p.add_argument("--image-token-file")
     args = p.parse_args(argv)
+    global OBSCORE_TABLE, OBS_WHERE, COADD_SUBTYPE, TITLE
+    OBSCORE_TABLE, OBS_WHERE, COADD_SUBTYPE, TITLE = TIERS[args.tier]
 
     lookup = [n for n in (args.lookup or "").split(",") if n]
     cases = pd.read_csv(args.cases, dtype={f"{n}_objectId": "Int64" for n in lookup})
