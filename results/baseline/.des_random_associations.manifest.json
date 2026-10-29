@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "output_id": "des_random_associations",
+  "universe_id": "baseline",
+  "recipe": "python src/des_run.py associate --positions results/baseline/des_random_positions.parquet --candidates results/baseline/des_random_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --candidate-quality none --workers 8 --output results/baseline/des_random_associations.parquet",
+  "definition_version": "sha256:cb2bdc50a8fe83889e9c69df52ff5107f21fd827fb266497a024d771dd26aa60",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:bf87ba60784716967970c67a14d2259885d0a8193c9d6421f724f364f36f8cc6",
+  "decisions": {
+    "sbw_profile": "exponential",
+    "band": "r",
+    "search_radius": "r30",
+    "dlr_max": "d4",
+    "dlr_radius": "half_light",
+    "extendedness_cut": "ext05",
+    "candidate_quality": "none"
+  },
+  "input_versions": {
+    "des_random_positions": "sha256:031aedbe39e0e2a25dac2683b21b1f81a7e13a51e997cf6ede6c749efe3c7ed3",
+    "des_random_candidates": "sha256:f2745222e9a47a2684af35f9a968bcd864f84572b26184f48fd00547ced08509"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:52:36.125+00:00",
+  "finished_at": "2026-10-29T18:53:00.556+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
