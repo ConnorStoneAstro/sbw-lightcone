@@ -146,16 +146,25 @@ inputs:
   # ---- Tier 2: DES-SN5YR confident host matches ----
   - id: des_sn5yr_hosts
     type: data
-    source: "https://github.com/des-science/DES-SN5YR (4_DISTANCES_COVMAT/DES-Dovekie_Metadata.csv, 0_DATA/DES-SN5YR_DES/DES-SN5YR_DES_HEAD.FITS.gz)"
+    source: data/des_sn5yr
     description: >-
-      1623 DES SNe Ia of the Dovekie cosmology sample (IDSURVEY = 10) with the
-      published HOSTGAL_RA/DEC (DLR-based, visually vetted) host positions.
+      DES-SN5YR release files (https://github.com/des-science/DES-SN5YR, copied 2026-10-29 from the
+      baselineflux project's copy of 28 Oct 2026; sha256 in data/README.md):
+      4_DISTANCES_COVMAT/DES-Dovekie_Metadata.csv (the Dovekie cosmology sample; 1,623 DES SNe Ia with
+      IDSURVEY = 10, all with a host) and 0_DATA/DES-SN5YR_DES/DES-SN5YR_DES_HEAD.FITS.gz (SN RA/Dec and the
+      published HOSTGAL / HOSTGAL2 positions, d_DLR, magnitudes), with their READMEs. The published host is
+      the DES-SN DLR assignment (SExtractor A, B, THETA on deep SN-field coadds, d_DLR <= 4 within 15"),
+      visually vetted: a DLR-derived reference, not truth.
   - id: des_dr2_objects
     type: data
-    source: "tap://datalab.noirlab.edu/tap des_dr2.main (a_image, b_image, theta_j2000, flux_radius, flux_auto)"
+    source: data/des_dr2_candidates.parquet
     description: >-
-      DES DR2 SExtractor shape and flux measurements for every object within the
-      search radius of each DES SN; the candidate catalogue for both methods.
+      Every DES DR2 object (des_dr2.main at NOIRLab Data Lab TAP) within 2 arcmin of each of the 1,623 DES
+      SNe, one row per object, fetched once on 2026-10-29 by src/des_fetch_dr2.py (not a recipe: TAP is not
+      reproducible; query, date and counts in data/README.md and the parquet metadata): position, the
+      detection-image a_image, b_image, theta_j2000, kron_radius, extended_class_coadd/wavg, and per band
+      (grizy) flux_auto(err), mag_auto, flux_radius, kron_radius, windowed moments, class_star, spread_model,
+      flags, imaflags_iso, niter_model. The candidate catalogue for both methods.
   # ---- Tier 3: DELIGHT visually matched hosts ----
   - id: delight_hosts
     type: data
@@ -1024,30 +1033,198 @@ outputs:
       command: python src/ou24_pa_check.py metrics --sn-table {inputs.ou24_sn_table} --match {inputs.ou24_truth_match} --output {output}
       resources: {cpus: 2, memory: 16Gi}
   # ---- Tier 2: DES ----
+  - id: des_sample
+    type: table
+    format: parquet
+    description: >-
+      The 1,623 DES-SN5YR Dovekie SNe Ia (IDSURVEY = 10), one row each: sn_id (CID), sn_ra, sn_dec (HEAD
+      file), sn_redshift (zHD), field, and the published host (HOSTGAL) and second host (HOSTGAL2): position,
+      DES-SN objid, separation, published d_DLR and r magnitude, and host_objectId / host2_objectId, the DES DR2
+      object matched to the published position under reference_match (any object, whatever its star/galaxy
+      class; -1 if none, then the published host counts as absent), with host_extended_class_coadd. The
+      published host is the DES-SN DLR assignment on deep SN-field coadds (visually vetted), a DLR-derived
+      reference and not truth: every DES "recovery" is agreement with that reference.
+    inputs: [des_sn5yr_hosts, des_dr2_objects]
+    decisions: [reference_match]
+    recipe:
+      command: python src/des_sample.py --hosts {inputs.des_sn5yr_hosts} --objects {inputs.des_dr2_objects} --reference-match {decisions.reference_match} --output {output}
+  - id: des_candidates
+    type: table
+    format: parquet
+    description: >-
+      Every DES DR2 object within the search radius of each des_sample SN, one row per (SN, object) pair, cut
+      from the 2' des_dr2_objects cache and rewritten into the DP0.2 candidate schema by src/des_lib.py:
+      objectId (coadd_object_id), coord_ra/dec, sep_arcsec, refExtendedness (1 for extended_class_coadd >= 2,
+      0 for stars and candidate stars, NaN for -9), the detection-image A, B, THETA_J2000 (also as
+      {b}_ixx/iyy/ixy in arcsec^2, zero PSF moments), and per band (grizy) flux_auto and its error in nJy (as
+      cModelFlux / cModelFluxErr), flux_radius, mag_auto, class_star, spread_model, flags and imaflags_iso
+      (cModel_flag = flags >= 4 or imaflags_iso > 0); DR2 has no deblend parents or blendedness.
+    inputs: [des_sample, des_dr2_objects]
+    decisions: [search_radius]
+    recipe:
+      command: python src/des_candidates.py --positions {inputs.des_sample} --sample {inputs.des_sample} --objects {inputs.des_dr2_objects} --search-radius {decisions.search_radius} --output {output}
   - id: des_associations
     type: table
     format: parquet
-    description: One row per DES SN with the published host, SBW top host, DLR host and all metrics.
-    inputs: [des_sn5yr_hosts, des_dr2_objects]
-    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, reference_match]
+    description: >-
+      One row per DES SN with the dp02_associations columns, the published host in place of the true host
+      (host_objectId, so sbw_correct / dlr_correct / p_sbw_true / true_host_status refer to the published host)
+      and the des_sample columns. Light models on DES DR2 (src/des_lib.py): exponential = n = 1 and sersic =
+      n = 4 on the band's FLUX_RADIUS (circular half-light radius, PSF included) as the determinant radius of
+      the A/B, THETA ellipse with flux_auto (DR2 has no Sersic fit); moments = a Gaussian with the A, B rms
+      ellipse. DLR moments = A, B, THETA (the DES-SN definition, not PSF-subtracted); half_light = the band's
+      FLUX_RADIUS ellipse.
+    inputs: [des_sample, des_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    recipe:
+      command: python src/des_run.py associate --sample {inputs.des_sample} --candidates {inputs.des_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --workers 8 --output {output}
+      resources: {cpus: 8, memory: 8Gi}
   - id: des_recovery
     type: metric
     format: json
-    description: Fraction of DES SNe for which each method returns the published host.
-    inputs: [des_associations]
-    decisions: []
+    description: >-
+      Agreement of SBW and DLR with the published DES-SN host (a DLR-derived reference, not truth), with
+      Wilson 68% intervals: the dp02_recovery keys (mean P_SBW of the published host, the P-band matrix rows
+      P_SBW(published) > 0.5 / t-0.5 / < t / SBW hostless against DLR = published / != published / hostless,
+      the argmax matrix, the random-position 2x2) plus agreement_with_published, the matrix as fractions with
+      intervals, the HOSTGAL2 agreement (either host counts), where the published host stands in the candidate
+      cuts and its DR2 class, the published versus our d_DLR, a split of the SBW disagreements, and per band
+      and light model agreement from des_association_sweep.
+    inputs: [des_associations, des_random_associations, des_sample, des_association_sweep]
+    decisions: [sbw_hostless_cut, p_true_threshold]
+    recipe:
+      command: python src/des_run.py recovery --associations {inputs.des_associations} --random {inputs.des_random_associations} --sample {inputs.des_sample} --sweep {inputs.des_association_sweep} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: des_agreement_vs_ddlr
     type: figure
     format: pdf
-    description: SBW-DLR agreement and recovery of the published host versus d_DLR and separation.
+    description: dp02_agreement_vs_ddlr on DES against the published host - SBW-DLR agreement, mean P_SBW of the published host and DLR = published versus d_DLR of the SBW host and of the DLR host.
     inputs: [des_associations]
     decisions: []
+    recipe:
+      command: python src/des_run.py fig agreement_vs_ddlr --tier des --associations {inputs.des_associations} --output {output}
   - id: des_disagreement_gallery
     type: figure
     format: pdf
-    description: Cutout gallery of DES cases where SBW and DLR pick different hosts, marking the published host.
+    description: >-
+      DES DR2 coadd cutouts (30 arcsec, headline band, north up, east left; NOIRLab Data Lab SIA des_dr2) of
+      des_disagreement_cases, one page per class, with the SBW most probable host and its half-light ellipse
+      (solid), the DLR host and its DLR ellipse (dashed), both at 4 x their axes, and the published DES-SN host
+      position (black diamond); src/des_gallery.py, throttled, cached under $TMPDIR.
+    inputs: [des_disagreement_cases]
+    decisions: [band]
+    recipe:
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/des_gallery.py {inputs.des_disagreement_cases} --ellipse-scale 4 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --cache-dir "$T/des_cutouts"'
+  - id: des_random_positions
+    type: table
+    format: parquet
+    description: >-
+      Ten random positions per DES SN, uniform in area in the 45-90 arcsec annulus around it (same deep field
+      and depth; the 30" cone stays inside the SN's 2' cache cone), ids -(100 k + j + 1), parent_sn_id; seeded.
+    inputs: [des_sample]
+    decisions: []
+    recipe:
+      command: python src/des_random_positions.py --sample {inputs.des_sample} --per-sn 10 --output {output}
+  - id: des_random_candidates
+    type: table
+    format: parquet
+    description: The des_candidates extraction run on des_random_positions.
+    inputs: [des_random_positions, des_sample, des_dr2_objects]
+    decisions: [search_radius]
+    recipe:
+      command: python src/des_candidates.py --positions {inputs.des_random_positions} --sample {inputs.des_sample} --objects {inputs.des_dr2_objects} --search-radius {decisions.search_radius} --output {output}
+  - id: des_random_associations
+    type: table
+    format: parquet
+    description: SBW and DLR association of every DES random position, with the light models and cuts of des_associations.
+    inputs: [des_random_positions, des_random_candidates]
+    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    recipe:
+      command: python src/des_run.py associate --positions {inputs.des_random_positions} --candidates {inputs.des_random_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --workers 8 --output {output}
+      resources: {cpus: 8, memory: 8Gi}
+  - id: des_association_sweep
+    type: table
+    format: parquet
+    description: >-
+      The des_associations computation for every DES band (griz; DR2 has no u, and Y is shallow and unused by
+      DES-SN) and light model (exponential and n = 4 on FLUX_RADIUS, moment Gaussian), one row per (SN, band,
+      profile) with the columns of dp2_association_sweep.
+    inputs: [des_sample, des_candidates]
+    decisions: [search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    recipe:
+      command: python src/des_run.py sweep table --sample {inputs.des_sample} --candidates {inputs.des_candidates} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --workers 8 --output {output}
+      resources: {cpus: 8, memory: 8Gi}
+  - id: des_calibration
+    type: figure
+    format: pdf
+    description: Reliability of P_SBW on DES - the fraction of SNe whose SBW most probable host is the published host versus P_SBW (1:1 if SBW were calibrated against the DES-SN DLR reference), with counts.
     inputs: [des_associations]
     decisions: []
+    recipe:
+      command: python src/des_run.py fig calibration --tier des --associations {inputs.des_associations} --output {output}
+  - id: des_agreement_matrix
+    type: figure
+    format: pdf
+    description: >-
+      dp02_agreement_matrix on DES: real SNe 4x3 (P_SBW of the published host > 0.5 / in [t, 0.5] / < t, or SBW
+      hostless at flb_best < sbw_hostless_cut, against DLR = published / DLR another object / DLR hostless) and
+      the random-position 2x2 (SBW and DLR hostless or not).
+    inputs: [des_associations, des_random_associations]
+    decisions: [sbw_hostless_cut, p_true_threshold]
+    recipe:
+      command: python src/des_run.py fig agreement_matrix --tier des --associations {inputs.des_associations} --random {inputs.des_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
+  - id: des_hostless_indicator
+    type: figure
+    format: pdf
+    description: >-
+      dp02_hostless_indicator on DES (flb_best of SNe whose SBW host is / is not the published one and of the
+      random positions; rejected fractions and Youden J versus the flb_best and d_DLR_min thresholds; the ROC
+      with the operating points and the frozen DP0.2 optima flb 0.0215, d_DLR 2.7). Every DES SN has a
+      published host, so "real kept" is close to a true-positive rate here.
+    inputs: [des_associations, des_random_associations]
+    decisions: [sbw_hostless_cut, dlr_max]
+    recipe:
+      command: python src/des_run.py fig hostless_indicator --tier des --associations {inputs.des_associations} --random {inputs.des_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+  - id: des_hostless_metrics
+    type: metric
+    format: json
+    description: dp02_hostless_metrics on DES (real SNe kept, random positions rejected, Youden J optima, dp02_optima_transfer at flb_best 0.01 / 0.0215 / 0.05 and d_DLR 2.7 / 4); *_sbw_correct = SBW most probable host is the published host.
+    inputs: [des_associations, des_random_associations]
+    decisions: []
+    recipe:
+      command: python src/des_run.py fig hostless_metrics --tier des --associations {inputs.des_associations} --random {inputs.des_random_associations} --output {output}
+  - id: des_band_consistency
+    type: figure
+    format: pdf
+    description: dp2_band_consistency on DES from des_association_sweep (griz) - host changes versus the headline band per light model and for DLR, SBW-DLR categories per band, hostless fractions, and SBW host agreement between the light models.
+    inputs: [des_associations, des_association_sweep]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/des_run.py dp2fig band_consistency --associations {inputs.des_associations} --sweep {inputs.des_association_sweep} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+  - id: des_disagreement_cases
+    type: table
+    format: csv
+    description: >-
+      Twelve seeded DES SNe per class for the gallery: sbw_ne_published (SBW names another host),
+      dlr_ne_published (DLR names another host), sbw_hostless_published_hosted (SBW hostless while the published
+      host is a DR2 object) and sbw_ne_dlr; columns as dp2_disagreement_cases plus the published host position
+      (pub_ra, pub_dec), P_SBW, flb and d_DLR of the published host, its published d_DLR, DR2 class and
+      candidate status.
+    inputs: [des_associations, des_sample, des_candidates]
+    decisions: [sbw_hostless_cut]
+    recipe:
+      command: python src/des_cases.py --associations {inputs.des_associations} --sample {inputs.des_sample} --candidates {inputs.des_candidates} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+  - id: des_angle_check
+    type: figure
+    format: pdf
+    description: >-
+      The DES DR2 SExtractor THETA_J2000 convention measured on r-band coadd cutouts (Data Lab SIA) of 40
+      large elongated galaxies from the cache: residuals of the image-moment position angle against
+      +theta_j2000 and -theta_j2000 (<cos 2 delta>, median |delta|) and cutouts with both ellipses. src/des_lib.py
+      takes theta_j2000 as East of North, phi = theta_j2000 + 90 from +x = West.
+    inputs: [des_dr2_objects]
+    decisions: []
+    recipe:
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/des_angle_check.py --objects {inputs.des_dr2_objects} --n 40 --cache-dir "$T/des_cutouts" --output {output}'
   # ---- Tier 3: DELIGHT ----
   - id: delight_associations
     type: table
