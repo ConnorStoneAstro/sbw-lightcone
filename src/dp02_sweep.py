@@ -1,5 +1,6 @@
 """Sweeps that recompute the association over bands or profiles:
-calibration-by-band, calibration-by-profile, band dependence, profile table."""
+calibration-by-band, calibration-by-profile, band dependence, profile table, and (``table``) the long
+table of every band x profile association, which the no-truth DP2 tier summarises instead of truth metrics."""
 from __future__ import annotations
 
 import argparse
@@ -12,13 +13,14 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from dp02_fig import plot_calibration, plt as _plt  # noqa: F401  (rcParams)
-from dp02_lib import BANDS, COLORS, DLR_MAX, PROFILES, PROFILE_LABEL, QUALITY, RADIUS, associate_all, p_true, calibration_curve, load_candidates, wilson
+import dp02_lib as L
+from dp02_lib import BANDS, COLORS, DLR_MAX, PROFILES, PROFILE_LABEL, QUALITY, RADIUS, associate_all, p_true, calibration_curve, wilson
 
 
 def run(sample, candpath, bands, profiles, cfg, workers):
     res = {}
     for b in bands:
-        cand = load_candidates(candpath, bands=b)
+        cand = L.load_candidates(candpath, bands=b)
         for p in profiles:
             res[(b, p)] = associate_all(sample, cand, band=b, profile=p, workers=workers, **cfg)
         del cand
@@ -89,9 +91,25 @@ def profile_table(res, band, out):
     pd.DataFrame(rows).to_csv(out, index=False)
 
 
+TABLE_COLS = ["sn_id", "band", "profile", "n_cand_used", "sbw_objectId", "p_sbw_max", "flb_best", "flb_max",
+              "sep_sbw", "dlr_objectId", "p_sbw_dlr", "d_dlr_min", "d_dlr_sbw", "sep_dlr", "agree", "dlr_hostless"]
+
+
+def long_table(res, out):
+    """One row per (SN, band, profile) with the SBW and DLR picks; settings in the parquet metadata."""
+    parts = [df.assign(band=b, profile=p)[TABLE_COLS] for (b, p), df in res.items()]
+    t = pd.concat(parts, ignore_index=True)
+    first = next(iter(res.values()))
+    meta = {k: str(v) for k, v in first.attrs.items() if k not in ("band", "profile")}
+    import pyarrow as pa
+    tab = pa.Table.from_pandas(t, preserve_index=False)
+    tab = tab.replace_schema_metadata({k.encode(): v.encode() for k, v in meta.items()})
+    pq.write_table(tab, out, compression="zstd")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("mode", choices=["band", "profile", "band_dependence", "profile_table"])
+    ap.add_argument("mode", choices=["band", "profile", "band_dependence", "profile_table", "table"])
     ap.add_argument("--sample", required=True)
     ap.add_argument("--candidates", required=True)
     ap.add_argument("--profile", choices=PROFILES + ("stamps",))
@@ -101,17 +119,24 @@ def main(argv=None):
     ap.add_argument("--dlr-radius", required=True, choices=["half_light", "moments"])
     ap.add_argument("--extendedness", required=True, choices=["ext05", "none"])
     ap.add_argument("--candidate-quality", required=True, choices=QUALITY)
+    ap.add_argument("--tier", choices=["dp02", "ou24", "dp2"], default="dp02")
+    ap.add_argument("--exclude-suspect", choices=["keep", "drop"], default="keep", help="DP2 only (sbw_host suspect fits)")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--max-sn", type=int, default=None, help="probe: subsample the SNe")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
+    if a.tier == "dp2":
+        import dp2_lib
+        dp2_lib.install(a.exclude_suspect)
     cfg = dict(search_radius=a.search_radius, dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness,
                quality=a.candidate_quality)
     cfgtxt = f"{a.search_radius} | d_DLR<={a.dlr_max[1:]} ({a.dlr_radius}) | {a.extendedness} | quality {a.candidate_quality}"
     sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     if a.max_sn:
         sample = sample.sample(a.max_sn, random_state=0)
-    if a.mode in ("band", "band_dependence"):
+    if a.mode == "table":
+        long_table(run(sample, a.candidates, BANDS, PROFILES, cfg, a.workers), a.output)
+    elif a.mode in ("band", "band_dependence"):
         if a.profile == "stamps":
             raise SystemExit("stamps not available on DP0.2")
         res = run(sample, a.candidates, BANDS, [a.profile], cfg, a.workers)

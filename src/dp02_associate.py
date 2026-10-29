@@ -1,4 +1,5 @@
-"""SBW and DLR association of every sample SN against its DP0.2 candidates."""
+"""SBW and DLR association of every sample SN against its DP0.2 candidates (OU2024 the same; DP2 with
+``--tier dp2``, which swaps in the MultiProFit light models of src/dp2_lib.py)."""
 from __future__ import annotations
 
 import argparse
@@ -7,7 +8,8 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from dp02_lib import DLR_MAX, PROFILES, QUALITY, RADIUS, associate_all, load_candidates
+import dp02_lib as L
+from dp02_lib import DLR_MAX, PROFILES, QUALITY, RADIUS, associate_all
 
 
 def main(argv=None):
@@ -23,20 +25,27 @@ def main(argv=None):
     ap.add_argument("--dlr-radius", required=True, choices=["half_light", "moments"])
     ap.add_argument("--extendedness", required=True, choices=["ext05", "none"])
     ap.add_argument("--candidate-quality", required=True, choices=QUALITY)
+    ap.add_argument("--tier", choices=["dp02", "ou24", "dp2"], default="dp02")
+    ap.add_argument("--exclude-suspect", choices=["keep", "drop"], default="keep", help="DP2 only (sbw_host suspect fits)")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     if a.profile == "stamps":
-        raise SystemExit("sbw_profile=stamps needs deblended stamps, which do not exist for DP0.2 on NERSC")
+        raise SystemExit("sbw_profile=stamps needs deblended stamps, which do not exist on NERSC")
+    if a.tier == "dp2":
+        import dp2_lib
+        dp2_lib.install(a.exclude_suspect)
     if a.sample:
         sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     else:
         sample = pq.read_table(a.positions).to_pandas(ignore_metadata=True)
         sample["host_objectId"] = np.int64(-1)
-    cand = load_candidates(a.candidates, bands=a.band)
+    cand = L.load_candidates(a.candidates, bands=a.band)
     out = associate_all(sample, cand, band=a.band, profile=a.profile, search_radius=a.search_radius,
                         dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness,
                         quality=a.candidate_quality, workers=a.workers)
+    if a.tier == "dp2":
+        out.attrs["exclude_suspect"] = a.exclude_suspect
     tab = pa.Table.from_pandas(out, preserve_index=False)
     tab = tab.replace_schema_metadata({k.encode(): str(v).encode() for k, v in out.attrs.items()})
     pq.write_table(tab, a.output, compression="zstd")

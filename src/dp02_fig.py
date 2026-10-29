@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 from dp02_lib import (COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, calibration_curve, dlr_cols, dlr_hostless, matrix_cells,
                       p_true, prob_matrix_cells, prob_rows, random_cells, sbw_hostless, wilson)
 
-TIER = {"dp02": "DC2", "ou24": "OU2024"}
+TIER = {"dp02": "DC2", "ou24": "OU2024", "dp2": "DP2"}
 LABEL = {"tier": "DC2"}   # set from --tier; the figure titles name the simulation
 
 plt.rcParams.update({"font.size": 9, "axes.grid": True, "grid.alpha": 0.25, "grid.linewidth": 0.5,
@@ -325,9 +325,12 @@ def hostless_indicator(df, rnd, out, hostless_cut, dlr_max):
     edges = np.geomspace(1e-4, 1, 41)
     lf = lambda d: np.clip(d.flb_best.to_numpy(dtype=float), edges[0] * 1.0001, 1)
     real_ok = df.sbw_objectId.to_numpy() >= 0
-    for sel, d, lab, col, kw in [(real_ok & df.sbw_correct.to_numpy(), df, "real SN, most probable host = true", COLORS["sbw"], {"alpha": 0.6}),
-                                 (real_ok & ~df.sbw_correct.to_numpy(), df, "real SN, most probable host wrong", COLORS["dlr"], {"alpha": 0.6}),
-                                 (rnd.sbw_objectId.to_numpy() >= 0, rnd, "random position", COLORS["agree"], {"histtype": "step", "lw": 1.5})]:
+    if (df.host_objectId.to_numpy() >= 0).any():
+        real = [(real_ok & df.sbw_correct.to_numpy(), df, "real SN, most probable host = true", COLORS["sbw"], {"alpha": 0.6}),
+                (real_ok & ~df.sbw_correct.to_numpy(), df, "real SN, most probable host wrong", COLORS["dlr"], {"alpha": 0.6})]
+    else:   # no truth (DP2)
+        real = [(real_ok, df, "real transient", COLORS["sbw"], {"alpha": 0.6})]
+    for sel, d, lab, col, kw in real + [(rnd.sbw_objectId.to_numpy() >= 0, rnd, "random position", COLORS["agree"], {"histtype": "step", "lw": 1.5})]:
         aa.hist(lf(d)[sel], bins=edges, weights=np.full(sel.sum(), 1 / len(d)), color=col, label=lab, **kw)
     aa.set_xscale("log"); aa.set_yscale("log")
     aa.set_xlabel("frac_light_beyond of the SBW most probable host (flb_best; < $10^{-4}$ in first bin)")
@@ -374,7 +377,8 @@ def hostless_indicator(df, rnd, out, hostless_cut, dlr_max):
                 label=f"DP0.2 J optimum {'flb_best' if rule == 'flb_best' else '$d_{DLR}$'} = {t:g}: "
                       f"kept {100 * k:.1f}%, rejected {100 * r:.1f}%")
     ad.set_xlabel("fraction of real SNe kept (have a host)"); ad.set_ylabel("fraction of random positions rejected")
-    ad.set_xlim(0.8, 1.002); ad.set_ylim(0, 1.02)
+    kept_min = min((~RULES[r](df, t)).mean() for r, t in (("flb_best", cut), ("d_dlr_min", dmax)))
+    ad.set_xlim(0.8 if kept_min > 0.85 else 0.5, 1.002); ad.set_ylim(0, 1.02)
     ad.legend(fontsize=7, loc="lower left"); ad.set_title("(d) hostless indicators compared", fontsize=9, loc="left")
     fig.suptitle(f"Hostless indicators on {LABEL['tier']}: {len(df):,} real SNe vs {len(rnd):,} random positions\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
