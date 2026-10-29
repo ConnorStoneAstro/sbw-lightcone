@@ -51,7 +51,7 @@ SEED = 20261029
 RESULTS, COMPANION = "delight_parsnip_dp2_8k_results.parquet", "delight_parsnip_dp2_8k_legacy_dr10_photoz_specz.parquet"
 
 
-def read_kang(index):
+def read_kang(index, ls_id_shift=20):
     """Kang's two tables, after checking size, mtime and sha256 against the index; one row per transient."""
     idx = pd.read_csv(index)
     paths = {}
@@ -73,9 +73,12 @@ def read_kang(index):
                               "match_sep_arcsec": "kang_match_sep"})
     com["kang_dp2_objectId"] = com.kang_dp2_objectId.fillna(-1).astype(np.int64)
     com["kang_match_sep"] = com.kang_match_sep.astype(float)
-    # DR10 ls_id = release << 40 | brickid << 16 | objid -> the objectId of src/dp2_candidates_legacy.py
-    ls = com.pop("legacy_ls_id").fillna(-1).astype(np.int64).to_numpy()
-    com["kang_legacy_objectId"] = np.where(ls >= 0, ((ls >> 16) & 0xFFFFFF) * 1_000_000 + (ls & 0xFFFF), -1)
+    # Kang's legacy_ls_id (a string) = release << 40 | brickid << ls_id_shift | objid; with shift 20 (bits 16-19
+    # are always zero) 99.7% decode to a dp2_ddf_legacy candidate at the identical position, with 16 none do.
+    # -> the objectId of src/dp2_candidates_legacy.py
+    ls = pd.to_numeric(com.pop("legacy_ls_id"), errors="coerce").fillna(-1).astype(np.int64).to_numpy()
+    com["kang_legacy_objectId"] = np.where(ls >= 0, ((ls >> ls_id_shift) & ((1 << (40 - ls_id_shift)) - 1)) * 1_000_000
+                                           + (ls & 0xFFFF), -1)
     k = res.merge(com, on="oid", how="left").rename(columns={"oid": "sn_id"})
     k["sn_id"] = k.sn_id.astype(np.int64)
     if k.sn_id.duplicated().any():
@@ -111,14 +114,14 @@ def match_positions(cand, sn, ra, dec, rule, band, profile):
     return oid, sep
 
 
-def build(assoc_path, cand_path, index, rule, cut, workers):
+def build(assoc_path, cand_path, index, rule, cut, workers, ls_id_shift=20):
     """Per-transient table: SBW, DLR, DELIGHT and DELIGHT-SEx hosts (objectId, -1 = hostless) and diagnostics."""
     t = pq.read_table(assoc_path)
     attrs = {k.decode(): v.decode() for k, v in (t.schema.metadata or {}).items() if not k.startswith(b"pandas")}
     dp2_lib.install(attrs.get("exclude_suspect", "keep"))
     band, profile = attrs["band"], attrs["profile"]
     assoc = t.to_pandas(ignore_metadata=True)
-    kang = read_kang(index)
+    kang = read_kang(index, ls_id_shift)
     df = assoc.merge(kang, on="sn_id", how="inner").sort_values("sn_id").reset_index(drop=True)
     cand = L.load_candidates(cand_path, bands=band)
     cand = cand[cand.sn_id.isin(df.sn_id)].reset_index(drop=True)
@@ -294,9 +297,12 @@ def main(argv=None):
     ap.add_argument("--hostless-cut", required=True, choices=sorted(HOSTLESS_CUT))
     ap.add_argument("--p-threshold", choices=sorted(P_TRUE), default="p005")
     ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--kang-ls-id-shift", type=int, default=20,
+                    help="bit position of the brick id in Kang's legacy_ls_id (the Kang cross-check on Legacy candidates)")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
-    df = build(a.associations, a.candidates, a.delight, a.reference_match, HOSTLESS_CUT[a.hostless_cut], a.workers)
+    df = build(a.associations, a.candidates, a.delight, a.reference_match, HOSTLESS_CUT[a.hostless_cut], a.workers,
+               a.kang_ls_id_shift)
     print(f"{len(df)} transients with DELIGHT predictions", file=sys.stderr)
     if a.mode == "agreement":
         agreement(df, a.output)

@@ -1340,7 +1340,9 @@ outputs:
       intervals, for all transients and per image_survey (Legacy versus PS1
       cutouts); hostless rate per method; the fraction of DELIGHT and
       DELIGHT-SEx positions beyond the search radius; a cross-check of the
-      DELIGHT match against Kang's own nearest DP2 object; SBW and DLR
+      DELIGHT match against Kang's own nearest DP2 object (on Legacy
+      candidates against his Legacy DR10 counterpart, legacy_ls_id decoded
+      as release << 40 | brickid << 20 | objid); SBW and DLR
       agreement with DELIGHT under every reference_match rule; and the SBW
       probability of the DELIGHT host: over transients whose DELIGHT position
       matched a candidate, SBW hostless or P_SBW of that object > 0.5, in
@@ -1349,7 +1351,7 @@ outputs:
     inputs: [dp2_associations, dp2_candidates, dp2_delight_yjkang]
     decisions: [reference_match, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp2_cross_method.py metrics --associations {inputs.dp2_associations} --candidates {inputs.dp2_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --workers 16 --output {output}
+      command: python src/dp2_cross_method.py metrics --associations {inputs.dp2_associations} --candidates {inputs.dp2_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --kang-ls-id-shift 20 --workers 16 --output {output}
   - id: dp2_delight_cases
     type: table
     format: csv
