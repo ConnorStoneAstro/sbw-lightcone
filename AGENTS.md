@@ -804,3 +804,19 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   Qu+24, Gagliano+21 GHOST, Forster+22 DELIGHT, DESC DC2, OpenUniverse2024,
   Dey+19 Legacy Surveys), all quotes verified against cached PDFs on
   2026-10-26; IOP DOIs would not download, so the arXiv DOIs are cited.
+- **Merging branch results into the main NERSC clone (29 Oct 2026).** Merging
+  dp2-delight, dp2-legacy, dp2-ddf-clean and des-tier into main brought their
+  `results/` into `$PROJECT/host_association/paper` as annex pointers (the hub
+  stores no annex content). `lc status` reports such outputs *current* (the
+  manifest hashes match) while a recipe that reads them fails on an empty
+  pointer ("Parquet magic bytes not found", "lacks columns"). Before
+  materializing on a clone that did not make an output, give it the content:
+  small files by `git annex reinject --known <copy>` from another clone or the
+  laptop, large ones by key with
+  `git -C <making-clone> annex contentlocation <key>` and the same reinject.
+  Index csvs in `data/` need the same treatment. DES data (`data/des_sn5yr/`,
+  `data/des_dr2_candidates.parquet`) and all `des_*` results live on the laptop
+  only; on NERSC they show stale but are not meant to be made there. After the
+  `dp2_sample` / `dp2_candidates` recipe changes, remade tables hashed
+  identically, so only `dp2_random_candidates` and the galleries were actually
+  rebuilt; the rest came back current by content hash.
