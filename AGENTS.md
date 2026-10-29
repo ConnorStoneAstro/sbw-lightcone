@@ -51,7 +51,7 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   user decided OU2024 is folded back in as a second simulated tier; it is
   wired on branch `ou24-tier` (next item).
 - **OU2024 tier (27 Oct 2026, branch `ou24-tier`, NERSC clone
-  `$PROJECT/host_association/paper-ou24`; not merged into main).** Inputs are
+  `$PROJECT/host_association/paper-ou24`; merged into main as 26031fe, run from the main clone since 28 Oct).** Inputs are
   three index csvs under `data/`: `ou24_object` (67 objectTable files, all
   needed because each tract's runs hold disjoint patches),
   `ou24_sn_truth` (33 skyCatalog `snana_*.parquet`, the SNANA dump
@@ -377,6 +377,77 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
     rendered galaxies at -PA and placed SNe at +PA. Any offset-shape
     analysis on DC2 must use +PA (`host_offsets` does). The SBW/DLR
     association is unaffected because it uses the rendered image.
+- **Aligned suite: four sequential miss categories, OU2024 on the DP0.2
+  framing, PA radius check (28 Oct 2026; r, exponential, flb 0.01, d_DLR 4
+  half-light, t 0.05, candidate_quality none).**
+  * *Categories* (`dp02_miss.py --tier dp02|ou24`, `{dp02,ou24}_miss_accounting(_fig)`).
+    Each category is conditional on passing the previous one: cat1 absent
+    from the catalogue, cat2 object-table cut (point source / unusable
+    radius or flux), cat3 no-host cut (SBW flb < cut; DLR nothing within
+    d_DLR 4), cat4 genuine failure (SBW P(true) < t; DLR another candidate
+    closer). Numbers are % of all hosted SNe (conditional % in brackets).
+    DP0.2 baseline (321,161): absent 4.62, cut 0.58 (0.61); SBW hostless
+    6.43 (6.78), genuine 0.62 (0.70), success 87.76; DLR hostless 3.37
+    (3.56), genuine 4.37 (4.78), success 87.06. DP0.2 physical (287,784):
+    SBW 1.70 / 0.29 / 92.85, DLR 0.17 / 3.16 / 91.51. OU2024 baseline
+    (507,988 hosted, matcher-unmatched hosts count as absent): absent 48.28,
+    cut 11.74 (22.69); SBW hostless 4.00 (10.01), genuine 0.16 (0.45),
+    success 35.82; DLR 3.80 (9.50) / 0.86 (2.39) / 35.32. OU2024 physical
+    (453,584): absent 48.05, cut 11.74; SBW 2.69 / 0.09 / 37.43, DLR 2.60 /
+    0.67 / 36.94. So on both tiers SBW's losses are almost all the no-host
+    cut and DLR's are wrong picks; OU2024's low headline is cat1 + cat2
+    (faint hosts unmatched or cut), not association. `strict` quality on
+    OU2024 lifts cat2 only 11.74 -> 13.87 (DP0.2 0.58 -> 10.55).
+    OU2024 ext_none: cut 3.57 (6.90); SBW hostless 7.39, genuine 0.40,
+    success 40.36; DLR 7.01 / 1.70 / 39.43; mean P 0.8491, knee t 0.042,
+    J optima flb 0.012 / d 3.6 (DP0.2 flb 0.0215 -0.002, d 2.7 -0.015).
+  * *P(true) and bands* (OU2024 now has them: `ou24_recovery`,
+    `ou24_agreement_matrix --p-threshold`). Mean P_SBW(true): DP0.2 0.9705
+    (physical 0.9799), OU2024 0.7419 (0.7494). Bands P > 0.5 / t-0.5 / < t /
+    SBW hostless: DP0.2 91.13 / 0.87 / 0.70 / 7.30, OU2024 68.96 / 0.29 /
+    1.59 / 29.16 (physical 71.83 / 0.22 / 1.43 / 26.53). `ou24_dp02_comparison`
+    now plots SBW mean P(true) (remade against the current, no-fallback
+    dp02_associations).
+  * *Credible sets.* Knee t: DP0.2 0.034 (cov 98.68%, size 1.055), physical
+    0.046; OU2024 0.051 (cov 74.97%, 1.080), physical 0.051. The DP0.2 knee
+    0.034 on OU2024 gives coverage 75.02% / size 1.094: it transfers (the
+    curve is flat between 0.03 and 0.05 on both tiers).
+  * *Youden J and transfer* (`hostless_metrics` key `dp02_optima_transfer`;
+    the ROC panel marks the DP0.2 optima as open diamonds). OU2024 baseline
+    optimum flb 0.010 (J 0.626), d_DLR 3.8 (J 0.600); at DP0.2's flb 0.0215
+    J is 0.003 lower, at d 2.7 0.017 lower, at d 4 0.001 lower. Physical:
+    flb 0.018 (J 0.654; flb 0.01 and 0.0215 within 0.001), d 3.4 (d 2.7
+    -0.008, d 4 -0.004). dlr_moments OU2024: d 3.8 (J 0.661), d 2.7 -0.016.
+    Verdict: the SBW flb cut transfers anywhere in 0.01-0.02; DP0.2's DLR
+    optimum d 2.7 does not, and the conventional d 4 is the safer default.
+    Random rejection OU2024: SBW 91.8%, DLR half-light 87.8%, moments 91.6%.
+  * *DLR half_light vs moments.* DP0.2: DLR 91.28 vs 89.19%, DLR hostless
+    cat3 3.37 vs 7.25, genuine 4.37 vs 2.47. OU2024: 68.30 vs 72.57%, cat3
+    3.80 vs 2.10, genuine 0.86 vs 0.35, success 35.32 vs 37.53. Moments
+    help on OU2024 (no bulge+disk radius for faint hosts) and hurt on DP0.2.
+  * *PA mirror radii* (`dp02_pa_mirror_metrics`, page 2 of `dp02_pa_mirror`).
+    29,204 baseline hosts with q < 0.5: SNe within 30 deg of the mirrored
+    major axis (17,109) have median r / R_e(semi-major) 0.79, of the minor
+    axis (4,763) 0.71, ratio 0.90 where a truth ellipse would give ~q
+    (~0.4). In elliptical radius 0.94 vs 1.84. Effective SN axis ratio
+    ~q^0.8 (median-abs) / q^0.4 (rms). Measured vs truth size: moment
+    major axis / truth 1.69 overall but 1.27 for resolved disks (R_e > 1",
+    1.21 expected for exponential -> Gaussian), small hosts ~1.9 (PSF).
+    Verdict: SNe sit on the mirrored ellipse at the truth radii along the
+    major axis, but on a rounder footprint (about 2x the truth ellipse
+    along the minor axis), not a smaller one; rendered disks are not much
+    larger than truth. Connor's "SNe inside the visible galaxy" impression
+    comes from the example selection: the 3" cap in baseline limits the
+    largest-R_e examples (R_e 1.3-1.6") to offsets 1.3-1.8 R_e, and 72% of
+    that pool is below 1.3 R_e; in sep10 the examples sit at 1.6-2.7 R_e.
+  * *Operational.* lc remakes only on recipe/decision/input changes, never
+    on a code change: changed scripts got explicit flags (`--tier dp02`,
+    `--radius-page`, `--workers 16` on the ou24 candidate recipes) so the
+    targets are remade. shared_interactive allows 2 jobs per user; a
+    pending salloc that does not start within ~6 min is cancelled by lc
+    ("cluster ... is ended"), and lc cluster names cannot contain
+    underscores. A dropped ssh connection killed a `setsid nohup` driver on
+    the login node; relaunch and lc resumes from the committed outputs.
 - **lc on NERSC, operational.** `lc` hashes every declared input by content
   on every command with no cache (1 TB = 15 min), hence the objectTable index
   file; the 52 GB truth and 7 GB match directories cost ~1-2 min per command
