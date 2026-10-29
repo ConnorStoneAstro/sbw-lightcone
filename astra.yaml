@@ -1091,11 +1091,18 @@ outputs:
       light-curve fit columns the file carries (SALT3 z, x1, c, mB, FITPROB,
       MWEBV, PKMJD, S/N summaries and Mi Dai's overlap flags for rc_salt).
       src/dp2_sample.py refuses to run if the file's size or mtime no longer
-      match data/dp2_sn_candidates_index.csv.
-    inputs: [dp2_transients]
+      match data/dp2_sn_candidates_index.csv. For parsnip_ddf_clean and
+      parsnip_ddf_galaxy it reads the legacy_dr10_sweeps sources within 1"
+      of each transient and adds the flags gaia_star, wise_agn,
+      legacy_psf_1arcsec and gaia_ref_no_astrometry, the flagging (or
+      nearest) Legacy legacy_objectId, legacy_type, legacy_sep_arcsec,
+      legacy_n_1arcsec and ddf_field, and records the transients removed by
+      each rule, overall and per DDF field, in the parquet attrs key
+      dp2_sample_accounting; the other options do not read the sweeps.
+    inputs: [dp2_transients, legacy_dr10_sweeps]
     decisions: [dp2_sample]
     recipe:
-      command: python src/dp2_sample.py --index {inputs.dp2_transients} --sample {decisions.dp2_sample} --output {output}
+      command: python src/dp2_sample.py --index {inputs.dp2_transients} --legacy-sweeps {inputs.legacy_dr10_sweeps} --sample {decisions.dp2_sample} --output {output}
   - id: dp2_candidates
     type: table
     format: parquet
@@ -1634,13 +1641,27 @@ decisions:
     rationale: >-
       Objects with a successful SALT3 fit are credible SNe, so the headline
       disagreement rates are computed on them; the larger samples trade purity
-      for statistics and are available as universes.
+      for statistics and are available as universes. The DELIGHT comparison
+      needs transients that have a galaxy host, and in parsnip_ddf most
+      compact sources under the transient are pre-existing Legacy DR10 point
+      sources, mostly Gaia stars and WISE-colour AGN (dp2_ddf_legacy):
+      parsnip_ddf_clean removes the stars and AGN identifiable from
+      pre-transient Gaia astrometry and WISE colour and keeps compact sources
+      of unknown nature; parsnip_ddf_galaxy, the strict version, also removes
+      any other Legacy point source under the transient (a faint star, an AGN
+      without WISE colour, or a compact galaxy Tractor fits as PSF).
     default: rc_salt
     options:
       rc_salt: { label: "RC_sample.parquet: 690 SALT3-fit candidates (R. Chen)" }
       md_final: { label: "final_sample.parquet: 617 SALT-fit candidates (M. Dai)" }
       parsnip_ddf: { label: "parsnip_ddf.parquet: 7823 DDF ParSNIP candidates" }
       rc_all: { label: "RC_lcfit_input_122k.parquet: 122,465 objects with minimal cuts" }
+      parsnip_ddf_clean:
+        label: "parsnip_ddf without stars and AGN: no Legacy DR10 source within 1 arcsec that is a Gaia star (parallax S/N > 3 or proper motion S/N > 5) or an AGN-coloured point source (W1 - W2 >= 0.8 Vega, W1 and W2 S/N > 3)"
+        insights: [legacy_psf_type_contains_compact_galaxies]
+      parsnip_ddf_galaxy:
+        label: "parsnip_ddf_clean without any Legacy DR10 point source (TYPE PSF) within 1 arcsec"
+        insights: [legacy_psf_type_contains_compact_galaxies]
   dp2_candidate_catalogue:
     label: Candidate catalogue for the DP2 transients
     rationale: >-
