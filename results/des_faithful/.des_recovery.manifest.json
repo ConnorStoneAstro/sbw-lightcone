@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "output_id": "des_recovery",
+  "universe_id": "des_faithful",
+  "recipe": "python src/des_run.py recovery --associations results/des_faithful/des_associations.parquet --random results/des_faithful/des_random_associations.parquet --sample results/des_faithful/des_sample.parquet --sweep results/des_faithful/des_association_sweep.parquet --hostless-cut flb01 --p-threshold p005 --output results/des_faithful/des_recovery.json",
+  "definition_version": "sha256:35e775b522fa697b6677fee473925a3fea3fbba4756a87b19e0792514e9d83bd",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:bc1a9ab91a734757774fc75a295a1ac0129d3086d677090f4360f461f17a729a",
+  "decisions": {
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
+  },
+  "input_versions": {
+    "des_associations": "sha256:82a4ee902da6d4dd9961ffddae3c6572bb50dbd5218321c9a5bfb6abe6f9e79e",
+    "des_random_associations": "sha256:5b0d804a3678203048d5a3a8bc91cf2575885dc98402e16060537df9e060fb45",
+    "des_sample": "sha256:34af572c839f6806613536a2e90412e82f221ecdf270681cba0b80fd62de18b8",
+    "des_association_sweep": "sha256:b7339ff21a4f57ef4dbcaa1454e67d5354a93b623074003394f253465bb419f8"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:57:33.257+00:00",
+  "finished_at": "2026-10-29T18:57:47.475+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
