@@ -1355,7 +1355,7 @@ outputs:
     inputs: [dp2_delight_cases, rsp_token]
     decisions: [band]
     recipe:
-      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_delight_cases} --tier dp2 --ellipse-scale 4 --workers 4 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_delight_cases} --tier dp2 --ellipse-scale 4 --workers 2 --min-interval 1.5 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
   # ---- Cross-tier summary ----
   - id: summary_table
     type: table
