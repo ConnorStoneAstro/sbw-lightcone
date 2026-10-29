@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "output_id": "des_hostless_indicator",
+  "universe_id": "baseline",
+  "recipe": "python src/des_run.py fig hostless_indicator --tier des --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --hostless-cut flb01 --dlr-max d4 --output results/baseline/des_hostless_indicator.pdf",
+  "definition_version": "sha256:737ca10d99befc58a8dc586ca5625e0511c67c0fa5c4522e9bbaa3a989257d09",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:dfb03a075e2578f075316604f59c8143f94bd67689d41a03d1aae555c5d2352f",
+  "decisions": {
+    "sbw_hostless_cut": "flb01",
+    "dlr_max": "d4"
+  },
+  "input_versions": {
+    "des_associations": "sha256:5df2c034a1b2117d169826ee9ce9aefd027c769d50fb68dc00c69e19cbbf4a0e",
+    "des_random_associations": "sha256:bf87ba60784716967970c67a14d2259885d0a8193c9d6421f724f364f36f8cc6"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:54:44.574+00:00",
+  "finished_at": "2026-10-29T18:55:13.131+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
