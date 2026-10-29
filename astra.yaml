@@ -201,27 +201,25 @@ inputs:
       DiaObjects classified with ParSNIP (also the set the collaborator
       host associations cover; a local copy of its ids and positions is
       data/dp2_transients.csv, identical id set, 2026-10-26).
-  - id: dp2_parsnip_ddf_sample
-    type: data
-    source: "NERSC /global/cfs/cdirs/lsst/groups/TD/SN/EDP2/SN_candidates/parsnip_ddf.parquet (local copy data/dp2_transients.csv)"
-    description: >-
-      The 7823-object DDF ParSNIP sample, fixed as the cross-method comparison
-      set regardless of dp2_sample, because the collaborator associations below
-      exist only for it.
-  - id: dp2_dlr_legacy_jlee
-    type: data
-    source: "NERSC .../SN_candidates/EDP2_Host_Associations/Host_Association_DLR_J_Lee/host_association_DLR_8k_sample_v261009.csv"
-    description: >-
-      J. Lee's DLR host association of the 7823 DDF sample using DESI Legacy
-      Surveys DR10 Tractor shapes (SHAPE_R, SHAPE_E1/E2, TYPE) with photo-z;
-      columns include ddlr, ddlr_second, n_candidates, has_host (7809 rows).
   - id: dp2_delight_yjkang
     type: data
-    source: "NERSC .../SN_candidates/EDP2_Host_Associations/Host_Association_Delight_Prost_YJ_Kang/delight_parsnip_dp2_8k_results.parquet (+ _legacy_dr10_photoz_specz.parquet)"
+    source: "data/dp2_delight_yjkang_index.csv"
     description: >-
-      Y. J. Kang's DELIGHT (and SExtractor) predicted host positions for the
-      7823 DDF sample on image cutouts, with DP2 Object and Legacy DR10
-      counterparts and redshifts in the companion file.
+      Y. J. Kang's DELIGHT host predictions for the 7823 DDF ParSNIP
+      transients (dp2_sample parsnip_ddf), declared through an index (path,
+      size, mtime, sha256; src/ou24_index_files.py --sha256) of the two files
+      in /global/cfs/cdirs/lsst/groups/TD/SN/EDP2/SN_candidates/EDP2_Host_Associations/Host_Association_Delight_Prost_YJ_Kang
+      (README there). delight_parsnip_dp2_8k_results.parquet: oid (the
+      DiaObject id), image_survey (the cutouts DELIGHT ran on: Legacy 5100,
+      PS1 2719, DES_DR2 4; not Rubin pixels), ra_delight / dec_delight (the
+      CNN host centre, averaged over 8 rotations and flips), std_delight,
+      ra_sex / dec_sex (the SExtractor source nearest in elliptical distance,
+      "DELIGHT-SEx"), hostsize. The companion
+      delight_parsnip_dp2_8k_legacy_dr10_photoz_specz.parquet carries Kang's
+      nearest DP2 Object to the CNN position (dp2_objectId, 95.6% matched,
+      separations up to 2"), the Legacy DR10 counterpart and photo-z /
+      spec-z. DELIGHT has no truth here: it is a third method, compared by
+      agreement only.
   - id: dp2_object
     type: data
     source: "data/dp2_object_hats_index.csv"
@@ -1290,12 +1288,74 @@ outputs:
     type: table
     format: csv
     description: >-
-      Pairwise host-agreement matrix on the 7823 DDF sample between SBW,
-      sbw_host's own DLR on DP2 fits, J. Lee's DLR on Legacy DR10 shapes and
-      Y. J. Kang's DELIGHT positions, with hostless rates per method; hosts are
-      matched by position under reference_match.
-    inputs: [dp2_parsnip_ddf_sample, dp2_object, dp2_dlr_legacy_jlee, dp2_delight_yjkang]
-    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, reference_match]
+      Pairwise host agreement between SBW, sbw_host's DLR, Y. J. Kang's
+      DELIGHT (CNN position) and DELIGHT-SEx (its SExtractor host) on the DP2
+      transients that have a DELIGHT prediction (all of dp2_sample in the
+      dp2_ddf universe, parsnip_ddf). The DELIGHT positions are matched to the
+      transient's DP2 candidates (every primary object within the search
+      radius, before object-table cuts) under reference_match; no candidate
+      is DELIGHT's implicit no-host. SBW is hostless at flb_best <
+      sbw_hostless_cut, DLR beyond dlr_max. One row per subset (all, and each
+      image_survey) and method pair: n, same, different, a_only_hostless,
+      b_only_hostless, both_hostless (counts and fractions) and
+      frac_same_given_both_hosted. src/dp2_cross_method.py agreement; the
+      association is recomputed with the DELIGHT object as host to get its
+      P_SBW and checked against dp2_associations. Materialized only in
+      dp2_ddf; in universes whose sample has no DELIGHT rows it is left
+      unmade.
+    inputs: [dp2_associations, dp2_candidates, dp2_delight_yjkang]
+    decisions: [reference_match, sbw_hostless_cut]
+    recipe:
+      command: python src/dp2_cross_method.py agreement --associations {inputs.dp2_associations} --candidates {inputs.dp2_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --workers 16 --output {output}
+  - id: dp2_cross_method_metrics
+    type: metric
+    format: json
+    description: >-
+      The dp2_cross_method_agreement cells as fractions with Wilson 68%
+      intervals, for all transients and per image_survey (Legacy versus PS1
+      cutouts); hostless rate per method; the fraction of DELIGHT and
+      DELIGHT-SEx positions beyond the search radius; a cross-check of the
+      DELIGHT match against Kang's own nearest DP2 object; SBW and DLR
+      agreement with DELIGHT under every reference_match rule; and the SBW
+      probability of the DELIGHT host: over transients whose DELIGHT position
+      matched a candidate, SBW hostless or P_SBW of that object > 0.5, in
+      [t, 0.5], < t (t = p_true_threshold; 0 when the object-table cuts
+      removed it, counted per true_host_status).
+    inputs: [dp2_associations, dp2_candidates, dp2_delight_yjkang]
+    decisions: [reference_match, sbw_hostless_cut, p_true_threshold]
+    recipe:
+      command: python src/dp2_cross_method.py metrics --associations {inputs.dp2_associations} --candidates {inputs.dp2_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --workers 16 --output {output}
+  - id: dp2_delight_cases
+    type: table
+    format: csv
+    description: >-
+      Twelve seeded transients per class for the DELIGHT gallery:
+      sbw_ne_delight and dlr_ne_delight (both name a host, different
+      objects), sbw_hostless_delight_hosted, delight_nocand (no DP2 candidate
+      at the DELIGHT position) and sex_ne_delight (DELIGHT-SEx and DELIGHT
+      match different objects). Columns case_id, class, class_n, sn_id,
+      sn_ra, sn_dec, image_survey, label, the SBW and DLR host positions and
+      ellipses (as dp2_disagreement_cases), the raw DELIGHT and DELIGHT-SEx
+      positions (delight_ra/dec, sex_ra/dec), P_SBW of the SBW, DLR and
+      DELIGHT hosts, flb_best, separations and the objectIds.
+    inputs: [dp2_associations, dp2_candidates, dp2_delight_yjkang]
+    decisions: [reference_match, sbw_hostless_cut]
+    recipe:
+      command: python src/dp2_cross_method.py cases --associations {inputs.dp2_associations} --candidates {inputs.dp2_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --workers 16 --output {output}
+  - id: dp2_delight_gallery
+    type: figure
+    format: pdf
+    description: >-
+      DP2 deep_coadd cutouts (30 arcsec, headline band, north up, east left)
+      of dp2_delight_cases, one page per class, with the SBW most probable
+      host and its half-light ellipse (solid), the DLR host and its DLR
+      ellipse (dashed), both at 4 x their axes, the DELIGHT CNN position and
+      the DELIGHT-SEx position; the panel title names the survey whose cutout
+      DELIGHT used. src/dp02_gallery.py --tier dp2, as dp2_disagreement_gallery.
+    inputs: [dp2_delight_cases, rsp_token]
+    decisions: [band]
+    recipe:
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_delight_cases} --tier dp2 --ellipse-scale 4 --workers 4 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
   # ---- Cross-tier summary ----
   - id: summary_table
     type: table

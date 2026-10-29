@@ -81,6 +81,8 @@ MARKER_STYLES = {
     "truth_nearest": ("h", GREY, 21, "Nearest to truth host"),
     "truth_pos": ("+", "#999999", 7, "Truth host position"),
     "flip": ("^", "#2ca02c", 11, "SBW most probable, other band"),
+    "delight": ("*", "#9467bd", 16, "DELIGHT (CNN position)"),
+    "sex": ("v", "#2ca02c", 11, "DELIGHT-SEx host"),
 }
 EXTRA_STYLES = [("v", "#2ca02c"), ("h", "#9467bd"), ("<", "#8c564b"), (">", "#e377c2"), ("*", "#17becf")]
 
