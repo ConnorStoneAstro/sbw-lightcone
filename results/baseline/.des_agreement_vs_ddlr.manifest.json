@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "des_agreement_vs_ddlr",
+  "universe_id": "baseline",
+  "recipe": "python src/des_run.py fig agreement_vs_ddlr --tier des --associations results/baseline/des_associations.parquet --output results/baseline/des_agreement_vs_ddlr.pdf",
+  "definition_version": "sha256:9a6fa5dbfe50f7a8b3327cf0c55b4374a30031d574a76db70909a2a22a7ea1b4",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:d1020723ec0c81d1c7cee8646fd7d91e6179517c780488cc14393ec8e5588c7d",
+  "decisions": {},
+  "input_versions": {
+    "des_associations": "sha256:5df2c034a1b2117d169826ee9ce9aefd027c769d50fb68dc00c69e19cbbf4a0e"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:54:44.537+00:00",
+  "finished_at": "2026-10-29T18:55:11.958+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
