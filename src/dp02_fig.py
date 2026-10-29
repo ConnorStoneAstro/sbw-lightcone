@@ -94,13 +94,15 @@ def calibration(df, out):
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
-def agreement_matrix(df, out, hostless_cut, rnd, p_threshold):
-    """Real-SN panel restricted to SNe whose true host passed the catalogue (cat1) and object-table (cat2)
-    cuts for both methods, so every cell is an association outcome; the random-position panel is unchanged."""
+def agreement_matrix(df, out, hostless_cut, rnd, p_threshold, survivors_only=True):
+    """Real-SN panel restricted (survivors_only) to SNe whose true host passed the catalogue (cat1) and
+    object-table (cat2) cuts for both methods, so every cell is an association outcome; the random-position
+    panel is unchanged."""
     cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
     full = len(df)
-    survived = (df["true_host_status"].to_numpy() == "kept") & np.isfinite(df["d_dlr_true"].to_numpy(dtype=float))
-    df = df[survived]
+    if survivors_only:
+        survived = (df["true_host_status"].to_numpy() == "kept") & np.isfinite(df["d_dlr_true"].to_numpy(dtype=float))
+        df = df[survived]
     pr, dc = prob_rows(df, cut, t), dlr_cols(df)
     rows = [("$P_{\\mathrm{SBW}}$(true) > 0.5", pr["p_gt_0p5"]),
             (f"$P_{{\\mathrm{{SBW}}}}$(true)\nin [{t:g}, 0.5]", pr["p_t_to_0p5"]),
@@ -488,6 +490,8 @@ def main(argv=None):
     ap.add_argument("--dlr-max", choices=sorted(DLR_MAX))
     ap.add_argument("--p-threshold", choices=sorted(P_TRUE))
     ap.add_argument("--tier", choices=sorted(TIER), default="dp02")
+    ap.add_argument("--survivors-only", action="store_true",
+                    help="agreement_matrix: real-SN panel on SNe whose true host passed the cat1 and cat2 cuts")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     LABEL["tier"] = TIER[a.tier]
@@ -497,7 +501,7 @@ def main(argv=None):
     elif a.kind == "calibration":
         calibration(df, a.output)
     elif a.kind == "agreement_matrix":
-        agreement_matrix(df, a.output, a.hostless_cut, load(a.random), a.p_threshold)
+        agreement_matrix(df, a.output, a.hostless_cut, load(a.random), a.p_threshold, survivors_only=a.survivors_only)
     elif a.kind == "agreement_vs_ddlr":
         agreement_vs_ddlr(df, a.output)
     elif a.kind == "recovery_vs":

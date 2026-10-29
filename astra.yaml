@@ -370,7 +370,7 @@ outputs:
     inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py agreement_matrix --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
+      command: python src/dp02_fig.py agreement_matrix --survivors-only --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_agreement_vs_ddlr
     type: figure
     format: pdf
@@ -868,7 +868,7 @@ outputs:
     inputs: [ou24_associations, ou24_random_associations]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py agreement_matrix --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
+      command: python src/dp02_fig.py agreement_matrix --survivors-only --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_agreement_vs_ddlr
     type: figure
     format: pdf
