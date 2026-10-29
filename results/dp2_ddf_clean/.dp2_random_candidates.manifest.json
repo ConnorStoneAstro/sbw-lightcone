@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_random_candidates",
+  "universe_id": "dp2_ddf_clean",
+  "recipe": "python src/dp2_candidates.py --catalogue dp2_object --positions results/dp2_ddf_clean/dp2_random_positions.parquet --objects data/dp2_object_hats_index.csv --legacy-sweeps data/legacy_dr10_sweeps_index.csv --search-radius r30 --workers 16 --output results/dp2_ddf_clean/dp2_random_candidates.parquet",
+  "definition_version": "sha256:f2bb4b9fc9df1bbeeb9f31042479f53404395427a0eb63f0770e6e5b0c070326",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:936b626806697208494830c620992ef6b4caf9078d2cad6fcf61b75d55ad6784",
+  "decisions": {
+    "search_radius": "r30",
+    "dp2_candidate_catalogue": "dp2_object"
+  },
+  "input_versions": {
+    "dp2_random_positions": "sha256:aed23d37e424f0ee9ec333f810cd25711ba1fbda8704d018f2c0e6944f725a61",
+    "dp2_object": "sha256:45e621c620b3a914dad927f1724ae80ae3befc079d41e6dee1b0fd2e40324714",
+    "legacy_dr10_sweeps": "sha256:d8e88fea383ad190ee06aacae97d7efedfdf321f44195f2b7f10b4f9c30b331b"
+  },
+  "git_sha": "4ec4a7f4aa1e342d9716750ba2c0547ec5843ed4",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-29T17:40:12.556+00:00",
+  "finished_at": "2026-10-29T17:41:56.353+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}

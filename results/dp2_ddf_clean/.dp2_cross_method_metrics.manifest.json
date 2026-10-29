@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_cross_method_metrics",
+  "universe_id": "dp2_ddf_clean",
+  "recipe": "python src/dp2_cross_method.py metrics --associations results/dp2_ddf_clean/dp2_associations.parquet --candidates results/dp2_ddf_clean/dp2_candidates.parquet --delight data/dp2_delight_yjkang_index.csv --reference-match pos_1arcsec --hostless-cut flb01 --p-threshold p005 --kang-ls-id-shift 20 --workers 16 --output results/dp2_ddf_clean/dp2_cross_method_metrics.json",
+  "definition_version": "sha256:9e621a088078d34afeee2a559ebb92150b8c11d3aa025d00132c594d19ff6c11",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:274d49c323b987773f8fe025fdf52762fc4c2876981526cd22a6b489bc44b3bc",
+  "decisions": {
+    "reference_match": "pos_1arcsec",
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
+  },
+  "input_versions": {
+    "dp2_associations": "sha256:9fd7d89c381cf13d214b977b9beb8b583dc81ecaaa5c2372cfc33b77b72d6ad9",
+    "dp2_candidates": "sha256:9f6c57a8ebd68f047ad9e6e21dac0ff926043fcfe3750ad9bf95590cdd03eae9",
+    "dp2_delight_yjkang": "sha256:0db6f725527c8e4f6e0acda1c7de911b8da3b7c34fcb83c481478686be25d77b"
+  },
+  "git_sha": "4ec4a7f4aa1e342d9716750ba2c0547ec5843ed4",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-29T17:53:48.373+00:00",
+  "finished_at": "2026-10-29T17:54:49.446+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
