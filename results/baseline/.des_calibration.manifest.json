@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "des_calibration",
+  "universe_id": "baseline",
+  "recipe": "python src/des_run.py fig calibration --tier des --associations results/baseline/des_associations.parquet --output results/baseline/des_calibration.pdf",
+  "definition_version": "sha256:3446adf62211618ef7a7378248ddf9c71c5b03ebb3d6e21bb68789149128423f",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:102feef7ea7a8d0a4d03e91deae90ac2fc1614f640741456ad0855df9d1d450c",
+  "decisions": {},
+  "input_versions": {
+    "des_associations": "sha256:5df2c034a1b2117d169826ee9ce9aefd027c769d50fb68dc00c69e19cbbf4a0e"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:54:44.526+00:00",
+  "finished_at": "2026-10-29T18:55:11.233+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
