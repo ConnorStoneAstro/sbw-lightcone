@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_delight_gallery",
+  "universe_id": "dp2_ddf_legacy",
+  "recipe": "bash -c 'T=$TMPDIR; [ -n \"$T\" ] || T=/tmp; python src/dp02_gallery.py results/dp2_ddf_legacy/dp2_delight_cases.csv --tier dp2 --candidate-catalogue legacy_dr10 --ellipse-scale 4 --workers 2 --min-interval 1.5 --output results/dp2_ddf_legacy/dp2_delight_gallery.pdf --band r --size 30 --ncol 4 --per-page 12 --token-file /global/cfs/cdirs/m1727/cstone/.rsp_image_tap_token --cache-dir \"$T/dp2_cutouts\"'",
+  "definition_version": "sha256:4706885d93c1b62d6ce81bf38a6588b18cf0bcccc1f6a24a711346ea2b4dd7df",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:cf084f0a669eb03f2493f2ce157fce0d2aeb61dab6810876267a9ee57dc841d0",
+  "decisions": {
+    "band": "r",
+    "dp2_candidate_catalogue": "legacy_dr10"
+  },
+  "input_versions": {
+    "dp2_delight_cases": "sha256:65cd7f08d4d344c8f30ae07a84b61c6c5d9ac322c5ac28e37692a67168a47dad",
+    "rsp_token": "sha256:d6aedc2ab8e8dc19ed5d0f1e3b7543ff5db26f78ac2895ff1b1b7ccf9eceb3c6"
+  },
+  "git_sha": "f8e9608ae2c3547b59d9e034878f5bc17c9d15da",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-29T15:16:09.670+00:00",
+  "finished_at": "2026-10-29T15:20:22.830+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
