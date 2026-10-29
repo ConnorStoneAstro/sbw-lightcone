@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "output_id": "des_band_consistency",
+  "universe_id": "baseline",
+  "recipe": "python src/des_run.py dp2fig band_consistency --associations results/baseline/des_associations.parquet --sweep results/baseline/des_association_sweep.parquet --hostless-cut flb01 --output results/baseline/des_band_consistency.pdf",
+  "definition_version": "sha256:fbb7a469e69092019ea4f3455366a7ef8a08505494b041406661f31a5a9af6f7",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:33eacac5d31e84a0d90f796bb334d738e0ca614b285f45147641977e1bf01861",
+  "decisions": {
+    "sbw_hostless_cut": "flb01"
+  },
+  "input_versions": {
+    "des_associations": "sha256:5df2c034a1b2117d169826ee9ce9aefd027c769d50fb68dc00c69e19cbbf4a0e",
+    "des_association_sweep": "sha256:0a0c053fb64e3c508bde728f935a9fab5de21f5de444bbe96aa1b44321e19392"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:54:44.574+00:00",
+  "finished_at": "2026-10-29T18:55:12.674+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
