@@ -600,6 +600,75 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
     open question for Connor is whether those point sources are the
     transient itself in the deep coadd, AGN/nuclear hosts, or stars
     (ext_none on DP2 would test it).
+- **DP2 Legacy candidates (29 Oct 2026, branch `dp2-legacy`, NERSC clone
+  `$PROJECT/host_association/paper-dp2` on that branch; not merged).** Decision
+  `dp2_candidate_catalogue` (`dp2_object` default, `legacy_dr10`), input
+  `legacy_dr10_sweeps` = `data/legacy_dr10_sweeps_index.csv` (14 DR10 south
+  sweep tiles, 25 GB, within 0.3 deg of any parsnip_ddf transient;
+  `src/legacy_index_sweeps.py`, sha256 checked against the survey's
+  sha256sum), universe `dp2_ddf_legacy` (= dp2_ddf + legacy_dr10).
+  `src/dp2_candidates_legacy.py` (called by `dp2_candidates.py --catalogue`)
+  rewrites Tractor rows into the dp2_candidates schema so the whole DP2 chain
+  runs unchanged: objectId = BRICKID * 1e6 + OBJID, refExtendedness 0 for
+  TYPE PSF, DUP dropped, `exponential_*` = Tractor ellipse with n = 1,
+  `sersic_*` = same ellipse with the Tractor n (REX/EXP 1, DEV 4, SER
+  SERSIC, PSF 0.5), PSF sources a round Gaussian with R_e = PSFSIZE_R / 2
+  (HWHM = Gaussian half-light radius), FLUX * 3631 = nJy for every flux,
+  blendedness = FRACFLUX, no moments (moments profile / DLR moments are
+  unusable on Legacy). Adding the decision to dp2_candidates,
+  dp2_random_candidates and the two DP2 galleries makes every DP2 output in
+  the other universes stale on this branch (identity change only; remake
+  after merging). Galleries with legacy_dr10 draw the DP2 deep_coadd and the
+  Legacy DR10 viewer cutout of each case side by side
+  (`dp02_gallery.py --candidate-catalogue` / `--imaging rubin|legacy|both`).
+  * *Tractor ellipse convention* (`dp2_legacy_angle_check`): SHAPE_R is the
+    half-light *semi-major* axis (tractor `EllipseE.getRaDecBasis`), q =
+    (1 - |e|)/(1 + |e|), and PA East of North = +0.5 atan2(SHAPE_E2,
+    SHAPE_E1): on 27 large ECDFS galaxies the r-band cutout moments give
+    <cos 2 delta> 0.77, median |delta| 3.9 deg for +theta, against 0.06 /
+    40 deg for -theta. In the +x West frame phi = PA + 90 (as DES). The
+    builder round-trips a, q, phi exactly through `sbw_host.sersic.ellipse_axes`.
+  * *Kang's legacy_ls_id* is a string with the brick id at bit **20**, not 16
+    (release << 40 | brickid << 20 | objid; bits 16-19 always zero): 99.7%
+    then decode to a candidate at the identical position, and our 1" DELIGHT
+    match is Kang's own Legacy counterpart for 7,097 / 7,117. Metrics recipe
+    flag `--kang-ls-id-shift 20`.
+  * *Coverage:* all four DDFs (ELAIS-S1, ECDFS, EDFS incl. Dec -48 to -51,
+    COSMOS) are in DR10 south; 7,810 / 7,823 transients have a Legacy source
+    with NOBS_R > 0 within 30" (median 47 vs 71 DP2 objects).
+  * *Headline (r, exponential, flb 0.01, d 4 half-light, 1"):* hostless SBW
+    72.0% (DP2 Object 52.9%), DLR 70.7% (50.5%), DELIGHT 9.0% (9.6%),
+    DELIGHT-SEx 1.2% (1.6%). SBW-DELIGHT same / different / SBW-only
+    hostless: 15.6 / 8.7 / 66.6% (DP2 27.4 / 14.3 / 48.7%); same given both
+    hosted 64.1% (65.6%). DLR-DELIGHT same 15.1%, given both hosted 59.3%.
+    SBW-DLR same given both hosted 96.5% (98.1%). P_SBW of the DELIGHT object
+    (7,117 matched): > 0.5 17.2%, < t 9.4%, SBW hostless 73.2%.
+  * *The DP2 point sources are not transient light.* Of the 4,748 DELIGHT
+    objects that are DP2 point sources (1" match), the Legacy pre-transient
+    catalogue has a PSF source at the same position for 4,704, a galaxy
+    (REX/EXP/DEV/SER) for 17 and nothing for 27. Of those 4,596 distinct
+    Legacy PSF objects (median r 19.6, IQR 19.0-20.2), 3,638 (79%) are Gaia
+    stars (parallax S/N > 3 or proper motion S/N > 5) and 762 (17%) more
+    have WISE W1 - W2 >= 0.8 (Vega; AGN colours); 146 other WISE-detected,
+    50 undetected. The nearest Legacy source within 1" of the transient is
+    PSF for 5,751 / 7,823 (74%). So the DDF ParSNIP set is mostly variable
+    stars and AGN, and SBW / DLR calling them hostless after ext05 is right;
+    DELIGHT, which always returns a host, marks the star / AGN itself. The
+    hostless ROC agrees: real transients are barely distinguishable from
+    random positions (Youden J 0.15 at flb 0.147 / d_DLR 2.0; at flb 0.01
+    real kept 28.0%, random rejected 84.7%), unlike rc_salt (J 0.73).
+  * *Hosted cross-tab (DP2 -> Legacy):* SBW hosted->hosted 1,769,
+    hosted->hostless 1,915, hostless->hosted 424; DLR 1,839 / 2,033 / 450.
+    Legacy loses hosts mostly through depth (fainter extended DP2 objects
+    are absent or PSF in Legacy). Only 472 of the 4,748 point-source cases
+    get an SBW host on Legacy, and in 14 it is the DELIGHT object.
+  * *Gallery:* both cutouts show the same compact source under the
+    transient before (Legacy) and during (DP2) the survey.
+  * Numbers outside the outputs (point-source breakdown, Gaia / WISE,
+    cross-tab) come from an ad-hoc script over the dp2_ddf and
+    dp2_ddf_legacy results (session notes folder, `compare_legacy.py`); the
+    ext05-free check of whether the remaining 958 non-Gaia PSF sources are
+    AGN hosts was not done.
 - **Compute: NERSC Perlmutter via `lc`, set up 2026-10-26.** Lightcone runs
   `lc` *on the login node* and launches recipes into Slurm allocations from
   `~/.lightcone/compute.yaml` (local compute is refused on login nodes). On
