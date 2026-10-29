@@ -16,3 +16,4 @@ decisions:
   dp2_sample: rc_salt
   reference_match: pos_1arcsec
   delight_catalogue: legacy_dr10
+  dp2_candidate_catalogue: dp2_object
