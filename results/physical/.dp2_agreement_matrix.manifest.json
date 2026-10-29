@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_agreement_matrix",
+  "universe_id": "physical",
+  "recipe": "python src/dp2_fig.py agreement_matrix --associations results/physical/dp2_associations.parquet --random results/physical/dp2_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/physical/dp2_agreement_matrix.pdf",
+  "definition_version": "sha256:b0c312864eb214717f2a8c3bc89002fcb32b723047782fc852932da3aafd2ec0",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:2e2f5ddc560217a40534d29470dfa0e06aa01bfb362a09c1ef1bc9395814ddfc",
+  "decisions": {
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
+  },
+  "input_versions": {
+    "dp2_associations": "sha256:6af4b981cf15430a1eb0014c631e948d34cbfc82a9b2e586dd522545aaec8ecb",
+    "dp2_random_associations": "sha256:578e468438bd52b08d643879a5fefaed2e45006d2e666521a71cb0f42b429e01"
+  },
+  "git_sha": "83b88dfe60e285dc06041568412de57d36208e24",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:57:10.726+00:00",
+  "finished_at": "2026-10-29T18:57:34.898+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
