@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "ou24_agreement_matrix",
   "universe_id": "physical",
-  "recipe": "python src/dp02_fig.py agreement_matrix --tier ou24 --associations results/physical/ou24_associations.parquet --random results/physical/ou24_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/physical/ou24_agreement_matrix.pdf",
-  "definition_version": "sha256:420e2779ae1eea20fcd8475ab1cb1b886028e7797b304ef5d8cc8c6cf1aa3ae7",
+  "recipe": "python src/dp02_fig.py agreement_matrix --survivors-only --tier ou24 --associations results/physical/ou24_associations.parquet --random results/physical/ou24_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/physical/ou24_agreement_matrix.pdf",
+  "definition_version": "sha256:9dd3b80beefdbcfbd541d331e07faa0d376535c7462da56f233b07815f93def5",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:e12ebb93ce9fe4e1d7835f1b652b1187d15ad6d2fd8e07cd896457619c59e169",
+  "data_version": "sha256:94327499bd9db57611a8a9e13c27932cf560f5df4a6c7fdde925822c14179b3b",
   "decisions": {
     "sbw_hostless_cut": "flb01",
     "p_true_threshold": "p005"
@@ -14,7 +14,7 @@
     "ou24_associations": "sha256:771650180d037c1a609d8f356d507f9577ae268de8ef87dc0f34cef6526770a0",
     "ou24_random_associations": "sha256:c9935e2eccd1627fbe77a78be0d0454ee2eb3b7b2ffe2bf742f8d2b6d9885f56"
   },
-  "git_sha": "72bced872e881980f3722e3bb3bd7c9e1b954a18",
+  "git_sha": "ce71a0f47302be580afe4e9872390fb5871a2dd2",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -24,8 +24,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T20:08:03.841+00:00",
-  "finished_at": "2026-10-28T20:09:03.976+00:00",
+  "started_at": "2026-10-29T18:48:46.751+00:00",
+  "finished_at": "2026-10-29T18:50:05.714+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
