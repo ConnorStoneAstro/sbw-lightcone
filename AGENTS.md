@@ -669,6 +669,53 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
     dp2_ddf_legacy results (session notes folder, `compare_legacy.py`); the
     ext05-free check of whether the remaining 958 non-Gaia PSF sources are
     AGN hosts was not done.
+- **DP2 cleaned DDF sample (29 Oct 2026, branch `dp2-ddf-clean`, NERSC clone
+  `$PROJECT/host_association/paper-dp2` on that branch; not merged).** New
+  `dp2_sample` options computed in `src/dp2_sample.py` from `legacy_dr10_sweeps`
+  (now an input of dp2_sample, so dp2_sample in every other universe is stale
+  on this branch; only the new options read the sweeps): `parsnip_ddf_clean`
+  drops transients with a Legacy DR10 source (not DUP) within 1" that is a
+  Gaia star (REF_CAT G*, parallax S/N > 3 or PM S/N > 5) or AGN-coloured (PSF,
+  W1 and W2 S/N > 3, W1 - W2 >= 0.8 Vega); `parsnip_ddf_galaxy` also drops any
+  Legacy PSF source within 1". The sample carries gaia_star, wise_agn,
+  legacy_psf_1arcsec, gaia_ref_no_astrometry, legacy_objectId, legacy_type,
+  legacy_sep_arcsec, legacy_n_1arcsec, ddf_field, and the per-rule / per-field
+  counts in `df.attrs["dp2_sample_accounting"]`. Universes `dp2_ddf_clean`,
+  `dp2_ddf_clean_legacy`, `dp2_ddf_galaxy`; `dp2_ddf` gained its random /
+  hostless outputs. All four materialized on one 4 h shared_interactive
+  allocation in 1 h 26 min (~25 min per universe).
+  * *Accounting* (sequential): 7,823 -> Gaia star -3,647 -> WISE AGN -1,575 =
+    2,601 clean -> other PSF -546 = 2,055 galaxy. Per field (clean / galaxy):
+    ELAIS-S1 2,238 -> 886 / 732, ECDFS 1,552 -> 496 / 401, EDFS 2,828 -> 726 /
+    559, COSMOS 1,205 -> 493 / 363. Kept in clean though Gaia-referenced PSF
+    without significant astrometry: 223. No Legacy source within 1": 902.
+  * *Side by side* (dp2_ddf / clean / galaxy / ddf_legacy / clean_legacy; r,
+    exponential, flb 0.01, d 4, 1"): hostless SBW 52.9 / 23.3 / 18.7 / 72.0 /
+    38.7%, DLR 50.5 / 21.8 / 17.0 / 70.7 / 37.9, DELIGHT 9.6 / 16.7 / 17.5 /
+    9.0 / 16.0, SEx 1.6 / 3.3 / 3.8 / 1.2 / 3.0. SBW-DELIGHT same 27.4 / 54.6 /
+    56.8 / 15.6 / 46.5, different 14.3 / 10.8 / 12.2 / 8.7 / 6.2, SBW-only
+    hostless 48.7 / 17.9 / 13.5 / 66.6 / 31.3; same given both hosted 65.6 /
+    83.4 / 82.3 / 64.1 / 88.2 (DLR 62.4 / 81.9 / 80.6 / 59.3 / 84.1).
+    P_SBW(DELIGHT object) > 0.5: 30.3 / 65.5 / 68.8 / 17.2 / 55.4%, < t 15.7 /
+    12.6 / 14.5 / 9.4 / 6.9, SBW hostless 53.9 / 21.5 / 16.3 / 73.2 / 37.3.
+    Hostless Youden J (SBW flb_best / DLR): 0.30 / 0.61 / 0.65 / 0.15 / 0.48
+    (DLR within 0.005), optima flb 0.004 / 0.068 / 0.038 / 0.147 / 0.083; at
+    flb 0.01 real kept 47 / 77 / 81 / 28 / 61%, random rejected ~82-85%. So
+    the galaxy sample approaches rc_salt (J 0.73) but does not reach it.
+  * *What is left* (clean, from an ad-hoc script `clean_diag.py` in the session
+    notes folder): 634 of 2,167 matched DELIGHT objects are still DP2 point
+    sources (galaxy: 436 / 1,695). sbw_hostless_delight_hosted 466, 426 of them
+    a DP2 point source under the transient, with Legacy showing nothing (257)
+    or an unclassified PSF (189); sbw_ne_delight 282, 208 with DELIGHT on a DP2
+    point source and SBW on an extended neighbour whose 4 R_e ellipse covers
+    the transient. delight_nocand 434: DELIGHT's position ~1.5-3" from the
+    transient on no DP2 object while the transient itself sits on one (median
+    0.16"); SBW hosts 295 of them. Gallery reading: the DELIGHT/SBW split is
+    now mostly a faint compact source under the transient (point source in the
+    DP2 deep coadd, absent or PSF in Legacy: compact hosts, nuclear transients
+    or undetected AGN) versus a larger neighbour; where DELIGHT's object is
+    extended SBW agrees almost always. Legacy candidates lose ~15 points of
+    hosted transients to depth again.
 - **Compute: NERSC Perlmutter via `lc`, set up 2026-10-26.** Lightcone runs
   `lc` *on the login node* and launches recipes into Slurm allocations from
   `~/.lightcone/compute.yaml` (local compute is refused on login nodes). On
