@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "output_id": "des_disagreement_cases",
+  "universe_id": "baseline",
+  "recipe": "python src/des_cases.py --associations results/baseline/des_associations.parquet --sample results/baseline/des_sample.parquet --candidates results/baseline/des_candidates.parquet --hostless-cut flb01 --output results/baseline/des_disagreement_cases.csv",
+  "definition_version": "sha256:7e669b6343155c364306647323cbb1c0fddc0f5c18f4fdfce7057fdae317261a",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:a07dcb2d67bfbc9cd43dd4f79083d67d19b5e325c4b0e6d14c6b72685f4d148c",
+  "decisions": {
+    "sbw_hostless_cut": "flb01"
+  },
+  "input_versions": {
+    "des_associations": "sha256:5df2c034a1b2117d169826ee9ce9aefd027c769d50fb68dc00c69e19cbbf4a0e",
+    "des_sample": "sha256:34af572c839f6806613536a2e90412e82f221ecdf270681cba0b80fd62de18b8",
+    "des_candidates": "sha256:4ce3a3570ad9a8d63ffcca59cb59945e906e3cf7a5b95d12a06eead76f7d8318"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:54:44.535+00:00",
+  "finished_at": "2026-10-29T18:55:08.314+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
