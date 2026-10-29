@@ -14,5 +14,6 @@ decisions:
   truth_match: matches_truth
   dp02_sample_cuts: clean3   # 3 arcsec kept so results stay comparable with the first DP0.2 run; the spec default is physical
   dp2_sample: parsnip_ddf
+  dp2_candidate_catalogue: dp2_object
   reference_match: pos_1arcsec
   delight_catalogue: legacy_dr10

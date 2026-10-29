@@ -220,6 +220,22 @@ inputs:
       separations up to 2"), the Legacy DR10 counterpart and photo-z /
       spec-z. DELIGHT has no truth here: it is a third method, compared by
       agreement only.
+  - id: legacy_dr10_sweeps
+    type: data
+    source: "data/legacy_dr10_sweeps_index.csv"
+    description: >-
+      Legacy Surveys DR10 south Tractor catalogue sweeps,
+      /global/cfs/cdirs/cosmo/data/legacysurvey/dr10/south/sweep/10.1 (5 x 5
+      deg tiles, 1437 files), declared through an index (path, size, mtime,
+      sha256; src/legacy_index_sweeps.py, each hash checked against the
+      survey's legacysurvey_dr10_south_sweep_10.1.sha256sum) of the 14 tiles
+      (25 GB) within 0.3 deg of any parsnip_ddf transient: ELAIS-S1, ECDFS,
+      EDFS and COSMOS. TYPE (PSF/REX/EXP/DEV/SER/DUP), RA, DEC, SHAPE_R
+      (half-light semi-major axis, arcsec), SHAPE_E1/E2, SERSIC, FLUX_G/R/I/Z
+      (nanomaggies) and IVAR, FRACFLUX, NOBS, PSFSIZE, MASKBITS, DCHISQ. The
+      imaging predates the DP2 transients. Used when dp2_candidate_catalogue
+      is legacy_dr10; a position needing a tile outside the index is an
+      error, so the other DP2 samples are not covered.
   - id: dp2_object
     type: data
     source: "data/dp2_object_hats_index.csv"
@@ -1096,11 +1112,18 @@ outputs:
       exponential_delta_lnL_fit_ps) and per band exponentialFlux(Err),
       sersicFlux(Err), cModelFlux(Err), cModel_flag, blendedness, the HSM
       source and PSF moments ixx/iyy/ixy(PSF) and extendedness, i.e. the DP2
-      names of every column the DP0.2 candidate_quality cuts read.
-    inputs: [dp2_sample, dp2_object]
-    decisions: [search_radius]
+      names of every column the DP0.2 candidate_quality cuts read. With
+      dp2_candidate_catalogue legacy_dr10 the rows are Legacy DR10 Tractor
+      sources from legacy_dr10_sweeps rewritten into the same columns
+      (src/dp2_candidates_legacy.py: objectId = BRICKID * 1e6 + OBJID,
+      refExtendedness 0 for TYPE PSF, the Tractor ellipse as both fits with
+      n = 1 and the Tractor index, FLUX in nJy as every flux, no moments),
+      plus brickname, legacy_type, legacy_sersic, maskbits, nobs_r and
+      fracflux_r.
+    inputs: [dp2_sample, dp2_object, legacy_dr10_sweeps]
+    decisions: [search_radius, dp2_candidate_catalogue]
     recipe:
-      command: python src/dp2_candidates.py --positions {inputs.dp2_sample} --objects {inputs.dp2_object} --search-radius {decisions.search_radius} --workers 16 --output {output}
+      command: python src/dp2_candidates.py --catalogue {decisions.dp2_candidate_catalogue} --positions {inputs.dp2_sample} --objects {inputs.dp2_object} --legacy-sweeps {inputs.legacy_dr10_sweeps} --search-radius {decisions.search_radius} --workers 16 --output {output}
       resources: {cpus: 16, memory: 56Gi}
   - id: dp2_associations
     type: table
@@ -1158,11 +1181,11 @@ outputs:
   - id: dp2_random_candidates
     type: table
     format: parquet
-    description: The dp2_candidates extraction run on dp2_random_positions instead of the transients.
-    inputs: [dp2_random_positions, dp2_object]
-    decisions: [search_radius]
+    description: The dp2_candidates extraction (from the dp2_candidate_catalogue) run on dp2_random_positions instead of the transients.
+    inputs: [dp2_random_positions, dp2_object, legacy_dr10_sweeps]
+    decisions: [search_radius, dp2_candidate_catalogue]
     recipe:
-      command: python src/dp2_candidates.py --positions {inputs.dp2_random_positions} --objects {inputs.dp2_object} --search-radius {decisions.search_radius} --workers 16 --output {output}
+      command: python src/dp2_candidates.py --catalogue {decisions.dp2_candidate_catalogue} --positions {inputs.dp2_random_positions} --objects {inputs.dp2_object} --legacy-sweeps {inputs.legacy_dr10_sweeps} --search-radius {decisions.search_radius} --workers 16 --output {output}
       resources: {cpus: 16, memory: 56Gi}
   - id: dp2_random_associations
     type: table
@@ -1279,11 +1302,13 @@ outputs:
       band's SBW host;
       src/dp02_gallery.py --tier dp2 over ivoa.ObsCore (obs_collection
       LSST.DP2, lsst.deep_coadd) and the RSP cutout service, from a NERSC
-      compute node with the rsp_token.
+      compute node with the rsp_token. With dp2_candidate_catalogue
+      legacy_dr10 each case also gets the Legacy DR10 viewer cutout beside
+      it (pre-transient imaging; the ellipses are then the Legacy ones).
     inputs: [dp2_disagreement_cases, rsp_token]
-    decisions: [band]
+    decisions: [band, dp2_candidate_catalogue]
     recipe:
-      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_disagreement_cases} --tier dp2 --ellipse-scale 4 --workers 4 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_disagreement_cases} --tier dp2 --candidate-catalogue {decisions.dp2_candidate_catalogue} --ellipse-scale 4 --workers 4 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
   - id: dp2_cross_method_agreement
     type: table
     format: csv
@@ -1351,11 +1376,30 @@ outputs:
       host and its half-light ellipse (solid), the DLR host and its DLR
       ellipse (dashed), both at 4 x their axes, the DELIGHT CNN position and
       the DELIGHT-SEx position; the panel title names the survey whose cutout
-      DELIGHT used. src/dp02_gallery.py --tier dp2, as dp2_disagreement_gallery.
+      DELIGHT used. src/dp02_gallery.py --tier dp2, as dp2_disagreement_gallery
+      (with dp2_candidate_catalogue legacy_dr10 the DP2 and the Legacy DR10
+      cutout of each case side by side).
     inputs: [dp2_delight_cases, rsp_token]
-    decisions: [band]
+    decisions: [band, dp2_candidate_catalogue]
     recipe:
-      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_delight_cases} --tier dp2 --ellipse-scale 4 --workers 2 --min-interval 1.5 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_delight_cases} --tier dp2 --candidate-catalogue {decisions.dp2_candidate_catalogue} --ellipse-scale 4 --workers 2 --min-interval 1.5 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
+  - id: dp2_legacy_angle_check
+    type: figure
+    format: pdf
+    description: >-
+      Check of the Legacy DR10 Tractor ellipse convention used by
+      src/dp2_candidates_legacy.py: for up to 60 large (SHAPE_R 5-15"),
+      elongated (|e| > 0.35), unmasked EXP/DEV/SER galaxies of one ECDFS
+      sweep tile, the position angle of Gaussian-weighted second moments of
+      the r-band viewer cutout (ls-dr10, 0.262"/pix, transformed to East /
+      North with the cutout WCS) against theta = 0.5 atan2(SHAPE_E2,
+      SHAPE_E1) under four sign / offset conventions, and the catalogue
+      ellipses drawn on twelve cutouts. src/legacy_angle_check.py; needs the
+      legacysurvey.org viewer (reachable from NERSC).
+    inputs: [legacy_dr10_sweeps]
+    decisions: []
+    recipe:
+      command: python src/legacy_angle_check.py --sweeps {inputs.legacy_dr10_sweeps} --n 60 --output {output}
   # ---- Cross-tier summary ----
   - id: summary_table
     type: table
@@ -1595,6 +1639,27 @@ decisions:
       md_final: { label: "final_sample.parquet: 617 SALT-fit candidates (M. Dai)" }
       parsnip_ddf: { label: "parsnip_ddf.parquet: 7823 DDF ParSNIP candidates" }
       rc_all: { label: "RC_lcfit_input_122k.parquet: 122,465 objects with minimal cuts" }
+  dp2_candidate_catalogue:
+    label: Candidate catalogue for the DP2 transients
+    rationale: >-
+      The DP2 Object table is the same survey and depth as the transients,
+      with MultiProFit exponential and free-n Sersic fits, but its deep
+      coadds include every epoch, so a transient's own light (or an AGN)
+      can appear as a compact object under it that the extendedness cut
+      then removes (dp2_ddf: 67% of DELIGHT's matched hosts). Legacy Surveys
+      DR10 Tractor models come from imaging taken before the DP2 transients,
+      so they show the host without the transient, at the cost of shallower
+      depth than DP2's deep coadds, worse seeing, one
+      model type per source (PSF / REX / EXP / DEV / SER, chosen by joint
+      residual), no u, y or second moments, and coverage of the DDF fields
+      only in this project's index.
+    default: dp2_object
+    options:
+      dp2_object:
+        label: DP2 Object table (MultiProFit fits from the DP2 deep coadds)
+      legacy_dr10:
+        label: Legacy Surveys DR10 south Tractor models (pre-transient imaging)
+        insights: [legacy_tractor_model_set, legacy_model_type_chosen_by_joint_residual, legacy_single_shape_across_bands, legacy_coverage_and_depth, legacy_psf_type_contains_compact_galaxies]
   reference_match:
     label: How a method's chosen host is matched to the reference host position
     rationale: >-

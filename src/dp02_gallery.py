@@ -29,6 +29,9 @@ A marker with ``<name>_a``, ``<name>_b`` and ``<name>_phi`` columns (semi-axes i
 counter-clockwise from +x = West toward North) also gets that ellipse drawn about its position.
 With ``--tier dp2`` the patch table is ``ivoa.ObsCore`` rows of ``obs_collection = 'LSST.DP2'`` and subtype
 ``lsst.deep_coadd``.
+With ``--imaging legacy`` the cutouts are Legacy Surveys DR10 images from the legacysurvey.org viewer
+(``cutout.fits``, layer ls-dr10, 0.262"/pixel, no token) instead, i.e. imaging that predates the DP2
+transients; ``--imaging both`` draws the Rubin and the Legacy cutout of each case side by side.
 With ``--lookup sbw,dlr`` a marker may instead be given as ``<name>_objectId``
 (Int64; blank or negative = not drawn) and its position is read from
 ``dp02_dc2_catalogs.Object`` over TAP.
@@ -65,10 +68,14 @@ from matplotlib.patches import Ellipse  # noqa: E402
 RSP_BASE = "https://data.lsst.cloud"
 TAP_URL = f"{RSP_BASE}/api/tap"
 CUTOUT_URL = f"{RSP_BASE}/api/cutout/sync"
+LEGACY_URL = "https://www.legacysurvey.org/viewer/cutout.fits"
+LEGACY_PIX = 0.262
 # tier -> (ObsCore table, extra WHERE clause, coadd subtype, title)
 TIERS = {"dp02": ("dp02_dc2_catalogs.ObsCore", "", "lsst.deepCoadd_calexp", "DP0.2 deepCoadd"),
          "dp2": ("ivoa.ObsCore", " AND obs_collection = 'LSST.DP2'", "lsst.deep_coadd", "DP2 deep_coadd")}
 OBSCORE_TABLE, OBS_WHERE, COADD_SUBTYPE, TITLE = TIERS["dp02"]
+SOURCES = {"rubin": ("rubin",), "legacy": ("legacy",), "both": ("rubin", "legacy")}
+SOURCE_TITLE = {"rubin": TITLE, "legacy": "Legacy DR10"}
 
 SBW_COLOR, DLR_COLOR, GREY = "#2a6fdb", "#e07b39", "#555555"
 SN_COLOR = "#d62728"
@@ -259,11 +266,39 @@ def fetch_cutout(ra, dec, band, size, patches, session, cache_dir, limiter, retr
     raise RuntimeError(f"cutout failed after {retries} tries: {err}")
 
 
+def fetch_legacy(ra, dec, band, size, cache_dir, limiter, retries=4):
+    """FITS bytes of a Legacy Surveys DR10 ``band`` cutout of side ``size`` arcsec (viewer, cached)."""
+    path = cache_dir / f"legacy_dr10_{band}_{ra:.6f}_{dec:+.6f}_{size:g}as.fits"
+    if path.exists():
+        return path.read_bytes()
+    params = {"ra": f"{ra:.7f}", "dec": f"{dec:.7f}", "layer": "ls-dr10", "pixscale": LEGACY_PIX,
+              "size": int(np.ceil(size / LEGACY_PIX)) + 1, "bands": band}
+    err = None
+    for attempt in range(retries):
+        limiter.wait()
+        try:
+            r = requests.get(LEGACY_URL, params=params, timeout=120)
+            if r.status_code == 429 or r.status_code >= 500:
+                raise requests.HTTPError(f"HTTP {r.status_code}")
+            r.raise_for_status()
+            if not r.content.startswith(b"SIMPLE"):
+                raise ValueError(f"not FITS: {r.content[:80]!r}")
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(f".tmp{threading.get_ident()}")
+            tmp.write_bytes(r.content)
+            tmp.replace(path)
+            return r.content
+        except (requests.RequestException, ValueError) as e:
+            err = e
+            time.sleep(2.0 * 2**attempt + random.random())
+    raise RuntimeError(f"Legacy cutout failed after {retries} tries: {err}")
+
+
 def read_image(content: bytes) -> tuple[np.ndarray, WCS]:
     with fits.open(io.BytesIO(content)) as hdul:
         for hdu in hdul:
-            if hdu.data is not None and np.ndim(hdu.data) == 2:
-                return np.asarray(hdu.data, float), WCS(hdu.header).celestial
+            if hdu.data is not None and np.ndim(np.squeeze(hdu.data)) == 2:
+                return np.asarray(np.squeeze(hdu.data), float), WCS(hdu.header).celestial
     raise ValueError("cutout has no 2-D image HDU")
 
 
@@ -312,7 +347,7 @@ def marker_style(name: str, i_extra: int):
     return m, c, 13, name
 
 
-def draw_panel(ax, case, image, error, names, styles, size, args):
+def draw_panel(ax, case, image, error, names, styles, size, args, title=None):
     half = size / 2.0
     halo = [patheffects.withStroke(linewidth=2, foreground="black" if args.dark else "white")]
     sn_ra, sn_dec = float(case["sn_ra"]), float(case["sn_dec"])
@@ -331,7 +366,7 @@ def draw_panel(ax, case, image, error, names, styles, size, args):
                 fontsize=6, color="#aa0000")
         ax.set_xlim(half, -half), ax.set_ylim(-half, half), ax.set_aspect("equal")
         ax.set_xticks([]), ax.set_yticks([])
-        ax.set_title(_title(case), fontsize=7)
+        ax.set_title(title or _title(case), fontsize=7)
         return
     for n in names:
         r, d = case.get(f"{n}_ra"), case.get(f"{n}_dec")
@@ -369,7 +404,7 @@ def draw_panel(ax, case, image, error, names, styles, size, args):
     ax.annotate("", (cx + L, cy), (cx, cy), arrowprops=dict(arrowstyle="-|>", color=fg, lw=1))
     ax.text(cx, cy + L * 1.15, "N", color=fg, path_effects=halo, ha="center", va="bottom", fontsize=6)
     ax.text(cx + L * 1.15, cy, "E", color=fg, path_effects=halo, ha="right", va="center", fontsize=6)
-    ax.set_title(_title(case), fontsize=7)
+    ax.set_title(title or _title(case), fontsize=7)
 
 
 def _title(case) -> str:
@@ -391,23 +426,27 @@ def render(cases: pd.DataFrame, images: dict, errors: dict, args):
     handles += [Line2D([], [], ls="none", marker=styles[n][0], ms=min(styles[n][2], 10), mfc="none",
                        mec=styles[n][1], mew=1.4, label=styles[n][3]) for n in present]
 
+    sources = SOURCES[args.imaging]
     per_page = args.per_page or len(cases)
     pages = [cases.iloc[i:i + per_page] for i in range(0, len(cases), per_page)]
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     pdf = PdfPages(out) if out.suffix.lower() == ".pdf" else None
     for ip, page in enumerate(pages):
-        ncol = min(args.ncol, len(page))
-        nrow = int(np.ceil(len(page) / ncol))
+        views = [(case, src) for _, case in page.iterrows() for src in sources]
+        ncol = min(args.ncol, len(views))
+        nrow = int(np.ceil(len(views) / ncol))
         fig, axes = plt.subplots(nrow, ncol, figsize=(2.4 * ncol, 2.75 * nrow + 0.45), squeeze=False,
                                  layout="constrained")
-        for ax, (_, case) in zip(axes.flat, page.iterrows()):
-            key = case["case_id"]
-            draw_panel(ax, case, images.get(key), errors.get(key), names, styles, args.size, args)
-        for ax in axes.flat[len(page):]:
+        for ax, (case, src) in zip(axes.flat, views):
+            key = (case["case_id"], src)
+            title = (f"{case['case_id']}\nLegacy DR10 {args.band} (pre-transient)"
+                     if src == "legacy" and len(sources) > 1 else None)
+            draw_panel(ax, case, images.get(key), errors.get(key), names, styles, args.size, args, title)
+        for ax in axes.flat[len(views):]:
             ax.axis("off")
         fig.legend(handles=handles, loc="outside lower center", ncol=len(handles), fontsize=7, frameon=False)
-        fig.suptitle(f"{TITLE} {args.band}-band, {args.size:g}\" cutouts"
+        fig.suptitle(f"{' | '.join(SOURCE_TITLE[x] for x in sources)} {args.band}-band, {args.size:g}\" cutouts"
                      + (f", ellipses at {args.ellipse_scale:g} x the drawn axes" if args.ellipse_scale != 1 else "")
                      + (f" (page {ip + 1}/{len(pages)})" if len(pages) > 1 else ""), fontsize=9)
         if pdf:
@@ -448,12 +487,19 @@ def main(argv=None):
                    "positions are looked up in the DP0.2 Object table")
     p.add_argument("--ellipse-scale", type=float, default=1.0, help="draw <name>_a/_b ellipses scaled by this")
     p.add_argument("--tier", default="dp02", choices=sorted(TIERS), help="which release's coadds")
+    p.add_argument("--imaging", choices=sorted(SOURCES),
+                   help="Rubin coadds, Legacy Surveys DR10 viewer cutouts, or both side by side (default: rubin, "
+                        "or both with --candidate-catalogue legacy_dr10)")
+    p.add_argument("--candidate-catalogue", default="dp2_object", choices=["dp2_object", "legacy_dr10"],
+                   help="catalogue the case ellipses come from (decision dp2_candidate_catalogue)")
     p.add_argument("--token-file", help="token file with both read:tap and read:image scopes")
     p.add_argument("--tap-token-file")
     p.add_argument("--image-token-file")
     args = p.parse_args(argv)
     global OBSCORE_TABLE, OBS_WHERE, COADD_SUBTYPE, TITLE
     OBSCORE_TABLE, OBS_WHERE, COADD_SUBTYPE, TITLE = TIERS[args.tier]
+    SOURCE_TITLE["rubin"] = TITLE
+    args.imaging = args.imaging or ("both" if args.candidate_catalogue == "legacy_dr10" else "rubin")
 
     lookup = [n for n in (args.lookup or "").split(",") if n]
     cases = pd.read_csv(args.cases, dtype={f"{n}_objectId": "Int64" for n in lookup})
@@ -469,35 +515,42 @@ def main(argv=None):
         raise SystemExit("case_id values must be unique")
 
     cache_dir = Path(args.cache_dir)
-    tap_token, image_token = load_tokens(args.token_file, args.tap_token_file, args.image_token_file)
-    if lookup:
-        cases = lookup_positions(cases, lookup, tap_token)
+    sources = SOURCES[args.imaging]
     images, errors = {}, {}
-    try:
-        patches = patch_table(args.band, tap_token, cache_dir)
-    except Exception as e:  # noqa: BLE001 - render empty panels with the reason
-        patches, errors = None, {k: f"ObsCore lookup: {e}" for k in cases["case_id"]}
-    if patches is not None:
-        session = _session(image_token)
-        limiter = RateLimiter(args.min_interval)
+    patches = session = None
+    if "rubin" in sources or lookup:
+        tap_token, image_token = load_tokens(args.token_file, args.tap_token_file, args.image_token_file)
+        if lookup:
+            cases = lookup_positions(cases, lookup, tap_token)
+    if "rubin" in sources:
+        try:
+            patches = patch_table(args.band, tap_token, cache_dir)
+            session = _session(image_token)
+        except Exception as e:  # noqa: BLE001 - render empty panels with the reason
+            errors.update({(k, "rubin"): f"ObsCore lookup: {e}" for k in cases["case_id"]})
+    limiter = RateLimiter(args.min_interval)
 
-        def job(case):
-            t0 = time.monotonic()
+    def job(case, src):
+        t0 = time.monotonic()
+        if src == "legacy":
+            content = fetch_legacy(float(case.sn_ra), float(case.sn_dec), args.band, args.size, cache_dir, limiter)
+        else:
             content = fetch_cutout(float(case.sn_ra), float(case.sn_dec), args.band, args.size,
                                    patches, session, cache_dir, limiter)
-            return read_image(content), time.monotonic() - t0
+        return read_image(content), time.monotonic() - t0
 
-        t_all = time.monotonic()
-        with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            futures = {case.case_id: pool.submit(job, case) for case in cases.itertuples()}
-            for key, fut in futures.items():
-                try:
-                    images[key], dt = fut.result()
-                    print(f"  {key}: {dt:.1f} s")
-                except Exception as e:  # noqa: BLE001 - one bad case must not kill the gallery
-                    errors[key] = f"{type(e).__name__}: {e}"
-                    print(f"  {key}: FAILED {errors[key]}")
-        print(f"{len(images)}/{len(cases)} cutouts in {time.monotonic() - t_all:.1f} s")
+    t_all = time.monotonic()
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures = {(case.case_id, src): pool.submit(job, case, src) for case in cases.itertuples()
+                   for src in sources if (case.case_id, src) not in errors}
+        for key, fut in futures.items():
+            try:
+                images[key], dt = fut.result()
+                print(f"  {key}: {dt:.1f} s")
+            except Exception as e:  # noqa: BLE001 - one bad case must not kill the gallery
+                errors[key] = f"{type(e).__name__}: {e}"
+                print(f"  {key}: FAILED {errors[key]}")
+    print(f"{len(images)}/{len(cases) * len(sources)} cutouts in {time.monotonic() - t_all:.1f} s")
     render(cases, images, errors, args)
     print(f"wrote {args.output}")
 

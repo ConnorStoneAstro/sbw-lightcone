@@ -1,0 +1,19 @@
+id: dp2_ddf_legacy
+description: dp2_ddf (7823 DDF ParSNIP transients, DELIGHT comparison) with Legacy Surveys DR10 Tractor sources from pre-transient imaging as the candidate catalogue (dp2_candidate_catalogue legacy_dr10); materialized for the DP2 chain, the DELIGHT comparison and the hostless ROC only
+decisions:
+  sbw_profile: exponential
+  band: r
+  search_radius: r30
+  dlr_max: d4
+  dlr_radius: half_light
+  extendedness_cut: ext05
+  sbw_hostless_cut: flb01
+  exclude_suspect: keep
+  candidate_quality: none
+  p_true_threshold: p005
+  truth_match: matches_truth
+  dp02_sample_cuts: clean3   # 3 arcsec kept so results stay comparable with the first DP0.2 run; the spec default is physical
+  dp2_sample: parsnip_ddf
+  dp2_candidate_catalogue: legacy_dr10
+  reference_match: pos_1arcsec
+  delight_catalogue: legacy_dr10

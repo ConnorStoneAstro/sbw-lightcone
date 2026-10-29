@@ -16,5 +16,6 @@ decisions:
   truth_match: matches_truth
   dp02_sample_cuts: clean3   # as baseline
   dp2_sample: rc_salt
+  dp2_candidate_catalogue: dp2_object
   reference_match: pos_1arcsec
   delight_catalogue: legacy_dr10

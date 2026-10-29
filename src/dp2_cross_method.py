@@ -68,11 +68,14 @@ def read_kang(index):
         paths[name] = path
     res = pd.read_parquet(paths[RESULTS], columns=["oid", "image_survey", "ra_delight", "dec_delight", "ra_sex",
                                                    "dec_sex", "std_delight", "hostsize"])
-    com = pd.read_parquet(paths[COMPANION], columns=["diaobjectId", "dp2_objectId", "match_sep_arcsec"])
+    com = pd.read_parquet(paths[COMPANION], columns=["diaobjectId", "dp2_objectId", "match_sep_arcsec", "legacy_ls_id"])
     com = com.rename(columns={"diaobjectId": "oid", "dp2_objectId": "kang_dp2_objectId",
                               "match_sep_arcsec": "kang_match_sep"})
     com["kang_dp2_objectId"] = com.kang_dp2_objectId.fillna(-1).astype(np.int64)
     com["kang_match_sep"] = com.kang_match_sep.astype(float)
+    # DR10 ls_id = release << 40 | brickid << 16 | objid -> the objectId of src/dp2_candidates_legacy.py
+    ls = com.pop("legacy_ls_id").fillna(-1).astype(np.int64).to_numpy()
+    com["kang_legacy_objectId"] = np.where(ls >= 0, ((ls >> 16) & 0xFFFFFF) * 1_000_000 + (ls & 0xFFFF), -1)
     k = res.merge(com, on="oid", how="left").rename(columns={"oid": "sn_id"})
     k["sn_id"] = k.sn_id.astype(np.int64)
     if k.sn_id.duplicated().any():
@@ -119,6 +122,8 @@ def build(assoc_path, cand_path, index, rule, cut, workers):
     df = assoc.merge(kang, on="sn_id", how="inner").sort_values("sn_id").reset_index(drop=True)
     cand = L.load_candidates(cand_path, bands=band)
     cand = cand[cand.sn_id.isin(df.sn_id)].reset_index(drop=True)
+    legacy = "legacy_type" in pq.read_schema(cand_path).names   # candidates from src/dp2_candidates_legacy.py
+    df["kang_objectId"] = df.kang_legacy_objectId if legacy else df.kang_dp2_objectId
     sn = df.sn_id.to_numpy()
     for m, (rc, dc) in {"delight": ("ra_delight", "dec_delight"), "sex": ("ra_sex", "dec_sex")}.items():
         df[f"{m}_objectId"], df[f"{m}_match_sep"] = match_positions(cand, sn, df[rc].to_numpy(float),
@@ -147,7 +152,7 @@ def build(assoc_path, cand_path, index, rule, cut, workers):
     df["sbw_host"] = np.where(sbw_hostless(df, cut), -1, df.sbw_objectId.to_numpy())
     df["dlr_host"] = df.dlr_objectId.to_numpy()
     df["delight_host"], df["sex_host"] = df.delight_objectId.to_numpy(), df.sex_objectId.to_numpy()
-    df.attrs = dict(attrs, reference_match=rule, sbw_hostless_cut=cut)
+    df.attrs = dict(attrs, reference_match=rule, sbw_hostless_cut=cut, catalogue="legacy_dr10" if legacy else "dp2_object")
     return df
 
 
@@ -200,7 +205,7 @@ def metrics(df, out, t):
     radius = L.RADIUS[df.attrs["search_radius"]]
     res = {"settings": {k: df.attrs[k] for k in ("band", "profile", "search_radius", "dlr_max", "dlr_radius",
                                                   "extendedness", "candidate_quality", "reference_match",
-                                                  "sbw_hostless_cut")} | {"p_threshold": t},
+                                                  "sbw_hostless_cut", "catalogue")} | {"p_threshold": t},
            "n": len(df), "subsets": {}}
     for name, g in subsets(df):
         n = len(g)
@@ -223,10 +228,12 @@ def metrics(df, out, t):
             "sbw_same_as_delight": w(((g >= 0) & (sh == g)).sum(), len(df)),
             "dlr_same_as_delight": w(((g >= 0) & (dh == g)).sum(), len(df)),
             "sbw_same_given_both_hosted": w(((g >= 0) & (sh == g)).sum(), ((g >= 0) & (sh >= 0)).sum())}
-    # cross-check of the DELIGHT match against Kang's own nearest DP2 object (within 1" of the CNN position)
-    k = df.kang_dp2_objectId.to_numpy()
+    # cross-check of the DELIGHT match against Kang's own nearest DP2 object (within 1" of the CNN position),
+    # or his Legacy DR10 counterpart when the candidates are Legacy sources
+    k = df.kang_objectId.to_numpy()
     both = (k >= 0) & (df.delight_host.to_numpy() >= 0)
     res["kang_crosscheck"] = {
+        "catalogue": df.attrs.get("catalogue", "dp2_object"),
         "kang_matched": w((k >= 0).sum(), len(df)), "ours_matched": w((df.delight_host >= 0).sum(), len(df)),
         "same_object_where_both_matched": w((both & (k == df.delight_host.to_numpy())).sum(), both.sum()),
         "kang_matched_ours_not": int(((k >= 0) & (df.delight_host.to_numpy() < 0)).sum()),

@@ -8,6 +8,9 @@ partitions, which are disjoint. Each partition is read twice, first coord_ra / c
 candidate columns of the matched rows only. Columns are those of src/dp2_lib.py (both MultiProFit fits, per
 band model / cModel fluxes, HSM moments, extendedness, blendedness, cModel_flag, deblend and parent columns;
 deblend_parentNChild is written as parent_nChild like on DP0.2).
+
+With ``--catalogue legacy_dr10`` the candidates are Legacy Surveys DR10 Tractor sources from the sweep tiles
+of ``--legacy-sweeps`` instead, rewritten into the same columns (src/dp2_candidates_legacy.py).
 """
 from __future__ import annotations
 
@@ -55,7 +58,9 @@ def _match(job):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--positions", required=True, help="parquet with sn_id, sn_ra, sn_dec (dp2_sample or random positions)")
+    ap.add_argument("--catalogue", choices=["dp2_object", "legacy_dr10"], default="dp2_object")
     ap.add_argument("--objects", required=True, help="dp2_object index csv of the HATS partition files")
+    ap.add_argument("--legacy-sweeps", help="legacy_dr10_sweeps index csv (with --catalogue legacy_dr10)")
     ap.add_argument("--search-radius", required=True, choices=sorted(RADIUS))
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "16")))
     ap.add_argument("--output", required=True)
@@ -63,6 +68,10 @@ def main(argv=None):
     t0 = time.time()
     sn = pd.read_parquet(a.positions, columns=["sn_id", "sn_ra", "sn_dec"]).reset_index(drop=True)
     radius = RADIUS[a.search_radius]
+    if a.catalogue == "legacy_dr10":
+        import dp2_candidates_legacy
+        write(dp2_candidates_legacy.build(sn, a.legacy_sweeps, radius, a.workers), a.output, len(sn), radius, t0)
+        return
     root = D.hats_root(a.objects)
     boxes = D.partition_boxes(root)
     listed = set(pd.read_csv(a.objects)["path"])
@@ -81,12 +90,16 @@ def main(argv=None):
             if out is not None:
                 parts.append(out)
     cand = pd.concat(parts, ignore_index=True).rename(columns=D.RENAME)
+    write(cand, a.output, len(sn), radius, t0)
+
+
+def write(cand, output, n_pos, radius, t0):
     cand = cand.sort_values(["sn_id", "sep_arcsec"], kind="stable").reset_index(drop=True)
     for c in ("sn_id", "objectId", "parentObjectId"):
         cand[c] = cand[c].fillna(0).astype(np.int64)
-    cand.to_parquet(a.output, index=False, compression="zstd")
+    cand.to_parquet(output, index=False, compression="zstd")
     n_with = cand.sn_id.nunique()
-    print(f"wrote {len(cand)} pairs for {n_with}/{len(sn)} positions "
+    print(f"wrote {len(cand)} pairs for {n_with}/{n_pos} positions "
           f"(median {cand.groupby('sn_id').size().median():.0f} objects within {radius:g}\") in {time.time() - t0:.0f}s",
           file=sys.stderr)
 
