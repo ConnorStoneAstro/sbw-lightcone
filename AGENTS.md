@@ -555,6 +555,51 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
     the main clone's files (no `mainclone` remote). `pkill -f`/`pgrep -f`
     over ssh match their own command line.
     dp2_cross_method_agreement is still without a recipe (not started).
+- **DP2 DELIGHT comparison (29 Oct 2026, branch `dp2-delight`, NERSC clone
+  `$PROJECT/host_association/paper-dp2`; not merged).** Universe `dp2_ddf`
+  (baseline + `dp2_sample: parsnip_ddf`, 7,823 DDF ParSNIP transients;
+  557,091 candidate pairs, median 71 within 30"). Y. J. Kang's DELIGHT
+  tables are the input `dp2_delight_yjkang` = `data/dp2_delight_yjkang_index.csv`
+  (path, size, mtime, sha256; `src/ou24_index_files.py --sha256`); J. Lee's
+  DLR and the fixed parsnip_ddf input are gone from the spec.
+  `src/dp2_cross_method.py agreement|metrics|cases` matches the DELIGHT CNN
+  position and the DELIGHT-SEx position to the transient's DP2 candidates
+  (all, before cuts) under `reference_match` and reruns the association with
+  the DELIGHT object as host to get its P_SBW and `true_host_status`; the
+  SBW/DLR picks are asserted equal to dp2_associations. New outputs
+  `dp2_cross_method_agreement` (csv), `dp2_cross_method_metrics` (json),
+  `dp2_delight_cases`, `dp2_delight_gallery`, materialized only in dp2_ddf
+  (other universes leave them unmade; the script would give the rc_salt
+  overlap, 291 transients). Numbers (r, exponential, flb 0.01, d 4, 1"):
+  * Hostless: SBW 52.9%, DLR 50.5%, DELIGHT 9.6% (no DP2 candidate within
+    1" of its position), DELIGHT-SEx 1.6%. On rc_salt SBW is 14%: the DDF
+    ParSNIP set is dominated by transients on compact sources.
+  * Pairs (same / different / a-only hostless / b-only / both): SBW-DLR
+    46.2 / 0.9 / 2.4 / 0 / 50.5; SBW-DELIGHT 27.4 / 14.3 / 48.7 / 5.4 / 4.2
+    (same given both hosted 65.6%); DLR-DELIGHT 27.4 / 16.5 / 46.5 / 5.6 /
+    4.0; DELIGHT-SEx 89.2% same.
+  * The cause: DELIGHT's position lies a median 0.18" from the transient,
+    and of the 7,072 DELIGHT positions that match a candidate, 4,762 (67%)
+    are DP2 point sources (refExtendedness < 0.5) that ext05 removes before
+    SBW/DLR; SBW calls 3,711 of those hostless and picks a neighbour
+    (median 4.6" away) for 1,051. Where DELIGHT's object survives the cut,
+    SBW picks the same object in 2,141 / 2,212 (96.8%); the 71 others have
+    P_SBW(DELIGHT object) ~ 0. P bands of the DELIGHT host (n 7,072): > 0.5
+    30.3%, t-0.5 0.1%, < t 15.7% (mostly the point sources, P = 0), SBW
+    hostless 53.9%.
+  * By image_survey: Legacy (5,100) SBW-DELIGHT same 28.3%, DELIGHT
+    hostless 6.3%; PS1 (2,719) 25.7%, DELIGHT hostless 15.9% (shallower
+    cutouts, more positions with no DP2 object); DES_DR2 has 4.
+  * reference_match: 1" matches 90.4% of DELIGHT positions (Kang's own
+    nearest-DP2 match, up to 2", 95.6%; the same object wherever both
+    match), 3" 97.8% (SBW same 28.9%), frac_semimajor 16.0%.
+  * Gallery: the transient sits on a compact, star-like DP2 source that
+    DELIGHT and SEx both mark; SBW/DLR, having dropped it, go to a fainter
+    extended neighbour or call hostless. A few DELIGHT/SEx splits are large
+    nearby hosts where the CNN lands on the bulge and SEx on a knot. The
+    open question for Connor is whether those point sources are the
+    transient itself in the deep coadd, AGN/nuclear hosts, or stars
+    (ext_none on DP2 would test it).
 - **Compute: NERSC Perlmutter via `lc`, set up 2026-10-26.** Lightcone runs
   `lc` *on the login node* and launches recipes into Slurm allocations from
   `~/.lightcone/compute.yaml` (local compute is refused on login nodes). On
