@@ -467,6 +467,58 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   Prototype headline (Oct 2026, now rebuilt here): SBW recovered the DES host
   98.6%, DLR 98.4%; most residual failures were DR2 classing a faint host as a
   star, or different deblending.
+- **DES tier (rebuilt, 29 Oct 2026, branch `des-tier`, laptop worktree
+  `.claude/worktrees/des-tier-82bd51`; not merged; local compute only).** The
+  published host is the DES-SN DLR assignment on deep SN-field coadds: every
+  number is agreement with that reference, never recovery. Inputs:
+  `data/des_sn5yr/` (Dovekie metadata + HEAD, sha256 in data/README.md) and
+  `data/des_dr2_candidates.parquet` (655,978 unique DR2 objects within 2' of the
+  1,623 SNe, fetched once 2026-10-29 by `src/des_fetch_dr2.py`, ~14 min over
+  Data Lab TAP with 6 threads; not a recipe). `src/des_lib.py install()` swaps
+  SExtractor light models into `dp02_lib` (shape = detection A, B, THETA_J2000
+  for every band, written as `{b}_ixx/iyy/ixy` in arcsec^2 with zero PSF
+  moments; exponential / sersic = n 1 / n 4 on the band's FLUX_RADIUS as
+  determinant radius; moments = Gaussian on A, B; DLR moments = A, B; DLR
+  half_light = FLUX_RADIUS ellipse; refExtendedness from extended_class_coadd
+  >= 2). `src/des_run.py` runs dp02_associate / dp02_sweep (griz) / dp02_fig /
+  dp2_fig unchanged and rewrites "true" -> "published" in every figure at save
+  time (tick labels need their FuncFormatter wrapped), so no shared script was
+  edited. Published host -> DR2 by `reference_match` in des_sample (99.14%
+  matched at 1"). Random positions: 10 per SN in a 45-90" annulus. New universe
+  `des_faithful` (dlr_radius moments, search_radius r15). All 17 des_* outputs
+  current in baseline and des_faithful (~10 min total).
+  * *Angle* (`des_angle_check`, 40 galaxies, r cutouts): theta_j2000 is East of
+    North, <cos 2 delta> 0.926, median |delta| 3.7 deg (mirror -0.10, 55 deg).
+  * *Agreement with the published host* (r, exponential, flb 0.01, d 4):
+    baseline SBW argmax 97.78%, mean P_SBW(published) 0.973, DLR (half-light)
+    97.10%, SBW = DLR 98.21%; des_faithful DLR (moments, 15") 97.60%, SBW
+    unchanged. Prototype 98.6 / 98.4% does not reproduce exactly; the gap is the
+    29 SNe (1.8%) whose published host is unmatched in DR2 (14; nearest DR2 object
+    1.3-10" away, several with HOSTGAL_SNSEP 0, one 57" bright host) or a DR2
+    star (15). Of the 1,594 whose published host survives the cuts SBW agrees
+    99.56%, DLR 98.87% (faithful 99.37%).
+  * *P-band matrix* (baseline): P > 0.5 / DLR = pub 1,575, / DLR != pub 8; P in
+    [0.05, 0.5] / DLR != 6; P < 0.05 / DLR != 12; SBW hostless / DLR hostless 21,
+    / DLR = pub 1. SBW and DLR fail together: the residuals are catalogue
+    (absent / star), not method. HOSTGAL2 explains 44% of SBW-other and 73% of
+    DLR-other picks; host-or-host2: SBW 98.77%, DLR 98.27%. ECE 0.013.
+  * *Hostless*: random rejection at flb 0.01 75.8%, d 4 half-light 74.6%,
+    d 4 moments 88.2%. Own J optima: flb 0.133 (J 0.858), d_DLR half-light 2.1
+    (0.858), moments 2.7 (0.900). DP0.2 optima transfer at J -0.065 (flb
+    0.0215) and -0.017 / 0.000 (d 2.7 half-light / moments); defaults lose
+    0.114 (flb 0.01) and 0.125 / 0.033 (d 4). DES SNe sit close to their hosts
+    (published median d_DLR 0.67), so the optimal flb is much higher than on DC2.
+  * *Bands / profiles*: SBW host changes vs r < 0.6% in g, i, z; n 4 hostless
+    0.06-0.18%, exponential 1.2-1.6%, moments 3.3%; argmax agreement 97.7-98.0%
+    in every band and profile.
+  * *Gallery*: sbw_ne_published cases are the published host classed as a DR2
+    star or a knot / companion separated in the deep SN coadds but merged or
+    absent in DR2. SIA footprints miss some tile edges (`des_gallery.py`
+    re-searches 0.5 deg).
+  * *Not done*: no `des_sample` decision (des_all_hosted needs ~12x the fetch);
+    pos_3arcsec / frac_semimajor and ext_none universes not materialized for
+    DES; a merge with dp2-legacy must add `dp2_candidate_catalogue` to
+    `universes/des_faithful.yaml`.
 - **DELIGHT tier.** 16,791 visually vetted hosts within 1 arcmin (so
   `search_radius: r60` for this tier); 14,111 ZTF/ALeRCE on Pan-STARRS DR1
   imagery plus 2,680 large nearby hosts (Asiago, HECATE). Candidate catalogue
