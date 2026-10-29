@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "output_id": "des_associations",
+  "universe_id": "baseline",
+  "recipe": "python src/des_run.py associate --sample results/baseline/des_sample.parquet --candidates results/baseline/des_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --candidate-quality none --workers 8 --output results/baseline/des_associations.parquet",
+  "definition_version": "sha256:bd072000990ca93ccf128119036eb83588a6e41b27c164a19cac2b8b7380d793",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:5df2c034a1b2117d169826ee9ce9aefd027c769d50fb68dc00c69e19cbbf4a0e",
+  "decisions": {
+    "sbw_profile": "exponential",
+    "band": "r",
+    "search_radius": "r30",
+    "dlr_max": "d4",
+    "dlr_radius": "half_light",
+    "extendedness_cut": "ext05",
+    "candidate_quality": "none"
+  },
+  "input_versions": {
+    "des_sample": "sha256:34af572c839f6806613536a2e90412e82f221ecdf270681cba0b80fd62de18b8",
+    "des_candidates": "sha256:4ce3a3570ad9a8d63ffcca59cb59945e906e3cf7a5b95d12a06eead76f7d8318"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:53:24.084+00:00",
+  "finished_at": "2026-10-29T18:53:40.044+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
