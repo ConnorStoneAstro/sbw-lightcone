@@ -356,12 +356,13 @@ outputs:
     type: figure
     format: pdf
     description: >-
-      Probabilistic agreement matrix: rows are the SBW probability of the
-      true host, P_SBW(true) > 0.5 / in [p_true_threshold, 0.5] / below
-      p_true_threshold (excluded by SBW, including a true host that is not a
-      surviving candidate) / SBW hostless under sbw_hostless_cut, against DLR
-      host true / wrong / hostless: counts and fractions of SNe in each cell.
-      A second panel applies the same cuts to dp02_random_positions as a 2x2
+      Probabilistic agreement matrix on the SNe whose true host passed the
+      catalogue (cat1) and object-table (cat2) cuts for both methods, so every
+      cell is an association outcome (the title gives N and the fraction of
+      the sample): rows are the SBW probability of the true host, P_SBW(true)
+      > 0.5 / in [p_true_threshold, 0.5] / below p_true_threshold (excluded
+      by SBW) / SBW hostless under sbw_hostless_cut, against DLR host true /
+      wrong / hostless: counts and fractions in each cell. A second panel applies the same cuts to dp02_random_positions as a 2x2
       (SBW hostless = correct / assigns a host = wrong, against the same for
       DLR), so loosening the hostless cut is seen to cost random rejections;
       under each panel the real recovery with the cuts and the random
@@ -1238,6 +1239,23 @@ outputs:
     decisions: [sbw_hostless_cut]
     recipe:
       command: python src/dp2_fig.py band_consistency --associations {inputs.dp2_associations} --sweep {inputs.dp2_association_sweep} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+  - id: dp2_agreement_matrix
+    type: figure
+    format: pdf
+    description: >-
+      Figure form of the dp2_disagreement_rate P-band matrix in the layout of
+      dp02_agreement_matrix: (a) rows P_SBW of the DLR host > 0.5 / in
+      [p_true_threshold, 0.5] / below p_true_threshold, or SBW hostless under
+      sbw_hostless_cut, against the DLR host being SBW's most probable host /
+      another object / DLR hostless (that column holds SBW assigns a host /
+      SBW hostless, since the P bands need a DLR host); (b) SBW x DLR
+      hosted / hostless for the transients whose most probable SBW host has
+      P_SBW above p_true_threshold; (c) the same 2x2 on dp2_random_positions,
+      where hostless is the correct answer.
+    inputs: [dp2_associations, dp2_random_associations]
+    decisions: [sbw_hostless_cut, p_true_threshold]
+    recipe:
+      command: python src/dp2_fig.py agreement_matrix --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp2_p_top_host
     type: figure
     format: pdf

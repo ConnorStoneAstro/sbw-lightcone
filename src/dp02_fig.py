@@ -95,7 +95,12 @@ def calibration(df, out):
 
 
 def agreement_matrix(df, out, hostless_cut, rnd, p_threshold):
+    """Real-SN panel restricted to SNe whose true host passed the catalogue (cat1) and object-table (cat2)
+    cuts for both methods, so every cell is an association outcome; the random-position panel is unchanged."""
     cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
+    full = len(df)
+    survived = (df["true_host_status"].to_numpy() == "kept") & np.isfinite(df["d_dlr_true"].to_numpy(dtype=float))
+    df = df[survived]
     pr, dc = prob_rows(df, cut, t), dlr_cols(df)
     rows = [("$P_{\\mathrm{SBW}}$(true) > 0.5", pr["p_gt_0p5"]),
             (f"$P_{{\\mathrm{{SBW}}}}$(true)\nin [{t:g}, 0.5]", pr["p_t_to_0p5"]),
@@ -113,7 +118,8 @@ def agreement_matrix(df, out, hostless_cut, rnd, p_threshold):
     ax.set_xticks(range(3), [c for c, _ in cols]); ax.set_yticks(range(len(rows)), [r for r, _ in rows])
     ax.grid(False)
     pt = np.where(pr["sbw_hostless"], 0.0, p_true(df))
-    ax.set_title(f"real SNe (N = {n:,}; SBW most probable host = DLR host {100 * df.agree.mean():.2f}%)", fontsize=8)
+    ax.set_title(f"real SNe whose true host passed cat1 + cat2: N = {n:,} of {full:,} ({100 * n / full:.1f}%)\n"
+                 f"SBW most probable host = DLR host {100 * df.agree.mean():.2f}%", fontsize=8)
     ax.set_xlabel(f"mean $P_{{\\mathrm{{SBW}}}}$(true) with the hostless cut {100 * pt.mean():.2f}%; "
                   f"DLR recovery {100 * df.dlr_correct.mean():.2f}%", fontsize=8)
     # random positions: no host exists, so hostless is the correct answer
@@ -130,7 +136,8 @@ def agreement_matrix(df, out, hostless_cut, rnd, p_threshold):
     ar.grid(False)
     ar.set_title(f"random positions (N = {nr:,})", fontsize=8)
     ar.set_xlabel(f"correctly rejected: SBW {100 * hr.mean():.2f}%, DLR {100 * dr.mean():.2f}%", fontsize=8)
-    fig.suptitle("SBW probability of the true host vs DLR, same hostless cuts on real SNe and random positions\n"
+    fig.suptitle("SBW probability of the true host vs DLR on SNe whose true host survived the catalogue and object-table cuts; "
+                 "same hostless cuts on random positions\n"
                  + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 

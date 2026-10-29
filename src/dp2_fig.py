@@ -226,9 +226,80 @@ def p_top_host(df, rnd, ref, out, hostless_cut):
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
+def agreement_matrix(df, rnd, out, hostless_cut, p_threshold):
+    """Figure form of the P-band matrix (dp2_disagreement_rate) in the layout of dp02_agreement_matrix.
+    (a) rows: P_SBW of the DLR host > 0.5 / t..0.5 / < t, or SBW hostless (flb_best < cut); columns: the DLR host is
+    SBW's most probable host / another object / DLR hostless (where the P-band rows do not apply, the DLR-hostless
+    column holds SBW hosted and SBW hostless). (b) SBW x DLR hosted / hostless for the transients where SBW's most
+    probable host has P_SBW > t. (c) the same 2x2 on random positions, where hostless is the correct answer."""
+    cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
+    n = len(df)
+    sh = sbw_hostless(df, cut)
+    d = df["dlr_objectId"].to_numpy()
+    dh = d < 0
+    same = df["sbw_objectId"].to_numpy() == d
+    p = np.nan_to_num(df["p_sbw_dlr"].to_numpy(dtype=float), nan=0.0)
+    rows = [("$P_{\\mathrm{SBW}}$(DLR host) > 0.5", ~sh & ~dh & (p > 0.5)),
+            (f"$P_{{\\mathrm{{SBW}}}}$(DLR host)\nin [{t:g}, 0.5]", ~sh & ~dh & (p >= t) & (p <= 0.5)),
+            (f"$P_{{\\mathrm{{SBW}}}}$(DLR host) < {t:g}", ~sh & ~dh & (p < t)),
+            (f"SBW: no host\n(flb < {cut:g})", sh)]
+    cols = [("DLR host = SBW most\nprobable host", ~dh & same), ("DLR host = another\nobject", ~dh & ~same), ("DLR: no host", dh)]
+    M = np.array([[int((r & c).sum()) for _, c in cols] for _, r in rows], dtype=float)
+    M[:3, 2] = np.nan                       # P bands undefined without a DLR host
+    n_sbw_hosted_dlr_hostless = int((~sh & dh).sum())
+    fig, (ax, ab, ar) = plt.subplots(1, 3, figsize=(13.2, 4.8), width_ratios=[3, 1.9, 1.9])
+    ax.imshow(np.nan_to_num(M) / n, cmap="Blues", vmin=0, vmax=1, aspect="auto")
+    for i in range(len(rows)):
+        for j in range(len(cols)):
+            if np.isnan(M[i, j]):
+                continue
+            ax.text(j, i, f"{int(M[i, j]):,}\n{100 * M[i, j] / n:.2f}%", ha="center", va="center", fontsize=8,
+                    color="white" if M[i, j] / n > 0.5 else "black")
+    ax.add_patch(plt.Rectangle((1.5, -0.5), 1, 3, facecolor="#eeeeee", edgecolor="none", zorder=0))
+    ax.text(2, 1, f"SBW assigns a host\n{n_sbw_hosted_dlr_hostless:,}\n{100 * n_sbw_hosted_dlr_hostless / n:.2f}%",
+            ha="center", va="center", fontsize=8)
+    ax.set_xticks(range(3), [c for c, _ in cols]); ax.set_yticks(range(len(rows)), [r for r, _ in rows])
+    ax.grid(False); ax.tick_params(labelsize=7)
+    ax.set_title(f"(a) DP2 transients (N = {n:,}; SBW most probable host = DLR host {100 * (same & ~sh & ~dh).mean():.2f}%)",
+                 fontsize=8, loc="left")
+    hosted = ~dh
+    ax.set_xlabel(f"mean $P_{{\\mathrm{{SBW}}}}$(DLR host) where DLR names one {100 * np.nanmean(p[hosted]):.2f}%; "
+                  f"hostless: SBW {100 * sh.mean():.2f}%, DLR {100 * dh.mean():.2f}%", fontsize=8)
+    # (b) hosted / hostless 2x2 where SBW's most probable host has P > t
+    conf = df["p_sbw_max"].to_numpy(dtype=float) > t
+    nb = int(conf.sum())
+    brows = [("SBW: no host", sh[conf]), ("SBW assigns host", ~sh[conf])]
+    bcols = [("DLR: no host", dh[conf]), ("DLR assigns host", ~dh[conf])]
+    B = np.array([[int((r & c).sum()) for _, c in bcols] for _, r in brows])
+    ab.imshow(B / max(nb, 1), cmap="Blues", vmin=0, vmax=1, aspect="auto")
+    for i in range(2):
+        for j in range(2):
+            ab.text(j, i, f"{B[i, j]:,}\n{100 * B[i, j] / max(nb, 1):.2f}%", ha="center", va="center", fontsize=8,
+                    color="white" if B[i, j] / max(nb, 1) > 0.5 else "black")
+    ab.set_xticks(range(2), [c for c, _ in bcols]); ab.set_yticks(range(2), [r for r, _ in brows]); ab.grid(False)
+    ab.tick_params(labelsize=7)
+    ab.set_title(f"(b) transients with max $P_{{\\mathrm{{SBW}}}}$ > {t:g} (N = {nb:,} of {n:,})", fontsize=8, loc="left")
+    # (c) random positions
+    hr = sbw_hostless(rnd, cut); dr = rnd["dlr_objectId"].to_numpy() < 0
+    nr = len(rnd)
+    R = np.array([[int((r & c).sum()) for c in (dr, ~dr)] for r in (hr, ~hr)])
+    ar.imshow(R / nr, cmap="Greys", vmin=0, vmax=1.6, aspect="auto")
+    for i in range(2):
+        for j in range(2):
+            ar.text(j, i, f"{R[i, j]:,}\n{100 * R[i, j] / nr:.2f}%", ha="center", va="center", fontsize=8)
+    ar.set_xticks(range(2), ["DLR: no host\n(correct)", "DLR assigns host\n(wrong)"])
+    ar.set_yticks(range(2), ["SBW: no host\n(correct)", "SBW assigns host\n(wrong)"]); ar.grid(False)
+    ar.tick_params(labelsize=7)
+    ar.set_title(f"(c) random positions (N = {nr:,})", fontsize=8, loc="left")
+    ar.set_xlabel(f"correctly rejected: SBW {100 * hr.mean():.2f}%, DLR {100 * dr.mean():.2f}%", fontsize=8)
+    fig.suptitle("DP2 without truth: SBW probability of the DLR host, hosted / hostless agreement, and random positions\n"
+                 + subtitle(df), fontsize=8)
+    fig.tight_layout(); fig.savefig(out); plt.close(fig)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("kind", choices=["disagreement_rate", "agreement_vs_ddlr", "band_consistency", "p_top_host"])
+    ap.add_argument("kind", choices=["disagreement_rate", "agreement_vs_ddlr", "band_consistency", "p_top_host", "agreement_matrix"])
     ap.add_argument("--associations", required=True, help="dp2_associations (headline band and profile)")
     ap.add_argument("--sweep", help="dp2_association_sweep (every band x profile)")
     ap.add_argument("--random", help="dp2_random_associations")
@@ -244,6 +315,8 @@ def main(argv=None):
         agreement_vs_ddlr(df, a.output, a.hostless_cut)
     elif a.kind == "band_consistency":
         band_consistency(df, read_sweep(a.sweep), a.output, a.hostless_cut)
+    elif a.kind == "agreement_matrix":
+        agreement_matrix(df, load(a.random), a.output, a.hostless_cut, a.p_threshold)
     elif a.kind == "p_top_host":
         ref = pq.read_table(a.reference, columns=["sbw_objectId", "p_sbw_max", "flb_best", "p_top"]).to_pandas(ignore_metadata=True)
         p_top_host(df, load(a.random), ref, a.output, a.hostless_cut)
