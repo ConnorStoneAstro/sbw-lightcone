@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "output_id": "des_sample",
+  "universe_id": "baseline",
+  "recipe": "python src/des_sample.py --hosts data/des_sn5yr --objects data/des_dr2_candidates.parquet --reference-match pos_1arcsec --output results/baseline/des_sample.parquet",
+  "definition_version": "sha256:337f21d1ef025dea64041a2904f40629c0d97c24a27b6b556bc9017422f060a1",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:34af572c839f6806613536a2e90412e82f221ecdf270681cba0b80fd62de18b8",
+  "decisions": {
+    "reference_match": "pos_1arcsec"
+  },
+  "input_versions": {
+    "des_sn5yr_hosts": "sha256:d5341a311e077a9f6474e6a87ca4ac2d5a2a7b6d29a9d52755ca509e17251352",
+    "des_dr2_objects": "sha256:23b6790abdc711b4a48c134990fc92b9ef8074e00e681c269012ce6d82144a75"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:50:43.328+00:00",
+  "finished_at": "2026-10-29T18:50:58.709+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}

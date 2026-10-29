@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "des_random_positions",
+  "universe_id": "baseline",
+  "recipe": "python src/des_random_positions.py --sample results/baseline/des_sample.parquet --per-sn 10 --output results/baseline/des_random_positions.parquet",
+  "definition_version": "sha256:9d2245f50380cad731d211f7d6d950af635680465d5e7e195dfd9308432dcb1c",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:031aedbe39e0e2a25dac2683b21b1f81a7e13a51e997cf6ede6c749efe3c7ed3",
+  "decisions": {},
+  "input_versions": {
+    "des_sample": "sha256:34af572c839f6806613536a2e90412e82f221ecdf270681cba0b80fd62de18b8"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:50:58.779+00:00",
+  "finished_at": "2026-10-29T18:51:03.221+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}

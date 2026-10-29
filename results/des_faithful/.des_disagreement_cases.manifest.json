@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "output_id": "des_disagreement_cases",
+  "universe_id": "des_faithful",
+  "recipe": "python src/des_cases.py --associations results/des_faithful/des_associations.parquet --sample results/des_faithful/des_sample.parquet --candidates results/des_faithful/des_candidates.parquet --hostless-cut flb01 --output results/des_faithful/des_disagreement_cases.csv",
+  "definition_version": "sha256:3df4722f1898e9487f1f575411b99fe083eca6c14a3559e85ec2ae8bb4031051",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:8d33eb1cb1c3ae2a9b79e7b93c09af7bcc63dd7e050577eccbc9aa39c5721555",
+  "decisions": {
+    "sbw_hostless_cut": "flb01"
+  },
+  "input_versions": {
+    "des_associations": "sha256:82a4ee902da6d4dd9961ffddae3c6572bb50dbd5218321c9a5bfb6abe6f9e79e",
+    "des_sample": "sha256:34af572c839f6806613536a2e90412e82f221ecdf270681cba0b80fd62de18b8",
+    "des_candidates": "sha256:a363c251d366bf4b2a3b524144db86f8f31284716f39b2067e7084b5b4348ada"
+  },
+  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
+  "git_remote": "",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "landlock",
+    "fs": "declared",
+    "network": "allowed",
+    "landlock_abi": 4,
+    "exec_allowlist_version": 1
+  },
+  "started_at": "2026-10-29T18:57:10.702+00:00",
+  "finished_at": "2026-10-29T18:57:33.144+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
