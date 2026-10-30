@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_legacy_angle_check",
+  "universe_id": "baseline",
+  "recipe": "python src/legacy_angle_check.py --sweeps data/legacy_dr10_sweeps_index.csv --n 60 --output results/baseline/dp2_legacy_angle_check.pdf",
+  "definition_version": "sha256:319b6e18c035bab0434d4428965a18fc261c912b12ab9f28b7ec76ef502ae515",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:180c5e975ca313511da60f94a188c5d6be59bcccd230e470b60346a01f0f1011",
+  "decisions": {},
+  "input_versions": {
+    "legacy_dr10_sweeps": "sha256:d8e88fea383ad190ee06aacae97d7efedfdf321f44195f2b7f10b4f9c30b331b"
+  },
+  "git_sha": "6cfae4767595e1384015c260fe26e422dc89a249",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-30T20:47:57.617+00:00",
+  "finished_at": "2026-10-30T20:49:23.587+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
