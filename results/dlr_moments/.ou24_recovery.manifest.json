@@ -5,16 +5,16 @@
   "recipe": "python src/dp02_fig.py recovery --tier ou24 --associations results/dlr_moments/ou24_associations.parquet --random results/dlr_moments/ou24_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/dlr_moments/ou24_recovery.json",
   "definition_version": "sha256:b89f6b8d18f6b4e2b429eea35d500e4f623246657ee34c53700a8495d2fc89a5",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:d45e39e7d15887e4a1ca231f78b5b15df924925b2323d4ff4b2be5a569c7b8d7",
+  "data_version": "sha256:e258b77ea7eccb2f74ae08fbd21e297445b8ec05e4da6c5c775923b2f1fc09aa",
   "decisions": {
     "sbw_hostless_cut": "flb01",
     "p_true_threshold": "p005"
   },
   "input_versions": {
-    "ou24_associations": "sha256:9cdf425a14b18b537c122c01faad1554cc8f8718c8c90ffb23c4cfb743e0a259",
+    "ou24_associations": "sha256:52e021e5e70b75fc30faf403bb6579a000fc7a38c40c93504fde26241d56a2c6",
     "ou24_random_associations": "sha256:3ab556d033496893708c66a84393246c247caeb07cc365ea740e5eec3e359957"
   },
-  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
+  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -24,8 +24,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T15:16:52.852+00:00",
-  "finished_at": "2026-10-28T15:17:19.083+00:00",
+  "started_at": "2026-10-30T23:03:39.441+00:00",
+  "finished_at": "2026-10-30T23:04:15.152+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
