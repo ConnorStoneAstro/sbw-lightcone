@@ -4,13 +4,13 @@
   "universe_id": "dlr_moments",
   "recipe": "python src/dp02_fig.py recovery_vs --x ddlr --associations results/dlr_moments/dp02_associations.parquet --output results/dlr_moments/dp02_recovery_vs_ddlr.pdf",
   "definition_version": "sha256:9e3691feea649e69d54c2945023a3863ca854958d8bf378d7c2203a76e38e599",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:bc2917d6220e2b02065b2d62bf0a3ee5880c159dcd2ddc57203e92b315b2cd92",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:800381d2a76155aac60819d257c7d83a61ac042751d8c091d07ccb6e31379960",
   "decisions": {},
   "input_versions": {
-    "dp02_associations": "sha256:84eeb003efe19e3fd0336f19904150f273228f970aa03f03788d1418de0076ce"
+    "dp02_associations": "sha256:a68f1c45dc13d0131c36fd456d6a6219f961bb83f3ee58ccd1664594bfe57063"
   },
-  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T00:46:43.990+00:00",
-  "finished_at": "2026-10-28T00:47:50.107+00:00",
+  "started_at": "2026-10-30T22:42:04.837+00:00",
+  "finished_at": "2026-10-30T22:42:34.064+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
