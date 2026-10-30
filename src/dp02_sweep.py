@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 
 from dp02_fig import plot_calibration, plt as _plt  # noqa: F401  (rcParams)
 import dp02_lib as L
-from dp02_lib import BANDS, COLORS, DLR_MAX, PROFILES, PROFILE_LABEL, QUALITY, RADIUS, associate_all, p_true, calibration_curve, wilson
+from dp02_lib import BANDS, COLORS, DLR_MAX, HOSTLESS_CUT, PROFILES, PROFILE_LABEL, QUALITY, RADIUS, associate_all, p_true, calibration_curve, wilson
 
 
 def run(sample, candpath, bands, profiles, cfg, workers):
@@ -27,21 +27,21 @@ def run(sample, candpath, bands, profiles, cfg, workers):
     return res
 
 
-def panel_grid(res, keys, titles, out, suptitle):
+def panel_grid(res, keys, titles, out, suptitle, cut):
     n = len(keys)
     ncol = 3 if n > 4 else n
     nrow = int(np.ceil(n / ncol))
     fig, axes = plt.subplots(nrow, ncol, figsize=(3.0 * ncol, 3.0 * nrow), squeeze=False)
     for ax, k, t in zip(axes.flat, keys, titles):
         df = res[k]
-        _, ece = plot_calibration(ax, df)
+        _, ece = plot_calibration(ax, df, cut)
         ax.set_title(f"{t}\nmean P(true) {100 * p_true(df).mean():.2f}%, most probable = true "
                      f"{100 * df.sbw_correct.mean():.2f}%  N={len(df):,}", fontsize=7)
         ax.set_xlabel(""); ax.set_ylabel("")
     for ax in axes.flat[n:]:
         ax.axis("off")
-    fig.supxlabel("$P_{\\mathrm{SBW}}$ of the most probable host", fontsize=9)
-    fig.supylabel("fraction where the most probable host is the true host", fontsize=9)
+    fig.supxlabel("$P_{\\mathrm{SBW}}$ of a candidate (hosted SNe whose true host survived)", fontsize=9)
+    fig.supylabel("fraction of candidates that are the true host", fontsize=9)
     fig.suptitle(suptitle, fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
@@ -73,12 +73,12 @@ def band_dependence(res, profile, out, cfgtxt):
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
-def profile_table(res, band, out):
+def profile_table(res, band, out, cut):
     rows = []
     for p in PROFILES:
         df = res[(band, p)]
         n = len(df)
-        _, ece = calibration_curve(df)
+        _, ece, _ = calibration_curve(df, cut)
         ps, lo, hi = wilson(df.sbw_correct.sum(), n)
         rows.append({"profile": p, "label": PROFILE_LABEL[p], "band": band, "n": n,
                      "mean_p_sbw_true": p_true(df).mean(),
@@ -119,6 +119,8 @@ def main(argv=None):
     ap.add_argument("--dlr-radius", required=True, choices=["half_light", "moments"])
     ap.add_argument("--extendedness", required=True, choices=["ext05", "none"])
     ap.add_argument("--candidate-quality", required=True, choices=QUALITY)
+    ap.add_argument("--hostless-cut", choices=sorted(HOSTLESS_CUT), default="flb01",
+                    help="calibration curves and ECE are on SNe SBW keeps as hosted under this cut")
     ap.add_argument("--tier", choices=["dp02", "ou24", "dp2"], default="dp02")
     ap.add_argument("--exclude-suspect", choices=["keep", "drop"], default="keep", help="DP2 only (sbw_host suspect fits)")
     ap.add_argument("--workers", type=int, default=None)
@@ -130,6 +132,7 @@ def main(argv=None):
         dp2_lib.install(a.exclude_suspect)
     cfg = dict(search_radius=a.search_radius, dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness,
                quality=a.candidate_quality)
+    cut = HOSTLESS_CUT[a.hostless_cut]
     cfgtxt = f"{a.search_radius} | d_DLR<={a.dlr_max[1:]} ({a.dlr_radius}) | {a.extendedness} | quality {a.candidate_quality}"
     sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     if a.max_sn:
@@ -142,16 +145,16 @@ def main(argv=None):
         res = run(sample, a.candidates, BANDS, [a.profile], cfg, a.workers)
         if a.mode == "band":
             panel_grid(res, [(b, a.profile) for b in BANDS], [f"{b} band" for b in BANDS], a.output,
-                       f"SBW calibration per band ({PROFILE_LABEL[a.profile]}) | {cfgtxt}")
+                       f"SBW calibration per band ({PROFILE_LABEL[a.profile]}) | hosted at flb >= {cut:g} | {cfgtxt}", cut)
         else:
             band_dependence(res, a.profile, a.output, cfgtxt)
     else:
         res = run(sample, a.candidates, [a.band], PROFILES, cfg, a.workers)
         if a.mode == "profile":
             panel_grid(res, [(a.band, p) for p in PROFILES], [PROFILE_LABEL[p] for p in PROFILES], a.output,
-                       f"SBW calibration per light model ({a.band} band) | {cfgtxt}")
+                       f"SBW calibration per light model ({a.band} band) | hosted at flb >= {cut:g} | {cfgtxt}", cut)
         else:
-            profile_table(res, a.band, a.output)
+            profile_table(res, a.band, a.output, cut)
 
 
 if __name__ == "__main__":

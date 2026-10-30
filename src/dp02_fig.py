@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from dp02_lib import (COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, calibration_curve, dlr_cols, dlr_hostless, matrix_cells,
+from dp02_lib import (CAL_EDGES, COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, calibration_curve, dlr_cols, dlr_hostless, matrix_cells,
                       p_true, prob_matrix_cells, prob_rows, random_cells, sbw_hostless, wilson)
 
 TIER = {"dp02": "DC2", "ou24": "OU2024", "dp2": "DP2"}
@@ -45,7 +45,7 @@ def recovery(df, out, hostless_cut, rnd, p_threshold):
     ph, lh, hh = wilson(kh, n)
     ks, kd = int(df.sbw_correct.sum()), int(df.dlr_correct.sum())
     ps, ls, hs = wilson(ks, n); pd_, ld, hd = wilson(kd, n)
-    _, ece = calibration_curve(df)
+    _, ece, n_cal = calibration_curve(df, cut)
     res = {"n": n,
            "mean_p_sbw_true": float(pt.mean()), "mean_p_sbw_true_se": float(pt.std(ddof=1) / np.sqrt(n)),
            "mean_p_sbw_true_with_hostless_cut": float(np.where(hl, 0.0, pt).mean()),
@@ -58,7 +58,9 @@ def recovery(df, out, hostless_cut, rnd, p_threshold):
            "sbw_no_host_fraction": float((df.sbw_objectId < 0).mean()),
            "true_host_in_candidates": float(df.true_in_cand.mean()),
            "median_p_sbw_true": float(np.nanmedian(df.p_sbw_true)),
-           "expected_calibration_error": ece,
+           "expected_calibration_error": ece, "calibration_n_sne": n_cal,
+           "expected_calibration_error_note": "candidate-level: sum over P bins of |true hosts - summed P| per SN, on SNes SBW keeps "
+                                              "as hosted (flb_best >= cut) whose true host is a surviving candidate",
            "disagree_sbw_right": float((~df.agree & df.sbw_correct).mean()),
            "disagree_dlr_right": float((~df.agree & df.dlr_correct).mean()),
            "sbw_hostless_cut": cut, "sbw_hostless_fraction": float(hl.mean()),
@@ -71,26 +73,36 @@ def recovery(df, out, hostless_cut, rnd, p_threshold):
         json.dump(res, f, indent=2, default=float)
 
 
-def plot_calibration(ax, df, label=None, color=COLORS["sbw"]):
-    cc, ece = calibration_curve(df)
-    cc = cc[cc.n > 0]
-    ax.plot([0, 1], [0, 1], color=COLORS["ref"], lw=1, ls="--", zorder=1)
-    ax.errorbar(cc.p_mean, cc.frac_correct, yerr=[cc.frac_correct - cc.lo, cc.hi - cc.frac_correct],
+def plot_calibration(ax, df, cut, label=None, color=COLORS["sbw"], log=True):
+    cc, ece, nsn = calibration_curve(df, cut)
+    cc = cc[cc.n_cand > 0]
+    lim = (CAL_EDGES[0] * 0.8, 1.05)
+    ax.plot(lim, lim, color=COLORS["ref"], lw=1, ls="--", zorder=1)
+    ax.errorbar(cc.p_mean, cc.frac_true, yerr=[np.clip(cc.frac_true - cc.lo, 0, None), np.clip(cc.hi - cc.frac_true, 0, None)],
                 fmt="o", ms=4, color=color, capsize=2, lw=1, label=label)
-    ax.set_xlabel("$P_{\\mathrm{SBW}}$ of the most probable host"); ax.set_ylabel("fraction where it is the true host")
-    ax.set_xlim(0, 1.02); ax.set_ylim(0, 1.02)
-    ax.text(0.03, 0.95, f"ECE = {ece:.3f}", transform=ax.transAxes, va="top", fontsize=8)
+    if log:
+        ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlim(*lim); ax.set_ylim(*lim)
+    ax.set_xlabel("$P_{\\mathrm{SBW}}$ of a candidate"); ax.set_ylabel("fraction of candidates that are the true host")
+    ax.text(0.03, 0.95, f"calibration error {ece:.3f} per SN\nN = {nsn:,} hosted SNe", transform=ax.transAxes, va="top", fontsize=8)
     return cc, ece
 
 
-def calibration(df, out):
-    fig, (ax, ah) = plt.subplots(2, 1, figsize=(4.2, 5.2), height_ratios=[3, 1], sharex=True)
-    plot_calibration(ax, df)
-    ax.set_xlabel("")
-    cc, _ = calibration_curve(df)
-    ah.bar(cc.p_mean, cc.n, width=0.012, color=COLORS["sbw"], alpha=0.6)
-    ah.set_yscale("log"); ah.set_ylabel("SNe per bin"); ah.set_xlabel("$P_{\\mathrm{SBW}}$ of the most probable host")
-    fig.suptitle(f"SBW calibration on {LABEL['tier']} truth\n" + subtitle(df), fontsize=8)
+def calibration(df, out, hostless_cut):
+    cut = HOSTLESS_CUT[hostless_cut]
+    fig, axes = plt.subplots(2, 2, figsize=(8.0, 5.6), height_ratios=[3, 1], sharex="col")
+    (ax, az), (ah, ahz) = axes
+    cc, ece = plot_calibration(ax, df, cut)
+    plot_calibration(az, df, cut, log=False)
+    az.set_xlim(0.45, 1.02); az.set_ylim(0.45, 1.02); az.set_ylabel(""); az.set_title("P > 0.5, linear", fontsize=8)
+    ax.set_xlabel(""); az.set_xlabel("")
+    for axis in (ah, ahz):
+        axis.bar(cc.p_mean, cc.n_cand, width=0.08 * cc.p_mean if axis is ah else 0.012, color=COLORS["ref"], alpha=0.5, label="candidates")
+        axis.bar(cc.p_mean, cc.n_true, width=0.05 * cc.p_mean if axis is ah else 0.008, color=COLORS["sbw"], alpha=0.8, label="true hosts")
+        axis.set_yscale("log"); axis.set_xlabel("$P_{\\mathrm{SBW}}$ of a candidate")
+    ah.set_xscale("log"); ah.set_ylabel("per bin"); ah.legend(fontsize=7, loc="upper left")
+    fig.suptitle(f"SBW calibration on {LABEL['tier']} truth, every candidate with P > {CAL_EDGES[0]:g}\n"
+                 f"SNe SBW keeps as hosted (flb_best >= {cut:g}) whose true host is a surviving candidate\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
@@ -499,7 +511,7 @@ def main(argv=None):
     if a.kind == "recovery":
         recovery(df, a.output, a.hostless_cut, load(a.random), a.p_threshold)
     elif a.kind == "calibration":
-        calibration(df, a.output)
+        calibration(df, a.output, a.hostless_cut)
     elif a.kind == "agreement_matrix":
         agreement_matrix(df, a.output, a.hostless_cut, load(a.random), a.p_threshold, survivors_only=a.survivors_only)
     elif a.kind == "agreement_vs_ddlr":

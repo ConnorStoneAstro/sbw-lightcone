@@ -157,10 +157,17 @@ and OU2024 side by side or stacked, made from the same script with
   to the catalogue (cat1/cat2) and to its own hostless cut; genuine wrong
   picks are 0.3 to 0.7 %, against DLR's 3 to 5 %. On OU2024 half the
   hosts never reach the catalogue.
-- **Fig 2 (sim both): reliability curve** (`dp02_calibration`,
-  `ou24_calibration`). Message: P_SBW tracks the true-host fraction
-  (ECE ~0.01 on DP0.2 physical); overconfident in the 0.5 to 0.95 band.
-  Text: by band and by profile ECEs, not figures.
+- **Fig 2 (sim both): candidate-level reliability curve**
+  (`dp02_calibration`, `ou24_calibration`; rewritten 30 Oct 2026). Every
+  candidate of every SN that SBW keeps as hosted and whose true host is a
+  surviving candidate, binned by its P_SBW, against the fraction of
+  candidates in the bin that are the true host; 1:1 in every bin when
+  calibrated, log-log over 0.001 to 1 with a linear panel above 0.5 and
+  the counts per bin. The calibration error is the probability mass per
+  SN in the wrong bin. The old top-host-only curve is dropped: it
+  conditioned on the ranking and hid the low-P bins where SBW decides
+  how much mass faint neighbours get. Text: by band and by profile
+  errors, not figures.
 - **Fig 3 (sim both): agreement matrix on cat1+cat2 survivors**
   (`dp02_agreement_matrix`, `ou24_agreement_matrix`). Message: when DLR
   is wrong SBW usually still holds the true host at P > 0.5; the "both

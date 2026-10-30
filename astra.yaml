@@ -338,30 +338,38 @@ outputs:
     type: figure
     format: pdf
     description: >-
-      SBW reliability curve: SNe binned by the p_sbw of the SBW most probable
-      host, against the fraction of those SNe whose most probable host is the
-      true host. A calibrated probability follows the 1:1 line.
+      Candidate-level SBW reliability curve: on the SNe that SBW keeps as
+      hosted (flb_best >= sbw_hostless_cut) and whose true host is a surviving
+      candidate, every candidate with P_SBW > 0.001 is binned by its P_SBW and
+      the fraction of candidates in the bin that are the true host is plotted
+      against the bin's mean P_SBW (log-log over the full range, linear above
+      0.5), with the candidate and true-host counts per bin. A calibrated
+      probability follows the 1:1 line in every bin, not only for the most
+      probable host. The calibration error is the summed |true hosts - summed
+      P_SBW| over bins per SN. Hostless calls and SNe whose host is absent are
+      left out because SBW's probabilities are not used there (30 Oct 2026;
+      before, the curve was on the most probable host only).
     inputs: [dp02_associations]
-    decisions: []
+    decisions: [sbw_hostless_cut]
     recipe:
-      command: python src/dp02_fig.py calibration --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py calibration --associations {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: dp02_calibration_by_band
     type: figure
     format: pdf
-    description: The reliability curve recomputed in each of u g r i z y with the headline profile, one panel per band, independent of the band decision.
+    description: The candidate-level reliability curve (as dp02_calibration) recomputed in each of u g r i z y with the headline profile, one panel per band, independent of the band decision.
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
-      command: python src/dp02_sweep.py band --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
+      command: python src/dp02_sweep.py band --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_calibration_by_profile
     type: figure
     format: pdf
-    description: The reliability curve recomputed for each analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian) in the headline band, independent of the sbw_profile decision.
+    description: The candidate-level reliability curve (as dp02_calibration) recomputed for each analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian) in the headline band, independent of the sbw_profile decision.
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
-      command: python src/dp02_sweep.py profile --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
+      command: python src/dp02_sweep.py profile --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_agreement_matrix
     type: figure
@@ -448,9 +456,9 @@ outputs:
       side by side, independent of the headline sbw_profile choice. The stamp
       form joins once dp02_deblended_stamps exists.
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
-      command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
+      command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_random_positions
     type: table
@@ -851,26 +859,26 @@ outputs:
     format: pdf
     description: As dp02_calibration for OU2024.
     inputs: [ou24_associations]
-    decisions: []
+    decisions: [sbw_hostless_cut]
     recipe:
-      command: python src/dp02_fig.py calibration --tier ou24 --associations {inputs.ou24_associations} --output {output}
+      command: python src/dp02_fig.py calibration --tier ou24 --associations {inputs.ou24_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: ou24_calibration_by_band
     type: figure
     format: pdf
     description: As dp02_calibration_by_band for OU2024.
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
-      command: python src/dp02_sweep.py band --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
+      command: python src/dp02_sweep.py band --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_calibration_by_profile
     type: figure
     format: pdf
     description: As dp02_calibration_by_profile for OU2024.
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
-      command: python src/dp02_sweep.py profile --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
+      command: python src/dp02_sweep.py profile --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_agreement_matrix
     type: figure
@@ -942,9 +950,9 @@ outputs:
     format: csv
     description: As dp02_profile_sweep for OU2024 (exponential, de Vaucouleurs, moment Gaussian side by side).
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
-      command: python src/dp02_sweep.py profile_table --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
+      command: python src/dp02_sweep.py profile_table --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_hostless_indicator
     type: figure
@@ -1159,11 +1167,11 @@ outputs:
   - id: des_calibration
     type: figure
     format: pdf
-    description: Reliability of P_SBW on DES - the fraction of SNe whose SBW most probable host is the published host versus P_SBW (1:1 if SBW were calibrated against the DES-SN DLR reference), with counts.
+    description: As dp02_calibration against the published DES-SN host (candidate-level reliability on SNe SBW keeps as hosted whose published host is a surviving DR2 candidate; 1:1 if SBW were calibrated against the DES-SN DLR reference).
     inputs: [des_associations]
-    decisions: []
+    decisions: [sbw_hostless_cut]
     recipe:
-      command: python src/des_run.py fig calibration --tier des --associations {inputs.des_associations} --output {output}
+      command: python src/des_run.py fig calibration --tier des --associations {inputs.des_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: des_agreement_matrix
     type: figure
     format: pdf

@@ -449,18 +449,42 @@ def wilson(k, n, z=1.0):
     return p, centre - half, centre + half
 
 
-CAL_EDGES = np.array([0.0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98, 0.99, 0.995, 1.0000001])
+CAL_EDGES = np.array([P_TOP_MIN, 2e-3, 5e-3, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 0.97, 0.99, 1.0000001])
 
 
-def calibration_curve(df, edges=CAL_EDGES):
-    """Bin SNe by p_sbw_max; return mean p, fraction correct with Wilson band, and counts."""
-    d = df[np.isfinite(df["p_sbw_max"])]
-    p = d["p_sbw_max"].to_numpy()
-    c = d["sbw_correct"].to_numpy()
-    idx = np.clip(np.searchsorted(edges, p, side="right") - 1, 0, len(edges) - 2)
-    n = np.bincount(idx, minlength=len(edges) - 1)
-    k = np.bincount(idx, weights=c, minlength=len(edges) - 1)
-    pm = np.bincount(idx, weights=p, minlength=len(edges) - 1) / np.maximum(n, 1)
+def calibration_subset(df, cut):
+    """SNe on which P_SBW is calibrated: SBW keeps them as hosted (flb_best >= cut) and the true
+    (reference) host is a surviving candidate, so some candidate is right. Where SBW declares the
+    transient hostless its probabilities are not used, and where the true host was never a candidate
+    no probability can be right, so neither says anything about P_SBW."""
+    status = df["true_host_status"].to_numpy().astype(str)
+    return df[(status == "kept") & ~sbw_hostless(df, cut)]
+
+
+def calibration_curve(df, cut, edges=CAL_EDGES):
+    """Candidate-level reliability on calibration_subset(df, cut): every candidate of every SN with
+    P_SBW > P_TOP_MIN (the p_top lists) is binned by its P_SBW, and the fraction of candidates in a bin
+    that are the true host is compared with the mean P_SBW of the bin (1:1 when calibrated). Because the
+    probabilities of one SN sum to one, the expected number of true hosts in a bin is the summed P of
+    its candidates; the calibration error is sum_bins |n_true - sum P| / N_SNe, the probability mass
+    per SN that sits in the wrong bin. Returns (table, ece, n_sne)."""
+    d = calibration_subset(df, cut)
+    if len(d) == 0:
+        nb = len(edges) - 1
+        return pd.DataFrame({"p_mean": np.full(nb, np.nan), "frac_true": np.full(nb, np.nan), "lo": np.full(nb, np.nan),
+                             "hi": np.full(nb, np.nan), "n_cand": np.zeros(nb, int), "n_true": np.zeros(nb, int),
+                             "p_mass": np.zeros(nb)}), float("nan"), 0
+    p_all = np.concatenate([np.asarray(x, dtype=float) for x in d["p_top"].to_numpy()])
+    p_true = d["p_sbw_true"].to_numpy(dtype=np.float32).astype(float)   # p_top is float32: same rounding, same bins
+    p_true = p_true[p_true > P_TOP_MIN]   # the same membership rule as p_top
+    def binned(p):
+        return np.clip(np.searchsorted(edges, p, side="right") - 1, 0, len(edges) - 2)
+    ia, it = binned(p_all), binned(p_true)
+    nb = len(edges) - 1
+    n = np.bincount(ia, minlength=nb)
+    k = np.bincount(it, minlength=nb)
+    mass = np.bincount(ia, weights=p_all, minlength=nb)
+    pm = mass / np.maximum(n, 1)
     frac, lo, hi = wilson(k, n)
-    ece = float(np.nansum(np.abs(frac - pm) * n) / max(n.sum(), 1))
-    return pd.DataFrame({"p_mean": pm, "frac_correct": frac, "lo": lo, "hi": hi, "n": n}), ece
+    ece = float(np.abs(k - mass).sum() / len(d))
+    return pd.DataFrame({"p_mean": pm, "frac_true": frac, "lo": lo, "hi": hi, "n_cand": n, "n_true": k, "p_mass": mass}), ece, len(d)

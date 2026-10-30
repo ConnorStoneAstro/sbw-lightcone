@@ -839,3 +839,16 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   `des_faithful` and the DP2 universes are stale by decision change and
   need a remake; `physical` and `dlr_moments` are untouched. The plan and
   the audit behind this are in `OUTLINE.md`.
+- **Calibration is candidate-level (30 Oct 2026; code and spec changed, not
+  yet materialized).** `calibration_curve(df, cut)` in `dp02_lib.py` bins
+  every candidate with P > P_TOP_MIN (the `p_top` lists, float32) of every SN
+  in `calibration_subset` (SBW keeps it as hosted, flb_best >= cut, and the
+  true/published host is a surviving candidate) and compares the fraction of
+  candidates per bin that are the true host with the bin's mean P. The
+  calibration error is sum_bins |n_true - sum P| / N_SNe. The old curve (top
+  host only) is gone; `dp02_fig.py calibration`, `dp02_sweep.py` (band /
+  profile panels, profile_table) and `recovery.json`'s
+  `expected_calibration_error` all use the new one, and the calibration and
+  sweep recipes carry `--hostless-cut {decisions.sbw_hostless_cut}`. Probed
+  on DES baseline: error 0.012 per SN on 1,589 hosted SNe. DP0.2 / OU2024
+  figures will be made with the baseline remake.
