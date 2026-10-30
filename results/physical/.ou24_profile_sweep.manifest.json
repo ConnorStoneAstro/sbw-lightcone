@@ -2,23 +2,24 @@
   "schema_version": 1,
   "output_id": "ou24_profile_sweep",
   "universe_id": "physical",
-  "recipe": "python src/dp02_sweep.py profile_table --sample results/physical/ou24_sample.parquet --candidates results/physical/ou24_candidates.parquet --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --candidate-quality none --output results/physical/ou24_profile_sweep.csv",
-  "definition_version": "sha256:0efc68e08ed7787fc1363ce446740843ef514df45fb10f458124d17b197c1a71",
+  "recipe": "python src/dp02_sweep.py profile_table --sample results/physical/ou24_sample.parquet --candidates results/physical/ou24_candidates.parquet --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --candidate-quality none --hostless-cut flb01 --output results/physical/ou24_profile_sweep.csv",
+  "definition_version": "sha256:200e5256fee94d0cb2cee590a6012048580b5d26ca256fe7825e4ef1b8f007f7",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:19b7067aa9caa4dca51a79da8d0b4c26713c02a4a5177f0b8b1415ec4440bdce",
+  "data_version": "sha256:5841507d7517b4395de2e6a83c62a95d78818a260e1fe08519e9cdd8e2bfbbf7",
   "decisions": {
     "band": "r",
     "search_radius": "r30",
     "dlr_max": "d4",
     "dlr_radius": "half_light",
     "extendedness_cut": "ext05",
-    "candidate_quality": "none"
+    "candidate_quality": "none",
+    "sbw_hostless_cut": "flb01"
   },
   "input_versions": {
-    "ou24_sample": "sha256:09935ffc69e22034ee2c4cb6e532a6285c5828f839b14fa3d470cd4175f251a5",
+    "ou24_sample": "sha256:b6fab21f36b10855008db53c114fac62ce484b98e73ac285443602909079a591",
     "ou24_candidates": "sha256:b1e4a4704fa9bed1acafe0f9b1fc8370160dd7884af1005b5c01f67dabfb0425"
   },
-  "git_sha": "72bced872e881980f3722e3bb3bd7c9e1b954a18",
+  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -28,8 +29,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T19:58:36.124+00:00",
-  "finished_at": "2026-10-28T20:02:49.306+00:00",
+  "started_at": "2026-10-30T21:55:25.028+00:00",
+  "finished_at": "2026-10-30T21:56:48.104+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
