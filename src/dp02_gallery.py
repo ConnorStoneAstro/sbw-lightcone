@@ -426,7 +426,7 @@ def render(cases: pd.DataFrame, images: dict, errors: dict, args):
     handles += [Line2D([], [], ls="none", marker=styles[n][0], ms=min(styles[n][2], 10), mfc="none",
                        mec=styles[n][1], mew=1.4, label=styles[n][3]) for n in present]
 
-    sources = SOURCES[args.imaging]
+    sources = SOURCES[getattr(args, "imaging", "rubin")]   # des_gallery.py passes no --imaging
     per_page = args.per_page or len(cases)
     pages = [cases.iloc[i:i + per_page] for i in range(0, len(cases), per_page)]
     out = Path(args.output)
