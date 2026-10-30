@@ -1421,7 +1421,7 @@ outputs:
     inputs: [dp2_associations, dp2_random_associations]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
-      command: python src/dp02_fig.py hostless_indicator --tier dp2 --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+      command: python src/dp02_fig.py hostless_indicator --tier dp2 --rung none --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
   - id: dp2_hostless_metrics
     type: metric
     format: json
@@ -1429,7 +1429,7 @@ outputs:
     inputs: [dp2_associations, dp2_random_associations]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py hostless_metrics --tier dp2 --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --output {output}
+      command: python src/dp02_fig.py hostless_metrics --tier dp2 --rung none --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --output {output}
   - id: dp2_disagreement_rate
     type: metric
     format: json

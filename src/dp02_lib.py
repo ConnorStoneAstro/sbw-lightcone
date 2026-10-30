@@ -82,6 +82,11 @@ def rung_mask(df, r):
     raise ValueError(f"rung {r}")
 
 
+def has_truth(df):
+    """A table with reference hosts (simulations, DES); DP2 has none, so no rung applies."""
+    return bool((df["host_objectId"].to_numpy() >= 0).any())
+
+
 def rung(df, r):
     """The association table restricted to rung ``r`` (attrs kept, attrs['rung'] set)."""
     out = df[rung_mask(df, r)].copy()

@@ -17,11 +17,21 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from dp02_lib import (CAL_EDGES, COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, RUNGS, RUNG_LABEL, calibration_curve, dlr_cols,
-                      dlr_hostless, matrix_cells, p_true, prob_matrix_cells, prob_rows, random_cells, rung, rung_counts,
-                      rung_mask, sbw_hostless, wilson)
+                      dlr_hostless, has_truth, matrix_cells, p_true, prob_matrix_cells, prob_rows, random_cells, rung,
+                      rung_counts, rung_mask, sbw_hostless, wilson)
 
 TIER = {"dp02": "DC2", "ou24": "OU2024", "dp2": "DP2"}
 LABEL = {"tier": "DC2"}   # set from --tier; the figure titles name the simulation
+RUNG = {"rung": "auto"}   # set from --rung: auto = rung 4 where the table has reference hosts, none on DP2
+
+
+def at_rung(df):
+    """The table on the rung the figures stand on (see dp02_lib.RUNGS): rung 4 unless --rung says otherwise,
+    and the whole table where there is no truth to rank against (DP2)."""
+    r = RUNG["rung"]
+    if r == "none" or (r == "auto" and not has_truth(df)):
+        return df
+    return rung(df, 4 if r == "auto" else int(r))
 
 plt.rcParams.update({"font.size": 9, "axes.grid": True, "grid.alpha": 0.25, "grid.linewidth": 0.5,
                      "axes.spines.top": False, "axes.spines.right": False, "lines.linewidth": 1.5,
@@ -59,7 +69,7 @@ def recovery(df, out, hostless_cut, rnd, p_threshold):
     cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
     ladder = rung_counts(df)
     by_rung = {f"rung{r}": {"label": RUNG_LABEL[r], **rung_stats(rung(df, r), cut)} for r in RUNGS}
-    df = rung(df, 4)
+    df = at_rung(df)
     n = len(df)
     pt = p_true(df)
     bands = {k: float(v.mean()) for k, v in prob_rows(df, cut, t).items()}
@@ -138,7 +148,7 @@ def agreement_matrix(df, out, hostless_cut, rnd, p_threshold, survivors_only=Tru
     cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
     full = len(df)
     if survivors_only:
-        df = rung(df, 4)
+        df = at_rung(df)
     pr, dc = prob_rows(df, cut, t), dlr_cols(df)
     rows = [("$P_{\\mathrm{SBW}}$(true) > 0.5", pr["p_gt_0p5"]),
             (f"$P_{{\\mathrm{{SBW}}}}$(true)\nin [{t:g}, 0.5]", pr["p_t_to_0p5"]),
@@ -203,7 +213,7 @@ def binned_mean(x, y, edges):
 
 
 def agreement_vs_ddlr(df, out):
-    df = rung(df, 4)
+    df = at_rung(df)
     fig, axes = plt.subplots(2, 2, figsize=(7.5, 4.8), height_ratios=[3, 1], sharex="col")
     for j, (col, lab) in enumerate([("d_dlr_sbw", "$d_{DLR}$ of the SBW most probable host"), ("d_dlr_min", "smallest $d_{DLR}$ (DLR host)")]):
         x = df[col].to_numpy(dtype=float)
@@ -235,7 +245,7 @@ XSPEC = {
 
 
 def recovery_vs(df, out, xkey):
-    df = rung(df, 4)
+    df = at_rung(df)
     col, lab, edges, logx = XSPEC[xkey]
     x = df[col].to_numpy(dtype=float)
     if xkey == "redshift" and np.nanmax(x) > edges[-1]:   # OU2024 transients reach z ~ 3
@@ -262,7 +272,7 @@ def recovery_vs(df, out, xkey):
 
 def p_true_host(df, out):
     n2 = len(df)
-    df = rung(df, 4)
+    df = at_rung(df)
     p = df.p_sbw_true.to_numpy(dtype=float)
     ok = np.isfinite(p) & (p > 0)
     lp = np.log10(np.clip(p, 1e-12, 1))
@@ -331,7 +341,7 @@ def transfer(df, rnd):
 
 def hostless_metrics(df, rnd, out):
     n2 = len(df)
-    df = rung(df, 4)
+    df = at_rung(df)
 
     def point(rule, t):
         kept = ~RULES[rule](df, t); rej = RULES[rule](rnd, t)
@@ -370,7 +380,7 @@ def band(ax, x, w, color, ls="-", label=None):
 
 
 def hostless_indicator(df, rnd, out, hostless_cut, dlr_max):
-    df = rung(df, 4)
+    df = at_rung(df)
     cut, dmax = HOSTLESS_CUT[hostless_cut], DLR_MAX[dlr_max]
     fig, axes = plt.subplots(2, 2, figsize=(8.4, 7.0))
     (aa, ab), (ac, ad) = axes
@@ -522,7 +532,7 @@ def credible_set(df, out):
     ab.set_xlabel("mean set size"); ab.set_ylabel("coverage"); ab.set_ylim(ylo, 1.002)
     ab.legend(fontsize=7, loc="lower right"); ab.set_title("(b) coverage versus set size", fontsize=9, loc="left")
     fig.suptitle(f"SBW credible sets on {LABEL['tier']} truth, rung 4 (dashed: whole sample, an absent or cut true host is not covered)\n"
-                 + subtitle(rung(df, 4)), fontsize=8)
+                 + subtitle(at_rung(df)), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
@@ -537,11 +547,14 @@ def main(argv=None):
     ap.add_argument("--dlr-max", choices=sorted(DLR_MAX))
     ap.add_argument("--p-threshold", choices=sorted(P_TRUE))
     ap.add_argument("--tier", choices=sorted(TIER), default="dp02")
+    ap.add_argument("--rung", choices=["auto", "none", "2", "3", "4"], default="auto",
+                    help="sample-ladder rung the figures stand on; auto = 4 where the table has reference hosts, none on DP2")
     ap.add_argument("--survivors-only", action="store_true",
                     help="agreement_matrix: real-SN panel on SNe whose true host passed the cat1 and cat2 cuts")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     LABEL["tier"] = TIER[a.tier]
+    RUNG["rung"] = a.rung
     df = load(a.associations)
     if a.kind == "recovery":
         recovery(df, a.output, a.hostless_cut, load(a.random), a.p_threshold)
