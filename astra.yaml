@@ -4,11 +4,13 @@ version: "0.0.15"
 name: "SBW host association performance"
 description: >-
   Tests the surface-brightness-weighted (SBW) host-association method for
-  transients, as implemented in the sbw_host package, on five tiers of data:
+  transients, as implemented in the sbw_host package, on four tiers of data:
   DP0.2 (DC2) and OpenUniverse2024 (OU2024, the same Rubin data products from
   the later w_2024_22 stack on a different simulated sky) with true hosts,
-  the DES-SN5YR published hosts, the DELIGHT
-  visually matched host set, and Rubin DP2 real data without any reference.
+  the DES-SN5YR published hosts, and Rubin DP2 real data without any
+  reference, where SBW is also compared with the DELIGHT predictions of
+  Y. J. Kang on the deep-drilling-field transients (the DELIGHT training set
+  itself is not public, so there is no DELIGHT-labelled tier).
   SBW is taken as the framework; the questions are which form of SBW (fitted
   exponential, free-n Sersic, or deblended image stamps) recovers hosts best,
   and how SBW relates to the directional-light-radius (DLR) standard
@@ -165,20 +167,6 @@ inputs:
       detection-image a_image, b_image, theta_j2000, kron_radius, extended_class_coadd/wavg, and per band
       (grizy) flux_auto(err), mag_auto, flux_radius, kron_radius, windowed moments, class_star, spread_model,
       flags, imaflags_iso, niter_model. The candidate catalogue for both methods.
-  # ---- Tier 3: DELIGHT visually matched hosts ----
-  - id: delight_hosts
-    type: data
-    source: "DELIGHT (Forster et al. 2022, AJ 164 195) public training set: transient RA/Dec and visually matched host RA/Dec"
-    description: >-
-      Historical transients with hosts matched by eye; no ground truth but a
-      vetted reference. Candidate galaxies must come from a survey with model
-      fits covering these fields (see decision delight_catalogue).
-  - id: delight_candidate_objects
-    type: data
-    source: "DESI Legacy Surveys DR10 Tractor catalogue (shape_r, shape_e1, shape_e2, sersic, flux_*) via NOIRLab Data Lab TAP"
-    description: >-
-      Candidate galaxies with parametric (EXP/DEV/SER) Tractor models around each
-      DELIGHT transient.
   # ---- Tier 4: Rubin DP2, no truth ----
   - id: dp2_transients
     type: data
@@ -1240,25 +1228,6 @@ outputs:
     decisions: []
     recipe:
       command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/des_angle_check.py --objects {inputs.des_dr2_objects} --n 40 --cache-dir "$T/des_cutouts" --output {output}'
-  # ---- Tier 3: DELIGHT ----
-  - id: delight_associations
-    type: table
-    format: parquet
-    description: One row per DELIGHT transient with the visually matched host, SBW top host and DLR host.
-    inputs: [delight_hosts, delight_candidate_objects]
-    decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, delight_catalogue, reference_match]
-  - id: delight_recovery
-    type: metric
-    format: json
-    description: Fraction of DELIGHT transients for which each method returns the visually matched host.
-    inputs: [delight_associations]
-    decisions: []
-  - id: delight_disagreement_gallery
-    type: figure
-    format: pdf
-    description: Cutout gallery of DELIGHT cases where SBW, DLR and the visual match disagree.
-    inputs: [delight_associations]
-    decisions: []
   # ---- Tier 4: DP2 ----
   - id: dp2_sample
     type: table
@@ -1609,7 +1578,7 @@ outputs:
     type: table
     format: csv
     description: One row per dataset and method with recovery (where a reference exists), disagreement rate and sample size.
-    inputs: [dp02_recovery, des_recovery, delight_recovery, dp2_disagreement_rate]
+    inputs: [dp02_recovery, ou24_recovery, des_recovery, dp2_disagreement_rate]
     decisions: []
 
 decisions:
@@ -1660,9 +1629,6 @@ decisions:
       r30:
         label: 30 arcsec
         insights: [sullivan06_candidate_search_radius_10arcsec, ou2024_sne_truth_table_host_id_and_separation, qu2024_dlr_threshold_4_radius_15arcsec, qu2024_sim_matching_10arcsec_10gal, ghost_ps1_30arcsec_cone_search, gupta16_search_radius_30arcsec_loses_few_true_hosts]
-      r60:
-        label: 60 arcsec (covers the whole DELIGHT labelled set)
-        insights: [delight_host_set_assembly]
   dlr_max:
     label: Maximum d_DLR for a DLR assignment
     rationale: Gupta et al. 2016 and DES-SN use 4; beyond it the transient is declared hostless.
@@ -1679,12 +1645,18 @@ decisions:
     rationale: >-
       Every published DLR implementation (Sullivan+06, Gupta+16, Qu+24, GHOST)
       uses a second-moment or Kron ellipse, and Gupta+16 show that fitted
-      half-light radii without a quality cut degrade DLR. The package default
-      is the model half-light ellipse because that is what SBW itself uses and
-      it keeps d_dlr equal to the transient's elliptical radius; the moment
-      ellipse is the literature-faithful alternative, and the DES tier must use
-      it to reproduce the published DES hosts.
-    default: half_light
+      half-light radii without a quality cut degrade DLR, so the moment
+      ellipse is the paper's DLR on every tier (30 Oct 2026): it is the
+      literature's DLR, it is what DES-SN used for the published hosts, and
+      it is independent of the ellipse SBW evaluates. The package default is
+      the model half-light ellipse, which keeps d_dlr equal to the
+      transient's elliptical radius in SBW's own light model; with it DLR and
+      SBW differ only by flux weighting (on DP2 they name the same host for
+      all but 2 of 690 transients), so it is kept as the appendix universe
+      dlr_half_light. On DP0.2 the half-light DLR recovers ~2 points more
+      than moments, on OU2024 ~4 points less. Legacy DR10 Tractor candidates
+      carry no moments, so the Legacy universes must use half_light.
+    default: moments
     options:
       half_light:
         label: Model half-light ellipse (1.386 x reff for MultiProFit; flux-weighted bulge/disk radius on DP0.2)
@@ -1895,16 +1867,6 @@ decisions:
       frac_semimajor:
         label: Same host if the reference position lies within 0.5 half-light semi-major axes of the chosen host
         insights: [delight_catastrophic_failure_mode_large_hosts]
-  delight_catalogue:
-    label: Candidate catalogue for the DELIGHT fields
-    default: legacy_dr10
-    options:
-      legacy_dr10:
-        label: DESI Legacy Surveys DR10 Tractor models
-        insights: [delight_alerce_sample_from_ztf_and_catalogue_positions, delight_visual_vetting_by_twelve_people, legacy_tractor_model_set, legacy_model_type_chosen_by_joint_residual, legacy_coverage_and_depth, legacy_tractor_fails_on_large_galaxies]
-      ps1_stamps:
-        label: Pan-STARRS stacks with the stamp form of SBW
-        insights: [delight_images_ps1_rband_stamps, delight_alerce_sample_from_ztf_and_catalogue_positions]
 
 prior_insights:
   sullivan06_dlr_original_definition:

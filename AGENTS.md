@@ -820,3 +820,22 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   `dp2_sample` / `dp2_candidates` recipe changes, remade tables hashed
   identically, so only `dp2_random_candidates` and the galleries were actually
   rebuilt; the rest came back current by content hash.
+- **Paper configuration = spec defaults (30 Oct 2026; spec edited, nothing
+  materialized yet).** `dlr_radius` default is now `moments` (the literature
+  DLR, independent of SBW's ellipse); `dp02_sample_cuts` stays `physical`.
+  `universes/baseline.yaml` is exactly the spec defaults (physical cut +
+  moment DLR); every other universe is baseline plus its one change, except
+  the two Legacy-candidate DP2 universes, which keep `half_light` because
+  Tractor carries no moments. The appendix universes keep their historical
+  ids because a universe id is part of every rendered recipe (`results/<id>/`
+  appears in the manifest's recipe string), so renaming a results directory
+  makes all of its outputs stale: `physical` = baseline with `half_light`
+  DLR (its decisions are unchanged), `dlr_moments` = baseline with `clean3`
+  (unchanged). The DELIGHT training-set tier (inputs `delight_hosts`,
+  `delight_candidate_objects`, outputs `delight_*`, decision
+  `delight_catalogue`, `search_radius: r60`) is removed: the Förster+22 set
+  is not public. `summary_table` now takes `ou24_recovery` too. With the
+  new defaults `baseline`, `sep10`, `truth_nearest`, `ext_none`,
+  `des_faithful` and the DP2 universes are stale by decision change and
+  need a remake; `physical` and `dlr_moments` are untouched. The plan and
+  the audit behind this are in `OUTLINE.md`.

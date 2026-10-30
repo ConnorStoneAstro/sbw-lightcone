@@ -1,19 +1,19 @@
 id: dp2_ddf
-description: Baseline options with the 7823-object DDF ParSNIP sample for DP2 (dp2_sample parsnip_ddf), the set Y. J. Kang's DELIGHT host predictions cover; materialized for the DP2 chain and the DELIGHT comparison only
+description: >-
+  Baseline with the 7823-object DDF ParSNIP sample for DP2 (dp2_sample parsnip_ddf), the set Y. J. Kang's DELIGHT host predictions cover; materialized for the DP2 chain and the DELIGHT comparison only
 decisions:
   sbw_profile: exponential
   band: r
   search_radius: r30
   dlr_max: d4
-  dlr_radius: half_light
+  dlr_radius: moments
   extendedness_cut: ext05
   sbw_hostless_cut: flb01
   exclude_suspect: keep
   candidate_quality: none
   p_true_threshold: p005
   truth_match: matches_truth
-  dp02_sample_cuts: clean3   # 3 arcsec kept so results stay comparable with the first DP0.2 run; the spec default is physical
+  dp02_sample_cuts: physical
   dp2_sample: parsnip_ddf
   dp2_candidate_catalogue: dp2_object
   reference_match: pos_1arcsec
-  delight_catalogue: legacy_dr10

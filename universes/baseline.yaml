@@ -1,22 +1,19 @@
 id: baseline
-description: 'Package defaults: exponential fit, r band, 30 arcsec, d_DLR<=4 on the
-  half-light ellipse, extendedness cut, suspect fits kept, DP0.2 MatchesTruth, 3 arcsec
-  DP0.2 sample cut (clean3, kept for comparability instead of the physical default), 1 arcsec reference match, Legacy DR10 for DELIGHT, RC SALT3 sample
-  for DP2'
+description: >-
+  The paper configuration = the spec defaults (30 Oct 2026): exponential fit, r band, 30 arcsec, d_DLR<=4 on the second-moment ellipse (the literature DLR), extendedness cut, suspect fits kept, DP0.2 MatchesTruth, physical sample cut (SNe beyond 3 half-light radii of the host dropped) on both simulated tiers, 1 arcsec reference match, RC SALT3 sample on DP2 Object candidates for DP2. Before 30 Oct 2026 baseline ran clean3 and the half-light DLR; those are now the appendix universes clean3 and dlr_half_light
 decisions:
   sbw_profile: exponential
   band: r
   search_radius: r30
   dlr_max: d4
-  dlr_radius: half_light
+  dlr_radius: moments
   extendedness_cut: ext05
   sbw_hostless_cut: flb01
   exclude_suspect: keep
   candidate_quality: none
   p_true_threshold: p005
   truth_match: matches_truth
-  dp02_sample_cuts: clean3   # 3 arcsec kept so results stay comparable with the first DP0.2 run; the spec default is physical
+  dp02_sample_cuts: physical
   dp2_sample: rc_salt
   dp2_candidate_catalogue: dp2_object
   reference_match: pos_1arcsec
-  delight_catalogue: legacy_dr10

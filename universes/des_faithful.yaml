@@ -1,5 +1,6 @@
 id: des_faithful
-description: 'Baseline with the DES-SN DLR conventions (DLR on the SExtractor A, B moment ellipse, 15 arcsec search radius), so the DLR column reproduces the published DES-SN5YR hosts as closely as DES DR2 allows; materialized for the DES outputs only'
+description: >-
+  Baseline with the DES-SN 15 arcsec search radius, so the DLR column reproduces the published DES-SN5YR hosts as closely as DES DR2 allows (the moment ellipse is now the baseline DLR, so only the radius differs); materialized for the DES outputs only
 decisions:
   sbw_profile: exponential
   band: r
@@ -12,8 +13,7 @@ decisions:
   candidate_quality: none
   p_true_threshold: p005
   truth_match: matches_truth
-  dp02_sample_cuts: clean3   # 3 arcsec kept so results stay comparable with the first DP0.2 run; the spec default is physical
+  dp02_sample_cuts: physical
   dp2_sample: rc_salt
-  reference_match: pos_1arcsec
-  delight_catalogue: legacy_dr10
   dp2_candidate_catalogue: dp2_object
+  reference_match: pos_1arcsec

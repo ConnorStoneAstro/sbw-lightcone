@@ -1,7 +1,6 @@
 id: dlr_moments
-description: Baseline (clean3 sample) with the DLR ellipse from the PSF-subtracted
-  HSM second moments (rms semi-axes), the literature-faithful DLR; materialized for
-  DP0.2 and OU2024
+description: >-
+  Appendix universe, kept under its historical id so its results stay current: baseline with the simulated-tier sample cut at 3 arcsec from the host truth position (clean3, the first results' cut) instead of the physical cut. Its decisions are exactly those of the pre-30-Oct dlr_moments universe
 decisions:
   sbw_profile: exponential
   band: r
@@ -14,8 +13,7 @@ decisions:
   candidate_quality: none
   p_true_threshold: p005
   truth_match: matches_truth
-  dp02_sample_cuts: clean3   # as baseline
+  dp02_sample_cuts: clean3
   dp2_sample: rc_salt
   dp2_candidate_catalogue: dp2_object
   reference_match: pos_1arcsec
-  delight_catalogue: legacy_dr10

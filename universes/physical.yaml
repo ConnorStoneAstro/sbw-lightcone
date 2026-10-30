@@ -1,6 +1,6 @@
 id: physical
-description: 'Baseline with the physical sample cut: drop SNe beyond 3 half-light
-  radii of the host''s dominant component along its truth ellipse (the spec default)'
+description: >-
+  Appendix universe, kept under its historical id so its results stay current: baseline with DLR on the model half-light ellipse (the sbw_host package default, the ellipse SBW itself evaluates) instead of the moment ellipse. Its decisions are exactly those of the pre-30-Oct physical universe (physical cut + half-light DLR)
 decisions:
   sbw_profile: exponential
   band: r
@@ -17,4 +17,3 @@ decisions:
   dp2_sample: rc_salt
   dp2_candidate_catalogue: dp2_object
   reference_match: pos_1arcsec
-  delight_catalogue: legacy_dr10
