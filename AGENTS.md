@@ -852,3 +852,27 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   sweep recipes carry `--hostless-cut {decisions.sbw_hostless_cut}`. Probed
   on DES baseline: error 0.012 per SN on 1,589 hosted SNe. DP0.2 / OU2024
   figures will be made with the baseline remake.
+- **Sample ladder in the tables; miss accounting rewritten (31 Oct 2026;
+  code and spec changed, remake pending).** The simulated samples
+  (`dp02_sample`, `ou24_sample`) are rung 2 of the ladder in `OUTLINE.md`
+  section 2: hosted, host row present, *detectable* under the new decision
+  `transient_peak_mag` (default `r24`: true peak r < 24 from the new input
+  `dp02_sn_peak`, the DC2 SN truth summary, with t0 inside the `dp02_visits`
+  window 59582-61406; OU2024 uses SNANA `PEAKMAG_r`), within the offset cut.
+  That keeps ~10 % of hosted DC2 SNe (~41k) and ~4 % of OU2024 transients
+  (~21k); the counts at every step are in the parquet metadata key
+  `sample_ladder` and are copied into `*_miss_accounting.json["ladder"]`
+  (the faint fraction is a number for the text, never drawn). SNe whose true
+  host has no catalogue object are *kept* with `host_objectId = -1`
+  (`true_host_status = absent`), so the association tables are the whole
+  rung 2 and every consumer filters its rung: `dp02_lib.rung(df, 4)` (true
+  host kept by the object-table cuts and with a DLR ellipse) is what every
+  truth figure and metric uses (matrix, ROC, calibration, recovery-vs-X,
+  P(true), credible sets, offsets, band/profile sweeps, in DES too: 1,594 of
+  1,623); `recovery.json` has `ladder` and `by_rung` (rungs 2, 3, 4). The
+  miss accounting (`dp02_miss.py`) draws rung 2 and, inside cat1 and cat2,
+  a bar-in-bar of the pipeline's outcome for SNe whose host it could not
+  find (hostless call vs wrong host assigned; `outcome` in the json);
+  panel (c) is gone. The old `n_unmatched` bookkeeping is gone with it.
+  DES outputs were already stale from the calibration change, so the rung
+  filter reaches them in the same remake.

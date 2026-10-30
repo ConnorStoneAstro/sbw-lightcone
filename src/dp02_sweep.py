@@ -14,7 +14,8 @@ import pyarrow.parquet as pq
 
 from dp02_fig import plot_calibration, plt as _plt  # noqa: F401  (rcParams)
 import dp02_lib as L
-from dp02_lib import BANDS, COLORS, DLR_MAX, HOSTLESS_CUT, PROFILES, PROFILE_LABEL, QUALITY, RADIUS, associate_all, p_true, calibration_curve, wilson
+from dp02_lib import (BANDS, COLORS, DLR_MAX, HOSTLESS_CUT, PROFILES, PROFILE_LABEL, QUALITY, RADIUS, associate_all, calibration_curve,
+                      p_true, rung, wilson)
 
 
 def run(sample, candpath, bands, profiles, cfg, workers):
@@ -33,20 +34,21 @@ def panel_grid(res, keys, titles, out, suptitle, cut):
     nrow = int(np.ceil(n / ncol))
     fig, axes = plt.subplots(nrow, ncol, figsize=(3.0 * ncol, 3.0 * nrow), squeeze=False)
     for ax, k, t in zip(axes.flat, keys, titles):
-        df = res[k]
+        df = rung(res[k], 4)
         _, ece = plot_calibration(ax, df, cut)
         ax.set_title(f"{t}\nmean P(true) {100 * p_true(df).mean():.2f}%, most probable = true "
                      f"{100 * df.sbw_correct.mean():.2f}%  N={len(df):,}", fontsize=7)
         ax.set_xlabel(""); ax.set_ylabel("")
     for ax in axes.flat[n:]:
         ax.axis("off")
-    fig.supxlabel("$P_{\\mathrm{SBW}}$ of a candidate (hosted SNe whose true host survived)", fontsize=9)
+    fig.supxlabel("$P_{\\mathrm{SBW}}$ of a candidate (rung 4, hosted SNe whose true host survived)", fontsize=9)
     fig.supylabel("fraction of candidates that are the true host", fontsize=9)
     fig.suptitle(suptitle, fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
 def band_dependence(res, profile, out, cfgtxt):
+    res = {k: rung(v, 4) for k, v in res.items()}   # the method's own performance
     bands = list(BANDS)
     rec = [res[(b, profile)].sbw_correct.mean() for b in bands]
     mp = [p_true(res[(b, profile)]).mean() for b in bands]
@@ -69,18 +71,18 @@ def band_dependence(res, profile, out, cfgtxt):
         ax.plot(x, y, marker=mk, ms=5, color=color, ls=ls, label=name, mfc="none" if ls == "--" else color)
     ax.set_xticks(x, bands); ax.set_xlabel("band"); ax.set_ylabel("fraction"); ax.set_ylim(0, 1.02)
     ax.legend(fontsize=7, loc="center right")
-    ax.set_title(f"Band dependence ({PROFILE_LABEL[profile]})\n{cfgtxt}", fontsize=8)
+    ax.set_title(f"Band dependence ({PROFILE_LABEL[profile]}, rung 4, N = {n[0]:,})\n{cfgtxt}", fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
 def profile_table(res, band, out, cut):
     rows = []
     for p in PROFILES:
-        df = res[(band, p)]
+        df = rung(res[(band, p)], 4)
         n = len(df)
         _, ece, _ = calibration_curve(df, cut)
         ps, lo, hi = wilson(df.sbw_correct.sum(), n)
-        rows.append({"profile": p, "label": PROFILE_LABEL[p], "band": band, "n": n,
+        rows.append({"profile": p, "label": PROFILE_LABEL[p], "band": band, "rung": 4, "n": n,
                      "mean_p_sbw_true": p_true(df).mean(),
                      "sbw_recovery": ps, "sbw_recovery_lo": lo, "sbw_recovery_hi": hi,
                      "dlr_recovery": df.dlr_correct.mean(), "agreement": df.agree.mean(),

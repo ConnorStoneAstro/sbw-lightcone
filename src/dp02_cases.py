@@ -29,9 +29,10 @@ def main(argv=None):
     thr = P_TRUE[a.p_threshold]
     classes = {"truth_matchers_disagree": mt != nn,
                "sbw_excludes_true_host": (st == "kept") & (pt < thr),
-               "dlr_wrong_or_hostless": d != t,
-               "sbw_most_probable_ne_dlr": s != d,
-               "true_host_cut_by_object_table": np.isin(st, ["point_source", "unusable", "quality"])}
+               "dlr_wrong_or_hostless": (t >= 0) & (d != t),
+               "sbw_most_probable_ne_dlr": (t >= 0) & (s != d),
+               "true_host_cut_by_object_table": np.isin(st, ["point_source", "unusable", "quality"]),
+               "true_host_not_in_catalogue": (t < 0) & (s >= 0)}   # SBW assigned a host the truth has no object for
     rng = np.random.default_rng(SEED)
     picks = []
     for name, sel in classes.items():

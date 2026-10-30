@@ -6,10 +6,12 @@ DC2's and the population-averaged recovery is not comparable between tiers; at f
 the association is the same geometry and photometry problem in both.
 
   by_host_mag     json: SBW / DLR recovery, SBW and DLR hostless fractions and SBW-DLR agreement per
-                  host r bin, for all transients and for z < 1, plus the r < 24 summaries.
-  dp02_comparison figure: SBW and DLR recovery versus host r for both tiers (OU2024 all z and z < 1)
-                  and the host-magnitude distributions, with OU2024 reweighted to DP0.2's host r
-                  distribution.
+                  host r bin, for all transients and for z < 1, plus the r < 24 summaries; on rung 4
+                  (true host usable, the method's performance) and on rung 2 (the whole sample, where an
+                  absent or cut host counts as a miss: the catalogue's selection function).
+  dp02_comparison figure: SBW and DLR recovery versus host r for both tiers (OU2024 all z and z < 1) on
+                  rung 4, the fraction of sample hosts that reach rung 4 per bin, and the host-magnitude
+                  distributions, with OU2024 reweighted to DP0.2's host r distribution.
 """
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from dp02_fig import binned_fraction, binned_mean, load, subtitle
-from dp02_lib import COLORS, HOSTLESS_CUT, p_true, sbw_hostless, wilson
+from dp02_lib import COLORS, HOSTLESS_CUT, RUNG_LABEL, p_true, rung, rung_mask, sbw_hostless, wilson
 
 MAG_EDGES = [10, 20, 22, 23, 24, 25, 26, 27, 35]
 FINE = np.arange(16, 29.01, 0.5)
@@ -48,11 +50,16 @@ def stats(d, cut):
 
 def by_host_mag(df, cut, out):
     import pandas as pd
-    res = {"bins_r": MAG_EDGES, "sbw_hostless_cut": cut}
-    for name, d in [("all_z", df), ("z_lt_1", df[df.sn_redshift < 1])]:
-        b = pd.cut(d.host_mag_r, MAG_EDGES)
-        res[name] = {"all": stats(d, cut), "host_r_lt_24": stats(d[d.host_mag_r < 24], cut),
-                     "bins": {str(k): stats(g, cut) for k, g in d.groupby(b, observed=False)}}
+    res = {"bins_r": MAG_EDGES, "sbw_hostless_cut": cut,
+           "rung_note": "rung4 = true host usable by both methods (the method's performance); rung2 = the whole sample, "
+                        "an absent or cut true host counting as a miss (the catalogue's selection function)"}
+    for r in (4, 2):
+        dr = rung(df, r)
+        res[f"rung{r}"] = {"label": RUNG_LABEL[r]}
+        for name, d in [("all_z", dr), ("z_lt_1", dr[dr.sn_redshift < 1])]:
+            b = pd.cut(d.host_mag_r, MAG_EDGES)
+            res[f"rung{r}"][name] = {"all": stats(d, cut), "host_r_lt_24": stats(d[d.host_mag_r < 24], cut),
+                                     "bins": {str(k): stats(g, cut) for k, g in d.groupby(b, observed=False)}}
     res["settings"] = df.attrs
     with open(out, "w") as f:
         json.dump(res, f, indent=2, default=float)
@@ -70,9 +77,13 @@ def reweighted(ou, dp, flag):
     return float((w * k_ou[ok] / n_ou[ok]).sum()), float(n_dp[~ok].sum() / n_dp.sum())
 
 
-def dp02_comparison(ou, dp, out):
+def dp02_comparison(ou2, dp2, out):
+    ou, dp = rung(ou2, 4), rung(dp2, 4)
     fig, axes = plt.subplots(1, 3, figsize=(12.6, 4.2), width_ratios=[1, 1, 0.9])
-    for ax, (oname, o) in zip(axes[:2], [("OU2024, all z", ou), ("OU2024, z < 1", ou[ou.sn_redshift < 1])]):
+    for ax, (oname, o, o2) in zip(axes[:2], [("OU2024, all z", ou, ou2), ("OU2024, z < 1", ou[ou.sn_redshift < 1], ou2[ou2.sn_redshift < 1])]):
+        for d2, tier, ls in [(dp2, "DP0.2", "-"), (o2, oname, "--")]:   # fraction of sample hosts reaching rung 4
+            c, p, lo, hi, n = binned_fraction(d2.host_mag_r.to_numpy(float), rung_mask(d2, 4), FINE)
+            ax.plot(c[n >= 30], p[n >= 30], color=COLORS["ref"], ls=ls, lw=1, label=f"true host usable (rung 4 / sample), {tier}")
         for d, tier, ls in [(dp, "DP0.2", "-"), (o, oname, "--")]:
             x = d.host_mag_r.to_numpy(float)
             c, m, se = binned_mean(x, p_true(d), FINE)
@@ -92,15 +103,15 @@ def dp02_comparison(ou, dp, out):
                 transform=ax.transAxes, fontsize=7, va="bottom")
         ax.set_ylim(0, 1.02); ax.set_xlabel("true host $r$ [mag]")
         ax.set_ylabel("SBW mean $P_{\\mathrm{SBW}}$(true host); DLR fraction correct")
-        ax.set_title(f"DP0.2 (N = {len(dp):,}) vs {oname} (N = {len(o):,})", fontsize=8)
-        ax.legend(fontsize=7, loc="center left")
+        ax.set_title(f"rung 4: DP0.2 (N = {len(dp):,}) vs {oname} (N = {len(o):,})", fontsize=8)
+        ax.legend(fontsize=6.5, loc="center left")
     ah = axes[2]
     for d, lab, color in [(dp, "DP0.2", "#333333"), (ou, "OU2024, all z", "#7b4ea3"),
                           (ou[ou.sn_redshift < 1], "OU2024, z < 1", "#b07cc6")]:
         ah.hist(d.host_mag_r, bins=FINE, density=True, histtype="step", color=color, lw=1.5,
                 label=f"{lab} (median {np.nanmedian(d.host_mag_r):.1f})")
     ah.set_xlabel("true host $r$ [mag]"); ah.set_ylabel("density"); ah.legend(fontsize=7, loc="upper left")
-    ah.set_title("host magnitude distributions (sample)", fontsize=8)
+    ah.set_title("host magnitude distributions (rung 4)", fontsize=8)
     fig.suptitle("Host recovery at fixed host magnitude, DP0.2 vs OU2024\nOU2024: " + subtitle(ou)
                  + "  |  DP0.2: " + subtitle(dp), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)

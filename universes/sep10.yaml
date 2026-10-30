@@ -13,6 +13,7 @@ decisions:
   candidate_quality: none
   p_true_threshold: p005
   truth_match: matches_truth
+  transient_peak_mag: r24
   dp02_sample_cuts: clean10
   dp2_sample: rc_salt
   dp2_candidate_catalogue: dp2_object

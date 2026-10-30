@@ -16,7 +16,7 @@ import numpy as np
 import pyarrow.parquet as pq
 
 from dp02_fig import TIER, binned_fraction, load, subtitle
-from dp02_lib import BULGE_DOMINATED_BT, COLORS, HOSTLESS_CUT, host_offsets, sbw_hostless
+from dp02_lib import BULGE_DOMINATED_BT, COLORS, HOSTLESS_CUT, host_offsets, rung, sbw_hostless
 
 EDGES = np.geomspace(0.03, 100, 29)
 XLAB = {"bulge": "offset / bulge $R_e$", "disk": "offset / disk $R_e$",
@@ -40,7 +40,7 @@ def main(argv=None):
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     cut = HOSTLESS_CUT[a.hostless_cut]
-    df = load(a.associations)
+    df = rung(load(a.associations), 4)   # method failures, not catalogue ones
     if a.shapes:
         attrs = df.attrs
         sh = pq.read_table(a.shapes).to_pandas(ignore_metadata=True).rename(columns={"galaxy_id": "host_galaxy"})

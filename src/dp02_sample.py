@@ -1,5 +1,11 @@
 """Build the DP0.2 SN test sample: SN truth, true host truth, and the host's
-DP0.2 objectId, with the sample cuts applied."""
+DP0.2 objectId, with the sample cuts applied.
+
+The sample (rung 2 of the ladder) is every hosted SN with a host row that is detectable (transient_peak_mag:
+peak r from the DC2 SN truth summary, with the peak epoch inside the DP0.2 visit window) and within the
+dp02_sample_cuts offset cut. SNe whose true host has no DP0.2 object (host_unmatched) stay in the sample
+with host_objectId = -1, so the association records what the pipeline does with them. The parquet
+metadata key sample_ladder carries the counts at every step, including the SNe dropped as too faint."""
 from __future__ import annotations
 
 import argparse
@@ -16,7 +22,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from dp02_lib import host_offsets
+from dp02_lib import PEAK_MAG, host_offsets
 
 FAR_ARCSEC = {"clean3": 3.0, "clean10": 10.0}   # geometric cuts: drop SNe this far from the truth host
 # physical cut: drop SNe beyond N_RE half-light radii of the host along its truth ellipse (bulge R_e for
@@ -59,6 +65,9 @@ def main(argv=None):
     ap.add_argument("--match", required=True)
     ap.add_argument("--candidates", required=True)
     ap.add_argument("--shapes", required=True, help="dp02_host_truth_shapes (used by cuts=physical)")
+    ap.add_argument("--peak", required=True, help="DC2 SN truth summary parquet (t0, max_flux_r per SN)")
+    ap.add_argument("--visits", required=True, help="DP0.2 visitTable parquet (expMidptMJD): the imaging window")
+    ap.add_argument("--peak-mag", required=True, choices=sorted(PEAK_MAG))
     ap.add_argument("--truth-match", required=True, choices=["matches_truth", "nearest_1arcsec"])
     ap.add_argument("--cuts", required=True, choices=["clean3", "clean10", "physical", "all"])
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "4")))
@@ -87,6 +96,17 @@ def main(argv=None):
     df["hostless"] = df.host_galaxy <= 0
     df["host_missing"] = (~df.hostless) & (df.host_ra.isna() | ~(df.host_flux_r > 0))
     df["sep_truth_arcsec"] = ang_sep(df.sn_ra, df.sn_dec, df.host_ra, df.host_dec)
+    # detectability: true peak r (10-year maximum flux) and the peak epoch inside the DP0.2 visit window
+    pk = pq.read_table(a.peak, columns=["id", "t0", "max_flux_r"]).to_pandas(ignore_metadata=True)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        pk["peak_mag_r"] = np.where(pk.max_flux_r > 0, 31.4 - 2.5 * np.log10(pk.max_flux_r), np.nan)
+    pk = pk.rename(columns={"id": "sn_id", "t0": "peak_mjd"})[["sn_id", "peak_mjd", "peak_mag_r"]]
+    df = df.merge(pk, on="sn_id", how="left")
+    mjd = pq.read_table(a.visits, columns=["expMidptMJD"]).column(0).to_numpy()
+    window = (float(mjd.min()), float(mjd.max()))
+    df["in_window"] = (df.peak_mjd >= window[0]) & (df.peak_mjd <= window[1])
+    lim = PEAK_MAG[a.peak_mag]
+    df["faint"] = False if lim is None else ~(df.in_window & (df.peak_mag_r < lim)).to_numpy()
     if a.cuts in FAR_ARCSEC:
         df["far"] = df.sep_truth_arcsec > FAR_ARCSEC[a.cuts]
     elif a.cuts == "physical":
@@ -117,8 +137,19 @@ def main(argv=None):
     df["host_objectId"] = df["host_objectId_mt" if a.truth_match == "matches_truth" else "host_objectId_nn"]
     df["host_unmatched"] = (~df.hostless) & (df.host_objectId < 0)
 
-    # how the two matchers compare on hosted SNe with a host row, before the matcher-dependent cut
-    e = df[~df.hostless & ~df.host_missing & ~df.far]
+    hosted = ~df.hostless
+    row = hosted & ~df.host_missing
+    det = row & ~df.faint
+    samp = det & ~df.far
+    ladder = {"transients": int(len(df)), "hosted": int(hosted.sum()), "host_row": int(row.sum()),
+              "detectable": int(det.sum()), "sample": int(samp.sum()),
+              "faint_dropped": int((row & df.faint).sum()), "far_dropped": int((det & df.far).sum()),
+              "host_unmatched_in_sample": int((samp & df.host_unmatched).sum()),
+              "peak_mag_cut": a.peak_mag, "peak_mag_limit": lim, "visit_window_mjd": list(window),
+              "cuts": a.cuts, "n_re": N_RE if a.cuts == "physical" else None}
+    print(f"ladder: {ladder}", file=sys.stderr)
+    # how the two matchers compare on the sample, before the matcher-dependent split
+    e = df[samp]
     mt, nn = e.host_objectId_mt.to_numpy() >= 0, e.host_objectId_nn.to_numpy() >= 0
     precut = {"n": len(e), "both": int((mt & nn).sum()), "mt_only": int((mt & ~nn).sum()),
               "nn_only": int((~mt & nn).sum()), "neither": int((~mt & ~nn).sum()),
@@ -127,11 +158,12 @@ def main(argv=None):
 
     n0 = len(df)
     if a.cuts != "all":
-        df = df[~df.hostless & ~df.host_missing & ~df.host_unmatched & ~df.far]
+        df = df[samp]
     df = df.sort_values("sn_id").reset_index(drop=True)
-    print(f"sample: {len(df)} of {n0} SNe after cuts={a.cuts} ({time.time() - t0:.0f}s)", file=sys.stderr)
+    print(f"sample: {len(df)} of {n0} SNe after cuts={a.cuts}, peak {a.peak_mag} ({time.time() - t0:.0f}s)", file=sys.stderr)
     tab = pa.Table.from_pandas(df, preserve_index=False)
-    tab = tab.replace_schema_metadata({**tab.schema.metadata, b"truth_match_precut": json.dumps(precut).encode()})
+    tab = tab.replace_schema_metadata({**tab.schema.metadata, b"truth_match_precut": json.dumps(precut).encode(),
+                                       b"sample_ladder": json.dumps(ladder).encode()})
     pq.write_table(tab, a.output, compression="zstd")
 
 

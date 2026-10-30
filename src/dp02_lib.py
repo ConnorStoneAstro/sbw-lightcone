@@ -59,6 +59,48 @@ P_TRUE = {"p001": 0.01, "p005": 0.05}   # below this P_SBW the true host is effe
 P_TOP_MIN = 1e-3       # p_top keeps every candidate probability above this
 # true_host_status: why the true host is or is not among the candidates SBW and DLR see, first reason wins
 STATUS = ("absent", "point_source", "unusable", "quality", "kept")
+# transient_peak_mag: drop transients whose true peak r magnitude is fainter than this (none: keep all)
+PEAK_MAG = {"none": None, "r24": 24.0, "r23": 23.0}
+
+# The sample ladder (OUTLINE section 2). Rung 2 is the sample itself: hosted transients with a host row,
+# detectable (transient_peak_mag), within the offset cut; SNe whose true host has no catalogue object stay in
+# it with host_objectId = -1. Rung 3: the true host has a primary object within the search radius (cat1
+# passed). Rung 4: the true host is usable by both methods (cat2 passed: kept by the object-table cuts and
+# with a DLR ellipse). Every truth metric names its rung; rung 4 is the method's own performance.
+RUNGS = (2, 3, 4)
+RUNG_LABEL = {2: "sample (rung 2)", 3: "true host in the catalogue (rung 3)", 4: "true host usable (rung 4)"}
+
+
+def rung_mask(df, r):
+    st = df["true_host_status"].to_numpy().astype(str)
+    if r == 2:
+        return np.ones(len(df), bool)
+    if r == 3:
+        return st != "absent"
+    if r == 4:
+        return (st == "kept") & np.isfinite(df["d_dlr_true"].to_numpy(dtype=float))
+    raise ValueError(f"rung {r}")
+
+
+def rung(df, r):
+    """The association table restricted to rung ``r`` (attrs kept, attrs['rung'] set)."""
+    out = df[rung_mask(df, r)].copy()
+    out.attrs = {**df.attrs, "rung": str(r)}
+    return out
+
+
+def rung_counts(df):
+    return {f"rung{r}": int(rung_mask(df, r).sum()) for r in RUNGS}
+
+
+def sample_mask(df):
+    """Rows of a sample (or association) table that belong to the sample proper: hosted, host row present,
+    detectable and within the offset cut. A no-op unless dp02_sample_cuts = all kept the flagged rows."""
+    m = np.ones(len(df), bool)
+    for col, keep in (("hostless", False), ("host_missing", False), ("far", False), ("faint", False)):
+        if col in df:
+            m &= df[col].to_numpy(bool) == keep
+    return m
 
 
 def load_candidates(path, bands=BANDS):
@@ -454,11 +496,10 @@ CAL_EDGES = np.array([P_TOP_MIN, 2e-3, 5e-3, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.
 
 def calibration_subset(df, cut):
     """SNe on which P_SBW is calibrated: SBW keeps them as hosted (flb_best >= cut) and the true
-    (reference) host is a surviving candidate, so some candidate is right. Where SBW declares the
+    (reference) host is a surviving candidate (rung 4), so some candidate is right. Where SBW declares the
     transient hostless its probabilities are not used, and where the true host was never a candidate
     no probability can be right, so neither says anything about P_SBW."""
-    status = df["true_host_status"].to_numpy().astype(str)
-    return df[(status == "kept") & ~sbw_hostless(df, cut)]
+    return df[rung_mask(df, 4) & ~sbw_hostless(df, cut)]
 
 
 def calibration_curve(df, cut, edges=CAL_EDGES):

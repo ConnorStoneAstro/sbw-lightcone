@@ -44,6 +44,22 @@ inputs:
       parquet per tract: truth id string to DP0.2 objectId with match_candidate,
       match_count and match_chisq. This is how a true host galaxy becomes a
       DP0.2 objectId under truth_match: matches_truth.
+  - id: dp02_sn_peak
+    type: data
+    source: "/global/cfs/cdirs/lsst/shared/DC2-prod/Run2.2i/truth/sntruth/truth_sn_summary_v1-0-0.parquet"
+    description: >-
+      DESC DC2 SN truth summary, one row per simulated SN Ia (405,293; every
+      SN row of dp02_sn_truth has one): SALT2 parameters (t0, x0, x1, c, mB)
+      and max_flux_<band>, the SN's largest flux in each band over the full
+      ten-year light curve (nJy). 31.4 - 2.5 log10(max_flux_r) is the true
+      peak r magnitude used by transient_peak_mag; t0 is the peak epoch.
+  - id: dp02_visits
+    type: data
+    source: "/global/cfs/cdirs/lsst/shared/rubin/DP0.2/visitTable/visitTable_LSSTCam-imSim_2_2i_runs_DP0_2_v23_0_2_PREOPS-905_step7_20220501T161443Z.parq"
+    description: >-
+      DP0.2 Visit table (19,840 visits, expMidptMJD 59582 to 61406: the five
+      DC2 years that were imaged, while the SN truth spans ten). A DC2 SN
+      counts as detectable only when its peak epoch falls in this window.
   - id: dp02_object
     type: data
     source: "data/dp02_objectTable_index.csv"
@@ -277,20 +293,28 @@ outputs:
     type: table
     format: parquet
     description: >-
-      One row per DC2 SN in the test sample: SN position and redshift, true
-      host truth id, position, mag_r and redshift, the true host's DP0.2
-      objectId (per truth_match) and the SN-host separation, plus the flags
-      the sample cuts were based on (missing host row, host unmatched,
-      separation cut; offset_re, the offset in host half-light radii, under
-      cuts=physical). Both truth matchers are always computed
-      (host_objectId_mt, host_objectId_nn with match_sep_arcsec);
-      host_objectId is the one truth_match selects, and the parquet metadata
-      key truth_match_precut counts how the two compare before the
-      matcher-dependent cut.
-    inputs: [dp02_sn_truth, dp02_truth_match, dp02_candidates, dp02_host_truth_shapes]
-    decisions: [truth_match, dp02_sample_cuts]
+      The sample, rung 2 of the ladder: one row per DC2 SN that is hosted,
+      has a host truth row, is detectable (transient_peak_mag: true peak r
+      from dp02_sn_peak, peak epoch inside the dp02_visits window) and lies
+      within the dp02_sample_cuts offset cut. SNe whose true host has no
+      DP0.2 object under truth_match stay in the sample with host_objectId =
+      -1 (host_unmatched), so the association records what the pipeline does
+      with them; before 31 Oct 2026 they were dropped. Columns: SN position,
+      redshift, peak_mjd and peak_mag_r, true host truth id, position, mag_r
+      and redshift, the host's DP0.2 objectId (per truth_match) and the
+      SN-host separation, the flags behind the cuts (hostless, host_missing,
+      faint, far; offset_re, the offset in host half-light radii, under
+      cuts=physical). Both truth matchers are always carried (host_objectId_mt,
+      host_objectId_nn with match_sep_arcsec). Parquet metadata:
+      truth_match_precut (how the matchers compare on the sample) and
+      sample_ladder (counts at every step: transients, hosted, host_row,
+      detectable, sample, faint_dropped, far_dropped,
+      host_unmatched_in_sample), the numbers the text quotes for the SNe the
+      figures do not show.
+    inputs: [dp02_sn_truth, dp02_truth_match, dp02_candidates, dp02_host_truth_shapes, dp02_sn_peak, dp02_visits]
+    decisions: [truth_match, dp02_sample_cuts, transient_peak_mag]
     recipe:
-      command: python src/dp02_sample.py --truth {inputs.dp02_sn_truth} --match {inputs.dp02_truth_match} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --output {output}
+      command: python src/dp02_sample.py --truth {inputs.dp02_sn_truth} --match {inputs.dp02_truth_match} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --peak {inputs.dp02_sn_peak} --visits {inputs.dp02_visits} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --peak-mag {decisions.transient_peak_mag} --output {output}
       resources: {cpus: 4, memory: 24Gi}
   - id: dp02_associations
     type: table
@@ -307,9 +331,11 @@ outputs:
       radius or flux for the profile (always dropped: an object-table
       failure, not patched), candidate_quality; n_cut_* count the candidates
       each step removed and true_host_status records which step removed the
-      true host (absent / point_source / unusable / quality / kept). The
-      parquet metadata carries the fraction of candidates and of true hosts
-      removed by each step.
+      true host (absent / point_source / unusable / quality / kept; absent
+      includes the host-unmatched SNe of the sample, whose host_objectId is
+      -1, so the table is the whole rung-2 sample and every consumer filters
+      its own rung). The parquet metadata carries the fraction of candidates
+      and of true hosts removed by each step.
     inputs: [dp02_sample, dp02_candidates]
     decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
@@ -319,17 +345,20 @@ outputs:
     type: metric
     format: json
     description: >-
-      SBW as a distribution: mean P_SBW(true host) over the sample (the
-      expected recovery if each SN's host were drawn from the SBW
-      probabilities; P = 0 where the true host is not a surviving candidate),
-      with and without the hostless cut, and the fractions in the four bands
+      SBW as a distribution on rung 4 (true host usable by both methods):
+      mean P_SBW(true host) (the expected recovery if each SN's host were
+      drawn from the SBW probabilities), with and without the hostless cut,
+      and the fractions in the four bands
       P(true) > 0.5 / p_true_threshold..0.5 / below the threshold (excluded) /
       SBW hostless; argmax recovery (most probable host = true host) and DLR
       recovery with binomial intervals as secondary numbers; the SBW-DLR
       agreement rate, the fraction SBW declares hostless under
       sbw_hostless_cut, the 4x3 probabilistic agreement-matrix cells (and the
       old argmax 3x3), and the random-position 2x2 with the fraction each
-      method correctly rejects.
+      method correctly rejects. ladder counts the sample at rungs 2, 3 and 4
+      and by_rung repeats mean P_SBW(true), argmax and DLR recovery and the
+      hostless fractions on each rung (P = 0 where the true host is absent or
+      cut), so the catalogue's and the method's losses are read side by side.
     inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
@@ -349,6 +378,7 @@ outputs:
       P_SBW| over bins per SN. Hostless calls and SNe whose host is absent are
       left out because SBW's probabilities are not used there (30 Oct 2026;
       before, the curve was on the most probable host only).
+      The hosted condition is rung 4 of the sample ladder.
     inputs: [dp02_associations]
     decisions: [sbw_hostless_cut]
     recipe:
@@ -356,7 +386,7 @@ outputs:
   - id: dp02_calibration_by_band
     type: figure
     format: pdf
-    description: The candidate-level reliability curve (as dp02_calibration) recomputed in each of u g r i z y with the headline profile, one panel per band, independent of the band decision.
+    description: The candidate-level reliability curve (as dp02_calibration) recomputed in each of u g r i z y with the headline profile, one panel per band, independent of the band decision. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_sample, dp02_candidates]
     decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
@@ -365,7 +395,7 @@ outputs:
   - id: dp02_calibration_by_profile
     type: figure
     format: pdf
-    description: The candidate-level reliability curve (as dp02_calibration) recomputed for each analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian) in the headline band, independent of the sbw_profile decision.
+    description: The candidate-level reliability curve (as dp02_calibration) recomputed for each analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian) in the headline band, independent of the sbw_profile decision. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_sample, dp02_candidates]
     decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
@@ -386,6 +416,7 @@ outputs:
       DLR), so loosening the hostless cut is seen to cost random rejections;
       under each panel the real recovery with the cuts and the random
       fraction correctly rejected.
+      The real-SN panel is rung 4 of the sample ladder; its title gives N against the sample.
     inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
@@ -393,7 +424,7 @@ outputs:
   - id: dp02_agreement_vs_ddlr
     type: figure
     format: pdf
-    description: Fraction of SNe where the SBW most probable host is the DLR host, with mean P_SBW(true host) and DLR recovery, as a function of the DLR host's d_DLR (and of the SBW most probable host's d_DLR).
+    description: Fraction of SNe where the SBW most probable host is the DLR host, with mean P_SBW(true host) and DLR recovery, as a function of the DLR host's d_DLR (and of the SBW most probable host's d_DLR). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -401,7 +432,7 @@ outputs:
   - id: dp02_recovery_vs_ddlr
     type: figure
     format: pdf
-    description: Mean P_SBW(true host) (with the argmax recovery dashed), DLR recovery and SBW-DLR agreement as a function of the true host's d_DLR.
+    description: Mean P_SBW(true host) (with the argmax recovery dashed), DLR recovery and SBW-DLR agreement as a function of the true host's d_DLR. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -409,7 +440,7 @@ outputs:
   - id: dp02_recovery_vs_separation
     type: figure
     format: pdf
-    description: Mean P_SBW(true host), argmax and DLR recovery versus transient-host angular separation.
+    description: Mean P_SBW(true host), argmax and DLR recovery versus transient-host angular separation. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -417,7 +448,7 @@ outputs:
   - id: dp02_recovery_vs_host_mag
     type: figure
     format: pdf
-    description: Mean P_SBW(true host), argmax and DLR recovery versus true-host r magnitude (faint-host regime).
+    description: Mean P_SBW(true host), argmax and DLR recovery versus true-host r magnitude (faint-host regime). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -425,7 +456,7 @@ outputs:
   - id: dp02_recovery_vs_redshift
     type: figure
     format: pdf
-    description: Mean P_SBW(true host), argmax and DLR recovery versus SN redshift (hosts shrink and fade with z).
+    description: Mean P_SBW(true host), argmax and DLR recovery versus SN redshift (hosts shrink and fade with z). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -433,7 +464,7 @@ outputs:
   - id: dp02_p_true_host
     type: figure
     format: pdf
-    description: Distribution of the p_sbw assigned to the true host (log scale), split by whether SBW ranked it first; shows how confident the failures are.
+    description: Distribution of the p_sbw assigned to the true host (log scale), split by whether SBW ranked it first; shows how confident the failures are. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -441,7 +472,7 @@ outputs:
   - id: dp02_band_dependence
     type: figure
     format: pdf
-    description: Mean P_SBW(true host), argmax and DLR recovery and SBW-DLR agreement per band (u g r i z y), and how often the SBW most probable host changes between bands.
+    description: Mean P_SBW(true host), argmax and DLR recovery and SBW-DLR agreement per band (u g r i z y), and how often the SBW most probable host changes between bands. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_sample, dp02_candidates]
     decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
@@ -455,6 +486,7 @@ outputs:
       analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian)
       side by side, independent of the headline sbw_profile choice. The stamp
       form joins once dp02_deblended_stamps exists.
+      Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_sample, dp02_candidates]
     decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
@@ -505,6 +537,7 @@ outputs:
       0.0215, d_DLR 2.7) as open diamonds. Panels (b) and (c) also carry
       Youden's J = real kept + random rejected - 1 versus the threshold, with
       its maximum.
+      Real SNe on rung 4 of the sample ladder (an SN whose true host is absent or cut has no host to keep).
     inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
@@ -512,7 +545,7 @@ outputs:
   - id: dp02_hostless_metrics
     type: metric
     format: json
-    description: Real SNe kept and random positions rejected at flb_best and flb_max thresholds 0.001, 0.01, 0.05, 0.1 and d_DLR thresholds 3, 4, 5 (Wilson intervals), the fraction of random positions whose SBW most probable host has P > 0.5 (landing on a galaxy), and the Youden-J-optimal flb_best, flb_max and d_DLR thresholds with J, real kept and random rejected there; dp02_optima_transfer gives real kept, random rejected and J at flb_best 0.01, 0.0215 and 0.05 and at d_DLR 2.7 and 4 (0.0215 and 2.7 are the baseline J optima of 27 Oct 2026, frozen in src/dp02_fig.py) and the J lost against this table's own optimum, so every tier is scored at the DP0.2 thresholds.
+    description: Real SNe kept and random positions rejected at flb_best and flb_max thresholds 0.001, 0.01, 0.05, 0.1 and d_DLR thresholds 3, 4, 5 (Wilson intervals), the fraction of random positions whose SBW most probable host has P > 0.5 (landing on a galaxy), and the Youden-J-optimal flb_best, flb_max and d_DLR thresholds with J, real kept and random rejected there; dp02_optima_transfer gives real kept, random rejected and J at flb_best 0.01, 0.0215 and 0.05 and at d_DLR 2.7 and 4 (0.0215 and 2.7 are the baseline J optima of 27 Oct 2026, frozen in src/dp02_fig.py) and the J lost against this table's own optimum, so every tier is scored at the DP0.2 thresholds. Real SNe on rung 4 of the sample ladder (n_real; n_sample is rung 2).
     inputs: [dp02_associations, dp02_random_associations]
     decisions: []
     recipe:
@@ -541,6 +574,7 @@ outputs:
       component's R_e, split into bulge-dominated (B/T_i > 0.5) and
       disk-dominated hosts, with the offset distributions of both classes. The
       both-wrong upturn sets N of the physical sample cut.
+      Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations, dp02_host_truth_shapes]
     decisions: [sbw_hostless_cut]
     recipe:
@@ -577,6 +611,7 @@ outputs:
       and the objectIds. Both matchers
       come from the one sample (dp02_sample always carries both), so a single
       universe's associations suffice.
+      A sixth class, true_host_not_in_catalogue, draws SNe whose host has no DP0.2 object and to which SBW still assigned one (31 Oct 2026).
     inputs: [dp02_associations, dp02_candidates]
     decisions: [p_true_threshold]
     recipe:
@@ -601,12 +636,12 @@ outputs:
     type: metric
     format: json
     description: >-
-      Where the true host is lost, per method, over every hosted SN that
-      passed the sample cut's distance and host-row conditions (including the
-      SNe dropped because their true host has no DP0.2 object), in four
-      sequential categories, each counted only on the SNe that passed the
-      previous one: cat1 true host absent from the catalogue (no DP0.2 object
-      under truth_match, or not a primary object within the search radius);
+      Where the true host is lost, per method, over the sample (rung 2: every
+      detectable hosted SN with a host row within the offset cut, the
+      host-unmatched SNe included), in four sequential categories, each
+      counted only on the SNe that passed the previous one: cat1 true host
+      absent from the catalogue (no DP0.2 object under truth_match, or not a
+      primary object within the search radius);
       cat2 true host removed by object-table cuts, split into point source
       (extendedness_cut), unusable measurements (no usable radius or flux for
       the profile; for DLR also no DLR ellipse) and failed
@@ -614,11 +649,16 @@ outputs:
       flb_best < sbw_hostless_cut; DLR: no candidate with d_DLR <= dlr_max);
       cat4 genuine association failure (a host is assigned but P_SBW(true)
       < p_true_threshold; DLR assigns another, closer candidate); else
-      success. Counts, fractions of all hosted SNe and conditional fractions
-      (of the SNe that entered the stage) with Wilson 68% intervals for the
-      headline association, and the same recomputed in-process for every
+      success. For cat1 and cat2, where the method could not have found the
+      host, the pipeline's outcome is split further (31 Oct 2026): it called
+      the SN hostless, or it assigned a host, which is then a wrong one; this
+      is the contamination an analyst meets, not a method failure. Counts,
+      fractions of the sample and conditional fractions (of the SNe that
+      entered the stage) with Wilson 68% intervals for the headline
+      association, the same recomputed in-process for every
       candidate_quality level (none, basic, strict) with the fraction of
-      candidates each cut removes.
+      candidates each cut removes, and the sample's ladder (the SNe the
+      peak-magnitude cut removed are a number here, not a bar).
     inputs: [dp02_sample, dp02_associations, dp02_candidates]
     decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, sbw_hostless_cut, p_true_threshold]
     recipe:
@@ -630,11 +670,13 @@ outputs:
     description: >-
       (a) Stacked bars of success, cat4 (genuine failure), cat3 (no-host
       cut), cat2 (object-table cut) and cat1 (absent from the catalogue) for
-      SBW and DLR side by side, as fractions of all hosted SNe; (b) the
-      conditional loss at each stage (of the SNe that reached it) for both
-      methods; (c) the cat2, cat3 and cat4 fractions of both methods as
-      candidate_quality tightens (none, basic, strict). Drawn from
-      dp02_miss_accounting.
+      SBW and DLR side by side, as fractions of the sample (rung 2); inside
+      the cat1 and cat2 segments a narrower bar shows what the pipeline did
+      with those SNe, hostless call or wrong host assigned, with the
+      wrong-host fraction in the label; (b) the conditional loss at each
+      stage (of the SNe that reached it) for both methods. The
+      candidate_quality panel was dropped on 31 Oct 2026 (the sweep stays in
+      the json). Drawn from dp02_miss_accounting.
     inputs: [dp02_miss_accounting]
     decisions: []
     recipe:
@@ -649,6 +691,7 @@ outputs:
       over SNe whose true host survived the object-table cuts; t = 0.01 and
       0.05 marked, the knee of coverage versus size, and the coverage of the
       top-k sets for k = 1, 2, 3.
+      Coverage and set size on rung 4 of the sample ladder; the dashed curve is the whole sample (rung 2), where an absent or cut true host is never covered.
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -656,7 +699,7 @@ outputs:
   - id: dp02_credible_set_metrics
     type: metric
     format: json
-    description: The dp02_credible_set curve (coverage, coverage given a surviving true host, mean set size, empty-set fraction per t), its values at t = 0.01, 0.034 and 0.05, the knee (grid point farthest from the chord of coverage versus mean set size, axes scaled to [0, 1]) and the top-k coverages; dp02_knee_transfer compares the coverage and size at the frozen DP0.2 baseline knee t = 0.034 with this table's own knee.
+    description: The dp02_credible_set curve (coverage, coverage given a surviving true host, mean set size, empty-set fraction per t), its values at t = 0.01, 0.034 and 0.05, the knee (grid point farthest from the chord of coverage versus mean set size, axes scaled to [0, 1]) and the top-k coverages; dp02_knee_transfer compares the coverage and size at the frozen DP0.2 baseline knee t = 0.034 with this table's own knee. coverage, mean_size and frac_empty on rung 4; coverage_sample over the whole sample (rung 2); ladder gives the counts.
     inputs: [dp02_associations]
     decisions: []
     recipe:
@@ -775,11 +818,15 @@ outputs:
       (offset_re_bulge, offset_re_disk, offset_re of the dominant component by
       B/T_i, bulge_dominated). FIXMAG sources peak after the survey and are
       always dropped. All redshifts are kept (median z 1.5; DP0.2 has only
-      z < 1), so z < 1 splits are reported alongside.
+      z < 1), so z < 1 splits are reported alongside. As dp02_sample it is
+      rung 2 of the ladder: detectable under transient_peak_mag (the SNANA
+      PEAKMAG_r, as peak_mag_r; every OU2024 transient peaks inside the
+      survey), host-unmatched transients kept with host_objectId = -1, and
+      the sample_ladder counts in the parquet metadata.
     inputs: [ou24_sn_table, ou24_truth_match]
-    decisions: [truth_match, dp02_sample_cuts]
+    decisions: [truth_match, dp02_sample_cuts, transient_peak_mag]
     recipe:
-      command: python src/ou24_sample.py --sn-table {inputs.ou24_sn_table} --match {inputs.ou24_truth_match} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --output {output}
+      command: python src/ou24_sample.py --sn-table {inputs.ou24_sn_table} --match {inputs.ou24_truth_match} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --peak-mag {decisions.transient_peak_mag} --output {output}
       resources: {cpus: 4, memory: 24Gi}
   - id: ou24_associations
     type: table
@@ -820,7 +867,7 @@ outputs:
   - id: ou24_recovery
     type: metric
     format: json
-    description: As dp02_recovery for OU2024 (mean P_SBW(true host), the four P bands, argmax and DLR recovery as secondary numbers, the 4x3 matrix cells and the random 2x2), population-averaged over OU2024's too-faint host population; see ou24_recovery_by_host_mag.
+    description: As dp02_recovery for OU2024 (rung 4 headline with the ladder and by_rung blocks; mean P_SBW(true host), the four P bands, argmax and DLR recovery as secondary numbers, the 4x3 matrix cells and the random 2x2), population-averaged over OU2024's too-faint host population; see ou24_recovery_by_host_mag.
     inputs: [ou24_associations, ou24_random_associations]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
@@ -836,6 +883,7 @@ outputs:
       24-25, 25-26, 26-27, > 27), for all transients and for z < 1, with the
       host r < 24 summaries. OU2024 hosts are about 1 dex too light, so these
       bins, not the headline, are what compares with DP0.2.
+      Since 31 Oct 2026 the blocks are keyed rung4 (true host usable: the method) and rung2 (whole sample, an absent or cut host is a miss: the catalogue's selection function).
     inputs: [ou24_associations]
     decisions: [sbw_hostless_cut]
     recipe:
@@ -850,6 +898,7 @@ outputs:
       distribution, and both tiers at host r < 24. The DP0.2 association
       table already carries the sample's host_mag_r, so dp02_sample is not
       needed as a separate input.
+      Recovery curves on rung 4 of the sample ladder, with the fraction of sample hosts that reach rung 4 per host-r bin as a grey line (the catalogue's selection function on each simulation).
     inputs: [ou24_associations, dp02_associations]
     decisions: []
     recipe:
@@ -857,7 +906,7 @@ outputs:
   - id: ou24_calibration
     type: figure
     format: pdf
-    description: As dp02_calibration for OU2024.
+    description: As dp02_calibration for OU2024. Rung 4 of the sample ladder.
     inputs: [ou24_associations]
     decisions: [sbw_hostless_cut]
     recipe:
@@ -865,7 +914,7 @@ outputs:
   - id: ou24_calibration_by_band
     type: figure
     format: pdf
-    description: As dp02_calibration_by_band for OU2024.
+    description: As dp02_calibration_by_band for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_sample, ou24_candidates]
     decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
@@ -874,7 +923,7 @@ outputs:
   - id: ou24_calibration_by_profile
     type: figure
     format: pdf
-    description: As dp02_calibration_by_profile for OU2024.
+    description: As dp02_calibration_by_profile for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_sample, ou24_candidates]
     decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
@@ -883,7 +932,7 @@ outputs:
   - id: ou24_agreement_matrix
     type: figure
     format: pdf
-    description: As dp02_agreement_matrix for OU2024 (4x3 P_SBW(true)-band layout on real transients, 2x2 on random positions).
+    description: As dp02_agreement_matrix for OU2024 (4x3 P_SBW(true)-band layout on real transients, 2x2 on random positions). The real-transient panel is rung 4 of the sample ladder.
     inputs: [ou24_associations, ou24_random_associations]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
@@ -891,7 +940,7 @@ outputs:
   - id: ou24_agreement_vs_ddlr
     type: figure
     format: pdf
-    description: As dp02_agreement_vs_ddlr for OU2024.
+    description: As dp02_agreement_vs_ddlr for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
     decisions: []
     recipe:
@@ -899,7 +948,7 @@ outputs:
   - id: ou24_recovery_vs_ddlr
     type: figure
     format: pdf
-    description: As dp02_recovery_vs_ddlr for OU2024.
+    description: As dp02_recovery_vs_ddlr for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
     decisions: []
     recipe:
@@ -907,7 +956,7 @@ outputs:
   - id: ou24_recovery_vs_separation
     type: figure
     format: pdf
-    description: As dp02_recovery_vs_separation for OU2024.
+    description: As dp02_recovery_vs_separation for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
     decisions: []
     recipe:
@@ -915,7 +964,7 @@ outputs:
   - id: ou24_recovery_vs_host_mag
     type: figure
     format: pdf
-    description: As dp02_recovery_vs_host_mag for OU2024 (skyCatalog host r).
+    description: As dp02_recovery_vs_host_mag for OU2024 (skyCatalog host r). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
     decisions: []
     recipe:
@@ -923,7 +972,7 @@ outputs:
   - id: ou24_recovery_vs_redshift
     type: figure
     format: pdf
-    description: As dp02_recovery_vs_redshift for OU2024, out to z = 3.
+    description: As dp02_recovery_vs_redshift for OU2024, out to z = 3. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
     decisions: []
     recipe:
@@ -931,7 +980,7 @@ outputs:
   - id: ou24_p_true_host
     type: figure
     format: pdf
-    description: As dp02_p_true_host for OU2024.
+    description: As dp02_p_true_host for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
     decisions: []
     recipe:
@@ -939,7 +988,7 @@ outputs:
   - id: ou24_band_dependence
     type: figure
     format: pdf
-    description: As dp02_band_dependence for OU2024.
+    description: As dp02_band_dependence for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_sample, ou24_candidates]
     decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
@@ -948,7 +997,7 @@ outputs:
   - id: ou24_profile_sweep
     type: table
     format: csv
-    description: As dp02_profile_sweep for OU2024 (exponential, de Vaucouleurs, moment Gaussian side by side).
+    description: As dp02_profile_sweep for OU2024 (exponential, de Vaucouleurs, moment Gaussian side by side). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_sample, ou24_candidates]
     decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
     recipe:
@@ -957,7 +1006,7 @@ outputs:
   - id: ou24_hostless_indicator
     type: figure
     format: pdf
-    description: As dp02_hostless_indicator for OU2024 (real transients against ou24_random_positions), with the frozen DP0.2 J optima marked on the ROC.
+    description: As dp02_hostless_indicator for OU2024 (real transients against ou24_random_positions), with the frozen DP0.2 J optima marked on the ROC. Real transients on rung 4 of the sample ladder.
     inputs: [ou24_associations, ou24_random_associations]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
@@ -965,7 +1014,7 @@ outputs:
   - id: ou24_hostless_metrics
     type: metric
     format: json
-    description: As dp02_hostless_metrics for OU2024, including its own Youden-J optima and dp02_optima_transfer, the held-out test of the frozen DP0.2 baseline optima (flb_best 0.0215, d_DLR 2.7) against the defaults (flb 0.01, d_DLR 4) and OU2024's own optimum.
+    description: As dp02_hostless_metrics for OU2024, including its own Youden-J optima and dp02_optima_transfer, the held-out test of the frozen DP0.2 baseline optima (flb_best 0.0215, d_DLR 2.7) against the defaults (flb 0.01, d_DLR 4) and OU2024's own optimum. Real transients on rung 4 of the sample ladder (n_real; n_sample is rung 2).
     inputs: [ou24_associations, ou24_random_associations]
     decisions: []
     recipe:
@@ -973,7 +1022,7 @@ outputs:
   - id: ou24_credible_set
     type: figure
     format: pdf
-    description: As dp02_credible_set for OU2024.
+    description: As dp02_credible_set for OU2024, on rung 4 of the sample ladder (dashed curve, the whole sample, rung 2).
     inputs: [ou24_associations]
     decisions: []
     recipe:
@@ -981,7 +1030,7 @@ outputs:
   - id: ou24_credible_set_metrics
     type: metric
     format: json
-    description: As dp02_credible_set_metrics for OU2024; dp02_knee_transfer is the held-out test of the frozen DP0.2 baseline knee t = 0.034 against OU2024's own knee.
+    description: As dp02_credible_set_metrics for OU2024; dp02_knee_transfer is the held-out test of the frozen DP0.2 baseline knee t = 0.034 against OU2024's own knee. Rung 4 of the sample ladder, with coverage_sample on rung 2 and the ladder counts.
     inputs: [ou24_associations]
     decisions: []
     recipe:
@@ -990,7 +1039,7 @@ outputs:
     type: metric
     format: json
     description: >-
-      As dp02_miss_accounting for OU2024: the four sequential categories
+      As dp02_miss_accounting for OU2024 (sample denominator, cat1/cat2 outcome split, ladder): the four sequential categories
       (absent from the OU2024 Object table under truth_match or not a
       primary object within the search radius; object-table cuts; no-host
       cut; genuine failure) for SBW and DLR, fractions of all hosted
@@ -1005,7 +1054,7 @@ outputs:
   - id: ou24_miss_accounting_fig
     type: figure
     format: pdf
-    description: As dp02_miss_accounting_fig for OU2024, drawn from ou24_miss_accounting.
+    description: As dp02_miss_accounting_fig for OU2024 (panels a and b, bar-in-bar outcome split), drawn from ou24_miss_accounting.
     inputs: [ou24_miss_accounting]
     decisions: []
     recipe:
@@ -1013,7 +1062,7 @@ outputs:
   - id: ou24_offset_diagnostic
     type: figure
     format: pdf
-    description: As dp02_offset_diagnostic for OU2024, with the offsets in skyCatalog bulge / disk / dominant-component half-light radii that ou24_sample carries (B/T_i from the component SEDs).
+    description: As dp02_offset_diagnostic for OU2024, with the offsets in skyCatalog bulge / disk / dominant-component half-light radii that ou24_sample carries (B/T_i from the component SEDs). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
     decisions: [sbw_hostless_cut]
     recipe:
@@ -1774,9 +1823,11 @@ decisions:
   dp02_sample_cuts:
     label: Simulated-tier (DP0.2, OU2024) SN sample cleaning
     rationale: >-
-      Every cut drops SNe whose host row is missing (~5%) or whose host has no
-      DP0.2 object under truth_match; the options differ in how far from its
-      host an SN may sit. DC2 drew SN positions from the host component's full
+      Every cut drops SNe whose host row is missing (~5%); since 31 Oct 2026
+      SNe whose host has no DP0.2 object under truth_match stay in the sample
+      (host_objectId = -1), so the miss accounting can say what the pipeline
+      did with them. The options differ in how far from its host an SN may
+      sit. DC2 drew SN positions from the host component's full
       Sersic profile, so ~9% sit > 3 arcsec from the host centre, many far out
       in n = 4 bulge wings where no catalogue method (nor a human) would assign
       them. A fixed angular cut is unfair to large nearby hosts, which span
@@ -1800,7 +1851,7 @@ decisions:
     default: physical
     options:
       clean3:
-        label: Drop SNe whose host row is missing, unmatched to an object, or > 3 arcsec from the host truth position (the first results)
+        label: Drop SNe whose host row is missing or > 3 arcsec from the host truth position (the first results; those also dropped host-unmatched SNe)
         insights: [dc2_hostless_sn_fraction, dc2_host_choice_proportional_to_stellar_mass]
       clean10:
         label: As clean3 but > 10 arcsec
@@ -1809,8 +1860,35 @@ decisions:
         label: As clean3 but drop only SNe beyond N = 3 half-light radii of the host along its truth ellipse (bulge R_e for B/T_i > 0.5, disk R_e otherwise; N_RE in src/dp02_sample.py)
         insights: [dc2_hostless_sn_fraction, dc2_sn_position_sampled_from_sersic_profile, dc2_sn_offsets_scale_with_hosting_component_size, ou2024_hostlib_sb_weighted_placement]
       all:
-        label: Keep every SN truth row
+        label: Keep every SN truth row (the cut flags are carried; consumers apply them)
         insights: [dc2_hostless_sn_fraction]
+  transient_peak_mag:
+    label: Which simulated transients count as detectable
+    rationale: >-
+      The miss accounting and every truth metric describe what happens to a
+      transient an analyst has in hand, so transients that would never enter
+      an analysis should not be in the denominator; what fraction of all
+      simulated transients that is belongs to the survey's selection function,
+      reported as a number from the sample ladder, not drawn. A transient
+      needs several difference-imaging detections, which at LSST's
+      single-visit depth (r ~ 24.5 at 5 sigma in 30 s; OU2024 used 15 s
+      exposures) means a true peak r brighter than about 24. DC2's SN truth
+      spans ten years while DP0.2 imaged five, so a DC2 SN also has to peak
+      inside the dp02_visits window (59582 to 61406); every OU2024 transient
+      peaks inside its survey (the FIXMAG class, which does not, is always
+      dropped). On DC2 the r < 24 and in-window condition keeps ~10% of the
+      hosted SNe (~41k); on OU2024, whose transients sit at median z 1.5, r <
+      24 keeps ~4% (~21k), which removes most of the hosts that have no
+      catalogue object. Both remain large enough for sub-percent failure
+      rates. r < 23 is the conservative alternative (~18k / ~8k).
+    default: r24
+    options:
+      none:
+        label: Keep every transient regardless of peak magnitude (the pre-31-Oct-2026 samples)
+      r24:
+        label: Keep transients with true peak r < 24 (DC2 also peaking inside the DP0.2 visit window)
+      r23:
+        label: Keep transients with true peak r < 23 (DC2 also peaking inside the DP0.2 visit window)
   dp2_sample:
     label: DP2 transient sample for the real-data tier
     rationale: >-

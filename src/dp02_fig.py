@@ -1,4 +1,9 @@
-"""Figures and the recovery metric from one DP0.2 association table."""
+"""Figures and the recovery metric from one DP0.2 association table.
+
+Every truth metric stands on a rung of the sample ladder (dp02_lib.RUNGS): the association table is rung 2
+(the sample, host-unmatched SNe included); the method's own performance is measured on rung 4 (true host
+usable by both methods), which is what every figure here uses unless it says otherwise; recovery.json also
+reports rungs 2 and 3."""
 from __future__ import annotations
 
 import argparse
@@ -11,8 +16,9 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from dp02_lib import (CAL_EDGES, COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, calibration_curve, dlr_cols, dlr_hostless, matrix_cells,
-                      p_true, prob_matrix_cells, prob_rows, random_cells, sbw_hostless, wilson)
+from dp02_lib import (CAL_EDGES, COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, RUNGS, RUNG_LABEL, calibration_curve, dlr_cols,
+                      dlr_hostless, matrix_cells, p_true, prob_matrix_cells, prob_rows, random_cells, rung, rung_counts,
+                      rung_mask, sbw_hostless, wilson)
 
 TIER = {"dp02": "DC2", "ou24": "OU2024", "dp2": "DP2"}
 LABEL = {"tier": "DC2"}   # set from --tier; the figure titles name the simulation
@@ -31,13 +37,30 @@ def load(path):
 
 def subtitle(df):
     a = df.attrs
+    r = f" | rung {a['rung']}" if "rung" in a else ""
     return (f"{a.get('profile', '?')} | band {a.get('band', '?')} | {a.get('search_radius', '?')} | d_DLR<={a.get('dlr_max', '?')[1:]} "
-            f"({a.get('dlr_radius', '?')}) | quality {a.get('candidate_quality', '?')} | N={len(df)}")
+            f"({a.get('dlr_radius', '?')}) | quality {a.get('candidate_quality', '?')}{r} | N={len(df)}")
+
+
+def rung_stats(df, cut):
+    hl = sbw_hostless(df, cut)
+    pt = p_true(df)
+    n = len(df)
+    return {"n": n, "mean_p_sbw_true": float(pt.mean()) if n else np.nan,
+            "mean_p_sbw_true_with_hostless_cut": float(np.where(hl, 0.0, pt).mean()) if n else np.nan,
+            "sbw_argmax_recovery": float(df.sbw_correct.mean()) if n else np.nan,
+            "sbw_recovery_with_hostless_cut": float((df.sbw_correct.to_numpy() & ~hl).mean()) if n else np.nan,
+            "dlr_recovery": float(df.dlr_correct.mean()) if n else np.nan,
+            "sbw_hostless_fraction": float(hl.mean()) if n else np.nan,
+            "dlr_hostless_fraction": float(df.dlr_hostless.mean()) if n else np.nan}
 
 
 def recovery(df, out, hostless_cut, rnd, p_threshold):
-    n = len(df)
     cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
+    ladder = rung_counts(df)
+    by_rung = {f"rung{r}": {"label": RUNG_LABEL[r], **rung_stats(rung(df, r), cut)} for r in RUNGS}
+    df = rung(df, 4)
+    n = len(df)
     pt = p_true(df)
     bands = {k: float(v.mean()) for k, v in prob_rows(df, cut, t).items()}
     hl = sbw_hostless(df, cut)
@@ -46,11 +69,13 @@ def recovery(df, out, hostless_cut, rnd, p_threshold):
     ks, kd = int(df.sbw_correct.sum()), int(df.dlr_correct.sum())
     ps, ls, hs = wilson(ks, n); pd_, ld, hd = wilson(kd, n)
     _, ece, n_cal = calibration_curve(df, cut)
-    res = {"n": n,
+    res = {"n": n, "rung": 4, "rung_note": "headline numbers on rung 4 (true host usable by both methods); "
+                                          "'ladder' counts the sample at every rung and 'by_rung' repeats the main numbers there",
+           "ladder": ladder, "by_rung": by_rung,
            "mean_p_sbw_true": float(pt.mean()), "mean_p_sbw_true_se": float(pt.std(ddof=1) / np.sqrt(n)),
            "mean_p_sbw_true_with_hostless_cut": float(np.where(hl, 0.0, pt).mean()),
-           "mean_p_sbw_true_note": "expected recovery if each SN's host were drawn from the SBW probabilities; "
-                                   "P = 0 where the true host is not a surviving candidate",
+           "mean_p_sbw_true_note": "expected recovery if each SN's host were drawn from the SBW probabilities "
+                                   "(rung 4; in by_rung P = 0 where the true host is not a surviving candidate)",
            "p_true_threshold": t, "p_true_bands": bands,
            "sbw_argmax_recovery": ps, "sbw_argmax_recovery_ci68": [ls, hs],
            "dlr_recovery": pd_, "dlr_recovery_ci68": [ld, hd],
@@ -102,19 +127,18 @@ def calibration(df, out, hostless_cut):
         axis.set_yscale("log"); axis.set_xlabel("$P_{\\mathrm{SBW}}$ of a candidate")
     ah.set_xscale("log"); ah.set_ylabel("per bin"); ah.legend(fontsize=7, loc="upper left")
     fig.suptitle(f"SBW calibration on {LABEL['tier']} truth, every candidate with P > {CAL_EDGES[0]:g}\n"
-                 f"SNe SBW keeps as hosted (flb_best >= {cut:g}) whose true host is a surviving candidate\n" + subtitle(df), fontsize=8)
+                 f"SNe SBW keeps as hosted (flb_best >= {cut:g}) whose true host is a surviving candidate (rung 4)\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
 def agreement_matrix(df, out, hostless_cut, rnd, p_threshold, survivors_only=True):
-    """Real-SN panel restricted (survivors_only) to SNe whose true host passed the catalogue (cat1) and
+    """Real-SN panel restricted (survivors_only) to rung 4: SNe whose true host passed the catalogue (cat1) and
     object-table (cat2) cuts for both methods, so every cell is an association outcome; the random-position
     panel is unchanged."""
     cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
     full = len(df)
     if survivors_only:
-        survived = (df["true_host_status"].to_numpy() == "kept") & np.isfinite(df["d_dlr_true"].to_numpy(dtype=float))
-        df = df[survived]
+        df = rung(df, 4)
     pr, dc = prob_rows(df, cut, t), dlr_cols(df)
     rows = [("$P_{\\mathrm{SBW}}$(true) > 0.5", pr["p_gt_0p5"]),
             (f"$P_{{\\mathrm{{SBW}}}}$(true)\nin [{t:g}, 0.5]", pr["p_t_to_0p5"]),
@@ -132,7 +156,7 @@ def agreement_matrix(df, out, hostless_cut, rnd, p_threshold, survivors_only=Tru
     ax.set_xticks(range(3), [c for c, _ in cols]); ax.set_yticks(range(len(rows)), [r for r, _ in rows])
     ax.grid(False)
     pt = np.where(pr["sbw_hostless"], 0.0, p_true(df))
-    ax.set_title(f"real SNe whose true host passed cat1 + cat2: N = {n:,} of {full:,} ({100 * n / full:.1f}%)\n"
+    ax.set_title(f"real SNe whose true host passed cat1 + cat2 (rung 4): N = {n:,} of {full:,} in the sample ({100 * n / full:.1f}%)\n"
                  f"SBW most probable host = DLR host {100 * df.agree.mean():.2f}%", fontsize=8)
     ax.set_xlabel(f"mean $P_{{\\mathrm{{SBW}}}}$(true) with the hostless cut {100 * pt.mean():.2f}%; "
                   f"DLR recovery {100 * df.dlr_correct.mean():.2f}%", fontsize=8)
@@ -179,6 +203,7 @@ def binned_mean(x, y, edges):
 
 
 def agreement_vs_ddlr(df, out):
+    df = rung(df, 4)
     fig, axes = plt.subplots(2, 2, figsize=(7.5, 4.8), height_ratios=[3, 1], sharex="col")
     for j, (col, lab) in enumerate([("d_dlr_sbw", "$d_{DLR}$ of the SBW most probable host"), ("d_dlr_min", "smallest $d_{DLR}$ (DLR host)")]):
         x = df[col].to_numpy(dtype=float)
@@ -210,6 +235,7 @@ XSPEC = {
 
 
 def recovery_vs(df, out, xkey):
+    df = rung(df, 4)
     col, lab, edges, logx = XSPEC[xkey]
     x = df[col].to_numpy(dtype=float)
     if xkey == "redshift" and np.nanmax(x) > edges[-1]:   # OU2024 transients reach z ~ 3
@@ -235,6 +261,8 @@ def recovery_vs(df, out, xkey):
 
 
 def p_true_host(df, out):
+    n2 = len(df)
+    df = rung(df, 4)
     p = df.p_sbw_true.to_numpy(dtype=float)
     ok = np.isfinite(p) & (p > 0)
     lp = np.log10(np.clip(p, 1e-12, 1))
@@ -243,8 +271,8 @@ def p_true_host(df, out):
     ax.hist(lp[ok & df.sbw_correct.to_numpy()], bins=edges, color=COLORS["sbw"], alpha=0.7, label="true host ranked first")
     ax.hist(lp[ok & ~df.sbw_correct.to_numpy()], bins=edges, color=COLORS["dlr"], alpha=0.7, label="true host not first")
     ax.set_yscale("log"); ax.set_xlabel("$\\log_{10} P_{\\mathrm{SBW}}$(true host)"); ax.set_ylabel("SNe")
-    nz = int((np.isfinite(p) & (p <= 0)).sum()); nmiss = int((~np.isfinite(p)).sum())
-    ax.text(0.02, 0.95, f"P = 0: {nz:,}\ntrue host not a surviving candidate: {nmiss:,}", transform=ax.transAxes, va="top", fontsize=7)
+    nz = int((np.isfinite(p) & (p <= 0)).sum())
+    ax.text(0.02, 0.95, f"P = 0: {nz:,}\nrung 4: {len(df):,} of {n2:,} sample SNe", transform=ax.transAxes, va="top", fontsize=7)
     ax.legend(fontsize=7, loc="upper left", bbox_to_anchor=(0.0, 0.8))
     fig.suptitle("Probability SBW gives the true host\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
@@ -302,6 +330,9 @@ def transfer(df, rnd):
 
 
 def hostless_metrics(df, rnd, out):
+    n2 = len(df)
+    df = rung(df, 4)
+
     def point(rule, t):
         kept = ~RULES[rule](df, t); rej = RULES[rule](rnd, t)
         pk, lk, hk = wilson(int(kept.sum()), len(df)); pr, lr, hr = wilson(int(rej.sum()), len(rnd))
@@ -311,7 +342,7 @@ def hostless_metrics(df, rnd, out):
                 "random_rejected": pr, "random_rejected_ci68": [lr, hr],
                 "random_kept_with_p_sbw_gt_0p5": float(on_gal.mean())}
     p = rnd.p_sbw_max.to_numpy(dtype=float)
-    res = {"n_real": len(df), "n_random": len(rnd),
+    res = {"n_real": len(df), "n_sample": n2, "rung": 4, "n_random": len(rnd),
            "random_with_no_candidate": float((rnd.n_cand_used == 0).mean()),
            "random_with_no_sbw_host": float((rnd.sbw_objectId < 0).mean()),
            "random_p_sbw_gt_0p5": float((p > 0.5).mean()),
@@ -339,6 +370,7 @@ def band(ax, x, w, color, ls="-", label=None):
 
 
 def hostless_indicator(df, rnd, out, hostless_cut, dlr_max):
+    df = rung(df, 4)
     cut, dmax = HOSTLESS_CUT[hostless_cut], DLR_MAX[dlr_max]
     fig, axes = plt.subplots(2, 2, figsize=(8.4, 7.0))
     (aa, ab), (ac, ad) = axes
@@ -412,27 +444,28 @@ TOP_K = (1, 2, 3)
 
 
 def credible_sets(df, grid=T_GRID):
-    """Coverage of the true host by {surviving candidates with P_SBW > t} and the mean size of that set,
-    over all SNe and over SNe whose true host survived the object-table cuts; plus the top-k sets."""
+    """Coverage of the true host by {surviving candidates with P_SBW > t} and the mean size of that set on
+    rung 4 (true host usable), with the coverage over the whole sample (rung 2, where an absent or cut true
+    host is never covered) beside it; plus the top-k sets."""
     tops = df["p_top"].to_numpy()
     L = max(1, max(len(x) for x in tops))
     P = np.zeros((len(tops), L), np.float32)
     for i, x in enumerate(tops):
         P[i, :len(x)] = x
     pt = p_true(df)
-    kept = df["true_host_status"].to_numpy() == "kept"
+    r4 = rung_mask(df, 4)
     rows = []
     for t in grid:
         size = (P > t).sum(1)
         cov = pt > t
-        rows.append({"t": float(t), "coverage": float(cov.mean()), "coverage_kept": float(cov[kept].mean()),
-                     "mean_size": float(size.mean()), "frac_empty": float((size == 0).mean())})
+        rows.append({"t": float(t), "coverage": float(cov[r4].mean()), "coverage_sample": float(cov.mean()),
+                     "mean_size": float(size[r4].mean()), "frac_empty": float((size[r4] == 0).mean())})
     r = pd.DataFrame(rows)
     rank = df["rank_true"].to_numpy()
     nused = df["n_cand_used"].to_numpy()
-    topk = [{"k": k, "coverage": float(((rank >= 1) & (rank <= k) & (pt > 0)).mean()),
-             "coverage_kept": float(((rank >= 1) & (rank <= k) & (pt > 0))[kept].mean()),
-             "mean_size": float(np.minimum(k, nused).mean())} for k in TOP_K]
+    topk = [{"k": k, "coverage": float(((rank >= 1) & (rank <= k) & (pt > 0))[r4].mean()),
+             "coverage_sample": float(((rank >= 1) & (rank <= k) & (pt > 0)).mean()),
+             "mean_size": float(np.minimum(k, nused)[r4].mean())} for k in TOP_K]
     return r, topk
 
 
@@ -449,7 +482,8 @@ def credible_set_metrics(df, out):
     r, topk = credible_sets(df)
     at = {f"t_{t:g}": credible_sets(df, [t])[0].iloc[0].to_dict() for t in T_MARK + (DP02_OPTIMA["credible_set_t"],)}
     kn = knee(r)
-    res = {"n": len(df), "frac_true_host_kept": float((df.true_host_status == "kept").mean()),
+    res = {"n": int(rung_mask(df, 4).sum()), "rung": 4, "ladder": rung_counts(df),
+           "coverage_note": "coverage, mean_size and frac_empty on rung 4; coverage_sample over the whole sample (rung 2)",
            "at_marked_thresholds": at, "top_k": topk, "knee": kn,
            "dp02_knee_transfer": {"t": DP02_OPTIMA["credible_set_t"], **at[f"t_{DP02_OPTIMA['credible_set_t']:g}"],
                                   "own_knee_t": kn["t"],
@@ -465,8 +499,8 @@ def credible_set(df, out):
     kn = knee(r)
     ylo = min(0.8, np.floor(min(r.coverage.min(), min(k["coverage"] for k in topk)) * 20) / 20)
     fig, (aa, ab) = plt.subplots(1, 2, figsize=(8.6, 3.6))
-    aa.plot(r.t, r.coverage, color=COLORS["sbw"], label="coverage, all SNe")
-    aa.plot(r.t, r.coverage_kept, color=COLORS["sbw"], ls="--", lw=1, label="coverage, true host survived the cuts")
+    aa.plot(r.t, r.coverage, color=COLORS["sbw"], label="coverage, true host usable (rung 4)")
+    aa.plot(r.t, r.coverage_sample, color=COLORS["sbw"], ls="--", lw=1, label="coverage, whole sample (rung 2)")
     aa.set_xscale("log"); aa.set_ylim(ylo, 1.002)
     aa.set_xlabel("threshold t (set = candidates with $P_{\\mathrm{SBW}}$ > t)"); aa.set_ylabel("fraction of SNe with the true host in the set")
     at = aa.twinx()
@@ -487,7 +521,8 @@ def credible_set(df, out):
             label="top-k, k = " + ", ".join(f"{k['k']}: {100 * k['coverage']:.2f}%" for k in topk))
     ab.set_xlabel("mean set size"); ab.set_ylabel("coverage"); ab.set_ylim(ylo, 1.002)
     ab.legend(fontsize=7, loc="lower right"); ab.set_title("(b) coverage versus set size", fontsize=9, loc="left")
-    fig.suptitle(f"SBW credible sets on {LABEL['tier']} truth (true host not a surviving candidate = not covered)\n" + subtitle(df), fontsize=8)
+    fig.suptitle(f"SBW credible sets on {LABEL['tier']} truth, rung 4 (dashed: whole sample, an absent or cut true host is not covered)\n"
+                 + subtitle(rung(df, 4)), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 

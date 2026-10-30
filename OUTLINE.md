@@ -72,9 +72,19 @@ Proposed ladder (same words in every tier):
 
 1. **Transients**: every SN/transient the tier provides (DC2 truth SNe
    with z < 1 that are hosted; OU2024 all; DES 1,623; DP2 690 or 7,823).
+   Simulations then drop the transients an analyst would never have:
+   `transient_peak_mag` (default true peak r < 24; DC2 also peaking inside
+   the five DP0.2 years), which keeps ~41k DC2 and ~21k OU2024 transients.
+   The dropped fraction is the survey selection function: a number in
+   the text from the sample's `sample_ladder` metadata, never a bar.
 2. **With a host row** (simulations only): the truth host exists and the
    SN sits within the physical cut. This is the *sample* and the
-   denominator of the miss accounting (cat1 counted here).
+   denominator of the miss accounting (cat1 counted here). Since 31 Oct
+   2026 the SNe whose host has no catalogue object stay in it
+   (`host_objectId = -1`, `true_host_status = absent`), so every
+   association table is rung 2 and every consumer filters its rung with
+   `dp02_lib.rung(df, r)`; `recovery.json` reports `ladder` and
+   `by_rung`.
 3. **Host in catalogue** (cat1 passed): the reference host has a primary
    object within 1" (sims: truth match; DES: published host matched in
    DR2; DELIGHT: position matched to a DP2 object).
@@ -153,10 +163,18 @@ and OU2024 side by side or stacked, made from the same script with
 
 ### 4. Calibration against truth (DP0.2 and OU2024)
 - **Fig 1 (sim both): miss accounting bars** (`dp02_miss_accounting_fig`,
-  `ou24_miss_accounting_fig`, panels a+b only). Message: SBW loses hosts
-  to the catalogue (cat1/cat2) and to its own hostless cut; genuine wrong
-  picks are 0.3 to 0.7 %, against DLR's 3 to 5 %. On OU2024 half the
-  hosts never reach the catalogue.
+  `ou24_miss_accounting_fig`, panels a+b; rewritten 31 Oct 2026). The
+  accounting of an SN the analyst has in hand: stacked outcome per method
+  on the sample (rung 2), and inside the cat1 and cat2 segments a
+  bar-in-bar of what the pipeline did when the true host was not there to
+  find: called the SN hostless, or assigned a wrong host. Message: SBW
+  loses hosts to the catalogue (cat1/cat2) and to its own hostless cut;
+  genuine wrong picks are well below DLR's; the wrong-host sliver inside
+  cat1/cat2 is the contamination the catalogue, not the method, puts into
+  a sample, and the hostless cut is what keeps it small. The pre-31-Oct
+  numbers (cat1 4.6 % DP0.2, 48 % OU2024) were on every hosted SN; with
+  the peak-magnitude cut they will shrink, since faint hosts and faint
+  transients go together.
 - **Fig 2 (sim both): candidate-level reliability curve**
   (`dp02_calibration`, `ou24_calibration`; rewritten 30 Oct 2026). Every
   candidate of every SN that SBW keeps as hosted and whose true host is a
@@ -287,10 +305,12 @@ Section 2. Concretely: the matrix is on cat1+cat2 survivors but the
 hostless ROC's "real SNe kept" is on the full sample including SNe whose
 host is absent from the catalogue, so part of the "SBW hostless" loss in
 the ROC is cat1, not a method property. The miss accounting uses yet
-another N. Fix: ROC real-SN curve on rung 4 too (the SNe for which a host
-could have been found), or on rung 2 with the cat1+cat2 fraction drawn as
-the ceiling; either way one choice, applied to all four tiers. The DES
-matrix should be on survivors like the sim matrices.
+another N. Fixed 31 Oct 2026: every truth figure and metric (matrix, ROC,
+calibration, recovery-vs-X, P(true), credible sets, offsets, band and
+profile sweeps) stands on rung 4 through `dp02_lib.rung`, in all three
+truth tiers (DES runs through the same functions: 1,594 of 1,623); the
+miss accounting alone shows rung 2, and `recovery.json` carries the
+ladder.
 
 ### 4.4 Random-position designs differ by tier
 DP0.2/OU2024: one position per truth SN, uniform over the tract, redrawn
@@ -459,11 +479,11 @@ from the DELIGHT metrics), `dp2_sample: md_final / rc_all`.
 2. Random positions: one design for all tiers (ten per SN in a field
    annulus); rerun the random chains (DP0.2/OU2024 ~25 min per universe on
    NERSC; DP2 minutes; DES minutes on the laptop).
-3. Figures: hostless ROC real-SN curve on the chosen rung; DES matrix on
-   survivors (`--survivors-only` already exists in `dp02_fig.py`, DES runs
-   through it); drop panel (c) of the miss figure; a four-tier ROC figure
-   and a three-way DELIGHT matrix figure as new outputs; `summary_table`
-   recipe.
+3. Figures: done 31 Oct 2026 for the rung-4 ROC, the DES matrix on
+   survivors and panel (c) of the miss figure (dropped; bar-in-bar outcome
+   split added, `transient_peak_mag` decision added, host-unmatched SNe
+   kept in the samples). Still to do: a four-tier ROC figure and a
+   three-way DELIGHT matrix figure as new outputs; `summary_table` recipe.
 4. Materialize baseline (new meaning) for all four tiers; DES on the
    laptop, the rest on NERSC under the usual allocation rules.
 5. Metrics plumbing: the DP0.2 optima read from the same universe's

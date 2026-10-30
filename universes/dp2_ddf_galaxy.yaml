@@ -13,6 +13,7 @@ decisions:
   candidate_quality: none
   p_true_threshold: p005
   truth_match: matches_truth
+  transient_peak_mag: r24
   dp02_sample_cuts: physical
   dp2_sample: parsnip_ddf_galaxy
   dp2_candidate_catalogue: dp2_object
