@@ -5,7 +5,7 @@
   "recipe": "python src/dp02_miss.py compute --sample results/physical/dp02_sample.parquet --associations results/physical/dp02_associations.parquet --candidates results/physical/dp02_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --hostless-cut flb01 --p-threshold p005 --tier dp02 --workers 16 --output results/physical/dp02_miss_accounting.json",
   "definition_version": "sha256:0913417a77d03449aefeefcdd380c3ffac90b67788336d30b1f88c93352b2275",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:d793aba053e534f5c9ba30caafb1547249abf149a919e26952c21d1f84070a0e",
+  "data_version": "sha256:706a2513bd4086d3b9a750bac5533a273bb9595356ec4ab1edcafb6c31ea236c",
   "decisions": {
     "sbw_profile": "exponential",
     "band": "r",
@@ -17,11 +17,11 @@
     "p_true_threshold": "p005"
   },
   "input_versions": {
-    "dp02_sample": "sha256:bd0d4a27837a04c5229b932e69f4232865fdf254bfa4a4e87a2d3ef46af1bc51",
-    "dp02_associations": "sha256:21eed7c8a91e262547ccbb79e1b936965ac6f7d4955fca1a5ed94715fdbec698",
+    "dp02_sample": "sha256:f222fc4f3abd682de70120a3515e0ba03bc2e5740d66b7acca9c9bb7b67199f3",
+    "dp02_associations": "sha256:e954aab554ec26297c34b0abbd6daf4e9f76b54098ee368625c4246679494542",
     "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
   },
-  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
+  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -31,8 +31,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T15:28:18.371+00:00",
-  "finished_at": "2026-10-28T15:33:03.266+00:00",
+  "started_at": "2026-10-30T22:26:09.691+00:00",
+  "finished_at": "2026-10-30T22:28:19.228+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
