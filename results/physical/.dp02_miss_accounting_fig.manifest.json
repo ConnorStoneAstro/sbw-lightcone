@@ -5,12 +5,12 @@
   "recipe": "python src/dp02_miss.py figure --accounting results/physical/dp02_miss_accounting.json --output results/physical/dp02_miss_accounting_fig.pdf",
   "definition_version": "sha256:643c9ccc0f9d43fc0ab11586a1e90cdbaab17259901cb728c670ff38f4433cd5",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:305287617abdc988b2bfa007ba521c28592be8e45477a127c52d166f2bb769dd",
+  "data_version": "sha256:53e4025b1ffc6d93b73314033a002cc0d2e2dd76989a16c17a5df3568f72759a",
   "decisions": {},
   "input_versions": {
-    "dp02_miss_accounting": "sha256:d793aba053e534f5c9ba30caafb1547249abf149a919e26952c21d1f84070a0e"
+    "dp02_miss_accounting": "sha256:706a2513bd4086d3b9a750bac5533a273bb9595356ec4ab1edcafb6c31ea236c"
   },
-  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
+  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T15:33:28.384+00:00",
-  "finished_at": "2026-10-28T15:33:50.179+00:00",
+  "started_at": "2026-10-30T22:28:46.892+00:00",
+  "finished_at": "2026-10-30T22:29:27.973+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
