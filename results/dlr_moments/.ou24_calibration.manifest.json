@@ -2,15 +2,17 @@
   "schema_version": 1,
   "output_id": "ou24_calibration",
   "universe_id": "dlr_moments",
-  "recipe": "python src/dp02_fig.py calibration --tier ou24 --associations results/dlr_moments/ou24_associations.parquet --output results/dlr_moments/ou24_calibration.pdf",
-  "definition_version": "sha256:763520bb81b83c129d40ce39c06551a055c3d7a7b8c6db28c3735a9c996a3431",
+  "recipe": "python src/dp02_fig.py calibration --tier ou24 --associations results/dlr_moments/ou24_associations.parquet --hostless-cut flb01 --output results/dlr_moments/ou24_calibration.pdf",
+  "definition_version": "sha256:53c38e38d61881675c3826a0d3ba046a655df85179ccc56e441caf44d43e3201",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:d1356771afb559c05aa7ff49a92738e6ca31110e513808ba7ca3e6016caf241e",
-  "decisions": {},
-  "input_versions": {
-    "ou24_associations": "sha256:9cdf425a14b18b537c122c01faad1554cc8f8718c8c90ffb23c4cfb743e0a259"
+  "data_version": "sha256:9f5066572fdcfc019481c636e887e0535cedc0230c1d836607afcb0e4951aac3",
+  "decisions": {
+    "sbw_hostless_cut": "flb01"
   },
-  "git_sha": "0f8b483c7a60e900e7cf357605adef8c0b44cc59",
+  "input_versions": {
+    "ou24_associations": "sha256:52e021e5e70b75fc30faf403bb6579a000fc7a38c40c93504fde26241d56a2c6"
+  },
+  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +22,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T15:03:33.234+00:00",
-  "finished_at": "2026-10-28T15:04:16.350+00:00",
+  "started_at": "2026-10-30T23:01:22.218+00:00",
+  "finished_at": "2026-10-30T23:02:13.076+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
