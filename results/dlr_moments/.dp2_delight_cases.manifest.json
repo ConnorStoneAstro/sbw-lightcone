@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_delight_cases",
+  "universe_id": "dlr_moments",
+  "recipe": "python src/dp2_cross_method.py cases --associations results/dlr_moments/dp2_associations.parquet --candidates results/dlr_moments/dp2_candidates.parquet --delight data/dp2_delight_yjkang_index.csv --reference-match pos_1arcsec --hostless-cut flb01 --workers 16 --output results/dlr_moments/dp2_delight_cases.csv",
+  "definition_version": "sha256:e83f9eab476e2a0db036f7007a7420fcf642d839641896621cf136c7d811dfe0",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:66c85eb74ed1659ff207cd4c6b5045da2314d62cb50c26bfa31d0d29b0d32e45",
+  "decisions": {
+    "reference_match": "pos_1arcsec",
+    "sbw_hostless_cut": "flb01"
+  },
+  "input_versions": {
+    "dp2_associations": "sha256:d3e7ef557bcbbe4e27a7d5b7b33e7396f810d50a36935724e508407395b1539a",
+    "dp2_candidates": "sha256:c244e5caff0503e81998fe6c84f7936bf62d9f99aec01c30490edbe45c58feeb",
+    "dp2_delight_yjkang": "sha256:0db6f725527c8e4f6e0acda1c7de911b8da3b7c34fcb83c481478686be25d77b"
+  },
+  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-30T21:43:08.958+00:00",
+  "finished_at": "2026-10-30T21:43:42.599+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
