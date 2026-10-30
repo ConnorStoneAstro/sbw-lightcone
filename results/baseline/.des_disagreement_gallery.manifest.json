@@ -5,15 +5,15 @@
   "recipe": "bash -c 'T=$TMPDIR; [ -n \"$T\" ] || T=/tmp; python src/des_gallery.py results/baseline/des_disagreement_cases.csv --ellipse-scale 4 --output results/baseline/des_disagreement_gallery.pdf --band r --size 30 --ncol 4 --per-page 12 --cache-dir \"$T/des_cutouts\"'",
   "definition_version": "sha256:ccf4e3ff6c3a7ca6b13e4cf582d2b90101fd48277024f347f4548bfffd5152b5",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:618f122ecfbb5c8829daeed40045e8725ef5743cb392ecab4421b3b773ba3442",
+  "data_version": "sha256:550c0622ef151b2e2ac9cdc4aeace5f229108a88bd4c74d8375652f7f25813f0",
   "decisions": {
     "band": "r"
   },
   "input_versions": {
-    "des_disagreement_cases": "sha256:a07dcb2d67bfbc9cd43dd4f79083d67d19b5e325c4b0e6d14c6b72685f4d148c"
+    "des_disagreement_cases": "sha256:4c697e13394543a1c98fb072ccd2261dea6363c87f2c904c598cdbc52a970855"
   },
-  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
-  "git_remote": "",
+  "git_sha": "bd7b59239f94586c1bc93ea36bb58c9c57a4bad4",
+  "git_remote": "git@github.com:ConnorStoneAstro/sbw-lightcone.git",
   "lc_version": "0.5.0",
   "hermeticity": {
     "mechanism": "landlock",
@@ -22,8 +22,8 @@
     "landlock_abi": 4,
     "exec_allowlist_version": 1
   },
-  "started_at": "2026-10-29T18:55:08.419+00:00",
-  "finished_at": "2026-10-29T18:56:04.556+00:00",
+  "started_at": "2026-10-30T20:00:42.401+00:00",
+  "finished_at": "2026-10-30T20:01:14.921+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
