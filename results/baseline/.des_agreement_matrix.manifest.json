@@ -5,17 +5,17 @@
   "recipe": "python src/des_run.py fig agreement_matrix --tier des --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/des_agreement_matrix.pdf",
   "definition_version": "sha256:2749235bfa54f08175e1ceff1aabd64941766ec343b1be6940fab78a2ab6dfed",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:ac30514b0a438ef48560cae0d246662be3848e484894de3ca4ec03dc6702b52c",
+  "data_version": "sha256:6a37a154da540df1a202be84dce6ae66ac833f02893e686cf5592b39e19598ce",
   "decisions": {
     "sbw_hostless_cut": "flb01",
     "p_true_threshold": "p005"
   },
   "input_versions": {
-    "des_associations": "sha256:5df2c034a1b2117d169826ee9ce9aefd027c769d50fb68dc00c69e19cbbf4a0e",
-    "des_random_associations": "sha256:bf87ba60784716967970c67a14d2259885d0a8193c9d6421f724f364f36f8cc6"
+    "des_associations": "sha256:a1874dffb85ef64f27cf5bb8039dd16b03f222fbded2489dca690380fe20cd5b",
+    "des_random_associations": "sha256:409e26565638a1fa54ca5fc1e5f9304088cf4746b7b2da22ea15156e5a6c0749"
   },
-  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
-  "git_remote": "",
+  "git_sha": "17d075e33b4c74893b3774315f6c2a9b8872186c",
+  "git_remote": "git@github.com:ConnorStoneAstro/sbw-lightcone.git",
   "lc_version": "0.5.0",
   "hermeticity": {
     "mechanism": "landlock",
@@ -24,8 +24,8 @@
     "landlock_abi": 4,
     "exec_allowlist_version": 1
   },
-  "started_at": "2026-10-29T18:54:44.557+00:00",
-  "finished_at": "2026-10-29T18:55:11.318+00:00",
+  "started_at": "2026-10-30T19:15:32.700+00:00",
+  "finished_at": "2026-10-30T19:15:55.959+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
