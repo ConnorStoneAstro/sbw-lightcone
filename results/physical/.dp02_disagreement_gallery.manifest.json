@@ -4,16 +4,16 @@
   "universe_id": "physical",
   "recipe": "bash -c 'T=$TMPDIR; [ -n \"$T\" ] || T=/tmp; python src/dp02_gallery.py results/physical/dp02_disagreement_cases.csv --output results/physical/dp02_disagreement_gallery.pdf --band r --size 30 --ncol 4 --per-page 12 --token-file /global/cfs/cdirs/m1727/cstone/.rsp_image_tap_token --cache-dir \"$T/dp02_cutouts\"'",
   "definition_version": "sha256:55fc3def348b70b735ad3b35fd8e68929e2fdf636b2b7272767541cb896d8c36",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:8f05dd5a28f38502a0206e560c919d7f2e471607ec40fbf55a62d665b260df9a",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:2f83ef613de84c1edfb3a8ddb45b0127154969aa1fd771c3ad4d5accde1eff73",
   "decisions": {
     "band": "r"
   },
   "input_versions": {
-    "dp02_disagreement_cases": "sha256:73ef8ee1afaab8c84a343af1fbfc22a7ce5f2cb6a71de331ad91b23cf1f0a446",
+    "dp02_disagreement_cases": "sha256:a514c830c418e4c8d9878dcb78c274d87570f197aa56e3df08d88051c15e31c3",
     "rsp_token": "sha256:d6aedc2ab8e8dc19ed5d0f1e3b7543ff5db26f78ac2895ff1b1b7ccf9eceb3c6"
   },
-  "git_sha": "4dc2a7a2fea5e4ad0614efb2fe19cde25e2b8979",
+  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -23,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-27T22:53:39.932+00:00",
-  "finished_at": "2026-10-27T22:59:07.591+00:00",
+  "started_at": "2026-10-30T22:23:27.048+00:00",
+  "finished_at": "2026-10-30T22:26:09.027+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
