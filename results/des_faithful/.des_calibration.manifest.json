@@ -2,16 +2,18 @@
   "schema_version": 1,
   "output_id": "des_calibration",
   "universe_id": "des_faithful",
-  "recipe": "python src/des_run.py fig calibration --tier des --associations results/des_faithful/des_associations.parquet --output results/des_faithful/des_calibration.pdf",
-  "definition_version": "sha256:8c7b6266f6d2938cfb07f8aac69b95fe59607965f77ff4d0e4f6aa5a9f18a211",
+  "recipe": "python src/des_run.py fig calibration --tier des --associations results/des_faithful/des_associations.parquet --hostless-cut flb01 --output results/des_faithful/des_calibration.pdf",
+  "definition_version": "sha256:680b11a85bd92da9abe4144c6b4bcf5b327d55cf349bf2def880c4a0087b55c0",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:6eab3eef2e3cee685c9a192e26dfb22d129036b6dcd750580342aae45a5d0cd6",
-  "decisions": {},
+  "data_version": "sha256:d70499758700afc0107335639657bf538170356c37738a726fcd20e68e6eb0c9",
+  "decisions": {
+    "sbw_hostless_cut": "flb01"
+  },
   "input_versions": {
     "des_associations": "sha256:82a4ee902da6d4dd9961ffddae3c6572bb50dbd5218321c9a5bfb6abe6f9e79e"
   },
-  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
-  "git_remote": "",
+  "git_sha": "17d075e33b4c74893b3774315f6c2a9b8872186c",
+  "git_remote": "git@github.com:ConnorStoneAstro/sbw-lightcone.git",
   "lc_version": "0.5.0",
   "hermeticity": {
     "mechanism": "landlock",
@@ -20,8 +22,8 @@
     "landlock_abi": 4,
     "exec_allowlist_version": 1
   },
-  "started_at": "2026-10-29T18:57:10.740+00:00",
-  "finished_at": "2026-10-29T18:57:35.043+00:00",
+  "started_at": "2026-10-30T19:12:44.556+00:00",
+  "finished_at": "2026-10-30T19:13:14.170+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
