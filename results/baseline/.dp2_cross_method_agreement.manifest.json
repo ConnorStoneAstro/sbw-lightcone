@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_cross_method_agreement",
+  "universe_id": "baseline",
+  "recipe": "python src/dp2_cross_method.py agreement --associations results/baseline/dp2_associations.parquet --candidates results/baseline/dp2_candidates.parquet --delight data/dp2_delight_yjkang_index.csv --reference-match pos_1arcsec --hostless-cut flb01 --workers 16 --output results/baseline/dp2_cross_method_agreement.csv",
+  "definition_version": "sha256:1b29cb72f1475c9959e47a0320b5c70596179f6f33b44574f4d64693f5c6539a",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:d67204ad3dbed5bae83f9772b846fd80a067ed22fa608bd8b5e25b020e1b3a7c",
+  "decisions": {
+    "reference_match": "pos_1arcsec",
+    "sbw_hostless_cut": "flb01"
+  },
+  "input_versions": {
+    "dp2_associations": "sha256:d3e7ef557bcbbe4e27a7d5b7b33e7396f810d50a36935724e508407395b1539a",
+    "dp2_candidates": "sha256:c244e5caff0503e81998fe6c84f7936bf62d9f99aec01c30490edbe45c58feeb",
+    "dp2_delight_yjkang": "sha256:0db6f725527c8e4f6e0acda1c7de911b8da3b7c34fcb83c481478686be25d77b"
+  },
+  "git_sha": "6cfae4767595e1384015c260fe26e422dc89a249",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-30T21:12:51.632+00:00",
+  "finished_at": "2026-10-30T21:13:28.354+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
