@@ -4,16 +4,16 @@
   "universe_id": "truth_nearest",
   "recipe": "python src/dp02_cases.py --associations results/truth_nearest/dp02_associations.parquet --candidates results/truth_nearest/dp02_candidates.parquet --p-threshold p005 --output results/truth_nearest/dp02_disagreement_cases.csv",
   "definition_version": "sha256:ac79842c853f7d28e6d750019fc2bd0aebe1962b5bdd6c496cfb5025ffe3b029",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:22a9a503ca29094e4f4f40abfa252d648f4cc57afd9e6040286b8b446af3b802",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:5d20e875a93e8c08b72f4776cbbcdf60ef4b2a8245cc871b9425daf13d0ecf9e",
   "decisions": {
     "p_true_threshold": "p005"
   },
   "input_versions": {
-    "dp02_associations": "sha256:5b387f75f30e858c32cd5dfc2b0f528d491fe21679f8564c265447a62435e7d5",
+    "dp02_associations": "sha256:284928e8ffda31758799f51692de0245a17897a4098c287e5b31b43f9d37ec4b",
     "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
   },
-  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "git_sha": "b217b8a8dfe14a5a5726d0792846611e00e52c71",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -23,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T02:11:33.230+00:00",
-  "finished_at": "2026-10-28T02:12:22.634+00:00",
+  "started_at": "2026-10-31T01:38:05.072+00:00",
+  "finished_at": "2026-10-31T01:39:10.267+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
