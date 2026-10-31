@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_band_consistency",
+  "universe_id": "dp2_ddf_legacy",
+  "recipe": "python src/dp2_fig.py band_consistency --associations results/dp2_ddf_legacy/dp2_associations.parquet --sweep results/dp2_ddf_legacy/dp2_association_sweep.parquet --hostless-cut flb01 --output results/dp2_ddf_legacy/dp2_band_consistency.pdf",
+  "definition_version": "sha256:a63e3601adc48602734c6a2b4464dfe461ac94b0e262cb9dc180035c340351c1",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:6246e0a6ce1a2fb85530dff1e9695322ef473c0de3970743aad2a80434480a35",
+  "decisions": {
+    "sbw_hostless_cut": "flb01"
+  },
+  "input_versions": {
+    "dp2_associations": "sha256:aa8252a762a44ce65e3d74a7b81b5302527fcac118bd090d4e4254b594740089",
+    "dp2_association_sweep": "sha256:fc95c39e42c1179e3f542165a998947a84763a1c330cf7a2aee12c5e3c7a707d"
+  },
+  "git_sha": "81242f9e651de16daaa4c0877371b8e6d226893e",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-31T03:48:05.188+00:00",
+  "finished_at": "2026-10-31T03:48:30.404+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
