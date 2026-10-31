@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "dp2_hostless_indicator",
   "universe_id": "dp2_ddf_clean_legacy",
-  "recipe": "python src/dp02_fig.py hostless_indicator --tier dp2 --associations results/dp2_ddf_clean_legacy/dp2_associations.parquet --random results/dp2_ddf_clean_legacy/dp2_random_associations.parquet --hostless-cut flb01 --dlr-max d4 --output results/dp2_ddf_clean_legacy/dp2_hostless_indicator.pdf",
-  "definition_version": "sha256:213cbd458d8380f5fc620da602e7848c10a8a44f60019114fdd3ac8906f1c79a",
+  "recipe": "python src/dp02_fig.py hostless_indicator --tier dp2 --rung none --associations results/dp2_ddf_clean_legacy/dp2_associations.parquet --random results/dp2_ddf_clean_legacy/dp2_random_associations.parquet --hostless-cut flb01 --dlr-max d4 --output results/dp2_ddf_clean_legacy/dp2_hostless_indicator.pdf",
+  "definition_version": "sha256:bdf593f96d8d6a9b4a94819b91cfaa2fdc2e51ca741be149828aafa680377fe5",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:a5912fbcd11735f247c91e80237726de9f740023b32e404fc4457ab8c5951a90",
+  "data_version": "sha256:4cbc545ef08e8a9722a78f3aa4b89db67178643446d65f2a99f49490af1ff969",
   "decisions": {
     "sbw_hostless_cut": "flb01",
     "dlr_max": "d4"
@@ -14,7 +14,7 @@
     "dp2_associations": "sha256:81d0d514b6d392b4befefabe3347014f4b2d305e0c44dee673bd6da11da36c1d",
     "dp2_random_associations": "sha256:70798bc44a17633ee7c6b9298db78a0270ed50dca2ceaa0f6f4342f322e56a5c"
   },
-  "git_sha": "f52610def8b6eab103c3d860e06e11265dd2aba5",
+  "git_sha": "81242f9e651de16daaa4c0877371b8e6d226893e",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -24,8 +24,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-29T18:20:59.523+00:00",
-  "finished_at": "2026-10-29T18:22:42.130+00:00",
+  "started_at": "2026-10-31T03:35:28.861+00:00",
+  "finished_at": "2026-10-31T03:35:52.521+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
