@@ -2,23 +2,24 @@
   "schema_version": 1,
   "output_id": "ou24_calibration_by_band",
   "universe_id": "ext_none",
-  "recipe": "python src/dp02_sweep.py band --sample results/ext_none/ou24_sample.parquet --candidates results/ext_none/ou24_candidates.parquet --profile exponential --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness none --candidate-quality none --output results/ext_none/ou24_calibration_by_band.pdf",
-  "definition_version": "sha256:a8a631a613804fc46a3b67562c61d42f26e0cddc369c13e99820de57081a9169",
+  "recipe": "python src/dp02_sweep.py band --sample results/ext_none/ou24_sample.parquet --candidates results/ext_none/ou24_candidates.parquet --profile exponential --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness none --candidate-quality none --hostless-cut flb01 --output results/ext_none/ou24_calibration_by_band.pdf",
+  "definition_version": "sha256:8ead472b7c5fe0d62768a0267c7ee5af8f8c7b31619337f9add5162efadc3026",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:daf653058a3eb96b6f21a644b713c7ae0e20d91e516e3e6885d2d941ab215429",
+  "data_version": "sha256:f9d702d9c52a40149aa9885ff9d4276d783a691560cc0ec172dd113109dbb575",
   "decisions": {
     "sbw_profile": "exponential",
     "search_radius": "r30",
     "dlr_max": "d4",
-    "dlr_radius": "half_light",
+    "dlr_radius": "moments",
     "extendedness_cut": "none",
-    "candidate_quality": "none"
+    "candidate_quality": "none",
+    "sbw_hostless_cut": "flb01"
   },
   "input_versions": {
-    "ou24_sample": "sha256:82837aede0eec2512bee0a077078409e2b9de8cfa50b7b03992f0f2cea957632",
+    "ou24_sample": "sha256:b6fab21f36b10855008db53c114fac62ce484b98e73ac285443602909079a591",
     "ou24_candidates": "sha256:21ff2f3748a262604fb39858c0a12361e3cc8cb93713266d32677a52b678ab24"
   },
-  "git_sha": "93aeb213defc5253f6a89d4ea0541594e3e0d976",
+  "git_sha": "b217b8a8dfe14a5a5726d0792846611e00e52c71",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -28,8 +29,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-29T03:04:24.201+00:00",
-  "finished_at": "2026-10-29T03:14:19.876+00:00",
+  "started_at": "2026-10-31T00:35:39.912+00:00",
+  "finished_at": "2026-10-31T00:39:26.286+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
