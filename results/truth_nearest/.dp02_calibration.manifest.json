@@ -2,15 +2,17 @@
   "schema_version": 1,
   "output_id": "dp02_calibration",
   "universe_id": "truth_nearest",
-  "recipe": "python src/dp02_fig.py calibration --associations results/truth_nearest/dp02_associations.parquet --output results/truth_nearest/dp02_calibration.pdf",
-  "definition_version": "sha256:b506b549c010cd4269b8a923c80dbc73babd751c4f6606bdbe8cda0d4410c545",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:4bdd0156da47b4a505dfc4dbb2b0244891df03dba3294dd6d1ff7c41e07d09d0",
-  "decisions": {},
-  "input_versions": {
-    "dp02_associations": "sha256:5b387f75f30e858c32cd5dfc2b0f528d491fe21679f8564c265447a62435e7d5"
+  "recipe": "python src/dp02_fig.py calibration --associations results/truth_nearest/dp02_associations.parquet --hostless-cut flb01 --output results/truth_nearest/dp02_calibration.pdf",
+  "definition_version": "sha256:1a78b4fd7b8fc8ac7e5a6accb2dfafc63b023d1387d6e194876976d5d65c0d02",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:0a242de62c43b35b1cf31eb4939e77117a251ac0be26b1b9327e5b4cba3a6834",
+  "decisions": {
+    "sbw_hostless_cut": "flb01"
   },
-  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "input_versions": {
+    "dp02_associations": "sha256:284928e8ffda31758799f51692de0245a17897a4098c287e5b31b43f9d37ec4b"
+  },
+  "git_sha": "b217b8a8dfe14a5a5726d0792846611e00e52c71",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +22,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T02:11:33.302+00:00",
-  "finished_at": "2026-10-28T02:12:17.351+00:00",
+  "started_at": "2026-10-31T01:34:59.980+00:00",
+  "finished_at": "2026-10-31T01:35:39.481+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
