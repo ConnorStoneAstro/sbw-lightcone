@@ -4,13 +4,13 @@
   "universe_id": "truth_nearest",
   "recipe": "python src/dp02_fig.py recovery_vs --x redshift --associations results/truth_nearest/dp02_associations.parquet --output results/truth_nearest/dp02_recovery_vs_redshift.pdf",
   "definition_version": "sha256:69feab05e20ab2644931d33e38fca777438e48cf3a0daec7399a0268799a68ac",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:3c0006ef3d87c97ffcc6fca326248c1859eb823ceea8444ef5efc7545bbe5de1",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:5b1b949c5c2106d2484ca91d17ccdd191cad678e580e37201a9a3befb21a227b",
   "decisions": {},
   "input_versions": {
-    "dp02_associations": "sha256:5b387f75f30e858c32cd5dfc2b0f528d491fe21679f8564c265447a62435e7d5"
+    "dp02_associations": "sha256:284928e8ffda31758799f51692de0245a17897a4098c287e5b31b43f9d37ec4b"
   },
-  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "git_sha": "b217b8a8dfe14a5a5726d0792846611e00e52c71",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T02:11:33.289+00:00",
-  "finished_at": "2026-10-28T02:12:17.096+00:00",
+  "started_at": "2026-10-31T01:34:59.998+00:00",
+  "finished_at": "2026-10-31T01:35:39.126+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
