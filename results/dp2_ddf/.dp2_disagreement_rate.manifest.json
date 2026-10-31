@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_disagreement_rate",
+  "universe_id": "dp2_ddf",
+  "recipe": "python src/dp2_fig.py disagreement_rate --associations results/dp2_ddf/dp2_associations.parquet --sweep results/dp2_ddf/dp2_association_sweep.parquet --random results/dp2_ddf/dp2_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/dp2_ddf/dp2_disagreement_rate.json",
+  "definition_version": "sha256:fbd8ddd821eed98a70f96ada61e46c02970a8098b0b5d5c6a546171fa1da18a9",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:d001e3ed105993f92671d82699040f53639afa4c4022e51eaf162a428e8410a0",
+  "decisions": {
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
+  },
+  "input_versions": {
+    "dp2_associations": "sha256:e91a5f81c6b7d87256d5b9bd121b9b6350570af897aa2c37253b18a533991523",
+    "dp2_association_sweep": "sha256:a551b8dedb275652fa8203490a7ffaa4df2415287cb5e5613aa0705efb1e1592",
+    "dp2_random_associations": "sha256:3b3605a827d5bdbbfee666ec0414da4a994b5cb4817d01136f40c851ae63c387"
+  },
+  "git_sha": "6fdffc570925e25110080cc1a3be6225a066375c",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-31T04:19:09.039+00:00",
+  "finished_at": "2026-10-31T04:19:35.144+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
