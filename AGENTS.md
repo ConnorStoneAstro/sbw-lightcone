@@ -876,3 +876,31 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   panel (c) is gone. The old `n_unmatched` bookkeeping is gone with it.
   DES outputs were already stale from the calibration change, so the rung
   filter reaches them in the same remake.
+- **Remake under the sample ladder done (31 Oct 2026, commits up to
+  c67987c).** Every tier that a universe holds is current: baseline,
+  `physical`, `dlr_moments` (dp02 + ou24 + dp2), `sep10` and
+  `truth_nearest` (dp02), `ext_none` (ou24), the five `dp2_ddf*` universes
+  (dp2; `dp2_p_top_host` pulls the dp02 chain into them as a dependency),
+  DES in baseline and `des_faithful` on the laptop. `lc materialize --check`
+  on NERSC still lists the tiers a universe never held (every universe
+  declares every output) plus des_*; those are not to be made, so filter
+  targets by universe and tier prefix (an unfiltered chain over sep10 /
+  truth_nearest / ext_none wasted an allocation). The DP2 universes hit the
+  annex-pointer trap again (inputs made in `../paper-dp2`): fixed by
+  reinjecting every `results/dp2_ddf*/` file whose content starts with
+  `/annex/objects/` from that clone, with the two-argument
+  `git annex reinject <copy> <file>` (19 files). Baseline headline numbers:
+  DP0.2 sample 31,955 (hosted 394,021; host row 354,053; detectable 39,352;
+  1,149 host-unmatched inside), rung 4 30,642, mean P_SBW(true) 97.6 %,
+  argmax 97.9 %, DLR 92.4 %, calibration error 0.023 (under-confident below
+  P ~ 0.1: those candidates are the true host several times more often than
+  P says). OU2024 sample 19,058 (hosted 511,108; detectable 21,383; 2,025
+  unmatched inside), rung 4 15,851, mean P 98.6 %, DLR 97.0 %, calibration
+  error 0.003. Miss accounting (of the sample): DP0.2 cat1 3.60 % of which
+  the pipeline assigns a wrong host for 1.18 % (SBW) / 1.15 % (DLR), cat2
+  0.51 % (wrong host 0.07 / 0.03 %), cat3 1.94 / 3.21 %, cat4 0.92 / 4.11 %,
+  success 93.0 / 88.6 %; OU2024 cat1 10.63 % (wrong host 4.20 / 4.17 %),
+  cat2 6.20 % (0.26 / 0.22 %), cat3 3.10 / 1.82 %, cat4 0.12 / 0.65 %,
+  success 80.0 / 80.7 %. The cat1 wrong-host fractions agree between
+  methods because with the true host absent the outcome is set by whether
+  any other object lies in the search radius, not by the indicator.
