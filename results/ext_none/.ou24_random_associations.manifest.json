@@ -2,16 +2,16 @@
   "schema_version": 1,
   "output_id": "ou24_random_associations",
   "universe_id": "ext_none",
-  "recipe": "python src/dp02_associate.py --positions results/ext_none/ou24_random_positions.parquet --candidates results/ext_none/ou24_random_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness none --candidate-quality none --workers 16 --output results/ext_none/ou24_random_associations.parquet",
-  "definition_version": "sha256:70238ae04f82fbf9bf9e676694771a05c9aa05be8abe295331be41f918ba2402",
+  "recipe": "python src/dp02_associate.py --positions results/ext_none/ou24_random_positions.parquet --candidates results/ext_none/ou24_random_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness none --candidate-quality none --workers 16 --output results/ext_none/ou24_random_associations.parquet",
+  "definition_version": "sha256:938090616b63b9f391c6f5200165fd16747a36c020f9a6dac6d9f1c739b2786a",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:36cdaca5aa5b84383b7ba6c1b9919ec494c6b97cf03ba0f7852c35c9bb6ad6be",
+  "data_version": "sha256:fa1760be6f2b75f4efd619f569fb59df17d174278e6d673e79b0cf20f0a31e26",
   "decisions": {
     "sbw_profile": "exponential",
     "band": "r",
     "search_radius": "r30",
     "dlr_max": "d4",
-    "dlr_radius": "half_light",
+    "dlr_radius": "moments",
     "extendedness_cut": "none",
     "candidate_quality": "none"
   },
@@ -19,7 +19,7 @@
     "ou24_random_positions": "sha256:42ba23066cead1fe2000a5c6219db132f7b0d77354ce2563c6a2cff39d16c533",
     "ou24_random_candidates": "sha256:a35ab804b50c635a7653fe5cbec209da7be5c32feab8ee7cfb51f8f2eba18708"
   },
-  "git_sha": "72bced872e881980f3722e3bb3bd7c9e1b954a18",
+  "git_sha": "b217b8a8dfe14a5a5726d0792846611e00e52c71",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -29,8 +29,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T19:36:57.909+00:00",
-  "finished_at": "2026-10-28T19:40:34.949+00:00",
+  "started_at": "2026-10-31T00:22:14.901+00:00",
+  "finished_at": "2026-10-31T00:24:44.161+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
