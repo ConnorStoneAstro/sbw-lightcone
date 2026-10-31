@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_legacy_angle_check",
+  "universe_id": "dp2_ddf_galaxy",
+  "recipe": "python src/legacy_angle_check.py --sweeps data/legacy_dr10_sweeps_index.csv --n 60 --output results/dp2_ddf_galaxy/dp2_legacy_angle_check.pdf",
+  "definition_version": "sha256:b01547a826efbe05677aec5aa096420769958c6ec3ae8c97d95bd891aa4b18d7",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:91cf6072ce29e70889adf1d6c29f4b59621b8c4b21d8b28774107c21f44c4775",
+  "decisions": {},
+  "input_versions": {
+    "legacy_dr10_sweeps": "sha256:d8e88fea383ad190ee06aacae97d7efedfdf321f44195f2b7f10b4f9c30b331b"
+  },
+  "git_sha": "b217b8a8dfe14a5a5726d0792846611e00e52c71",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-10-31T02:27:53.869+00:00",
+  "finished_at": "2026-10-31T02:30:20.255+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
