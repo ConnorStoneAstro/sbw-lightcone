@@ -5,17 +5,17 @@
   "recipe": "python src/dp2_fig.py disagreement_rate --associations results/dp2_ddf_clean/dp2_associations.parquet --sweep results/dp2_ddf_clean/dp2_association_sweep.parquet --random results/dp2_ddf_clean/dp2_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/dp2_ddf_clean/dp2_disagreement_rate.json",
   "definition_version": "sha256:21577c5b1daf10a7dede9af05ad3ceac0dc50f325e91fde8dcf54d73e299c648",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:d9c9e0d338221d67155b38cdb8d62796c2a6215de4ef9183f7cf6edd16d98f72",
+  "data_version": "sha256:d6c8eeb0d54fcef1bc948c904cb7a5c9d46f7da281e207d734c32a061f61837b",
   "decisions": {
     "sbw_hostless_cut": "flb01",
     "p_true_threshold": "p005"
   },
   "input_versions": {
-    "dp2_associations": "sha256:9fd7d89c381cf13d214b977b9beb8b583dc81ecaaa5c2372cfc33b77b72d6ad9",
-    "dp2_association_sweep": "sha256:aaa59d4912c875c02f47c3da523367f7b55d70215bd9cd1d2f0b2775a7420b88",
-    "dp2_random_associations": "sha256:ef905df93d4e9ed2ee92a956dbe6fe74a26f6207c942ee24707c12da9824c60a"
+    "dp2_associations": "sha256:56a802916e00e6653d7010a3c5c04e35539ccda0b16b38fa58060797e7e50af9",
+    "dp2_association_sweep": "sha256:526974dc65872647ea810e5a24c32aa29006c6c8a96c9884279ffa8a6d5887fa",
+    "dp2_random_associations": "sha256:3ffcbac8e7dffa481221d71c235a7ffcf25c8430eef0ed9826cc1674828244d6"
   },
-  "git_sha": "4ec4a7f4aa1e342d9716750ba2c0547ec5843ed4",
+  "git_sha": "6fdffc570925e25110080cc1a3be6225a066375c",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -25,8 +25,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-29T17:53:49.161+00:00",
-  "finished_at": "2026-10-29T17:54:17.394+00:00",
+  "started_at": "2026-10-31T04:29:12.096+00:00",
+  "finished_at": "2026-10-31T04:29:37.834+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
