@@ -160,9 +160,14 @@ def figure(a):
             bottom += f
     ax.set_xticks([0, 1], [f"{m.upper()}\nhosted {100 * pl[m]['frac_hosted']:.1f}%\ncontam. {100 * pl[m]['contamination']['of_hosted']:.2f}%"
                            for m in ("sbw", "dlr")], fontsize=7.5)
-    ax.set_xlim(-0.5, 2.4); ax.set_ylim(lo, 1.0); ax.set_ylabel(f"fraction of detectable SNe (N = {n:,})")
-    ax.legend(fontsize=6.5, loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False)
-    ax.text(1.0, 0.55, "contam. = wrong hosts of either cause\nover the hosted SNe", transform=ax.transAxes, fontsize=6.5, va="top")
+    ax.set_ylim(lo, 1.0); ax.set_ylabel(f"fraction of detectable SNe (N = {n:,})")
+    if a.legend == "outside":
+        ax.set_xlim(-0.5, 2.4)
+        ax.legend(fontsize=6.5, loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False)
+        ax.text(1.0, 0.55, "contam. = wrong hosts of either cause\nover the hosted SNe", transform=ax.transAxes, fontsize=6.5, va="top")
+    else:
+        ax.set_xlim(-0.5, 3.1)
+        ax.legend(fontsize=6.5, loc="center right")
     ax.grid(axis="x", visible=False)
     ax.set_title("How SNe are placed with a host", fontsize=10, loc="left")
     fig.tight_layout(); fig.savefig(a.output); plt.close(fig)
@@ -188,6 +193,8 @@ def main(argv=None):
     c.add_argument("--output", required=True)
     f = sub.add_parser("figure")
     f.add_argument("--accounting", required=True)
+    f.add_argument("--legend", choices=["inside", "outside"], default="inside",
+                   help="outside: legend and note to the right of the axes (paper layout)")
     f.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     compute(a) if a.mode == "compute" else figure(a)

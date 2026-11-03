@@ -706,7 +706,7 @@ outputs:
     inputs: [dp02_miss_accounting]
     decisions: []
     recipe:
-      command: python src/dp02_miss.py figure --accounting {inputs.dp02_miss_accounting} --output {output}
+      command: python src/dp02_miss.py figure --legend outside --accounting {inputs.dp02_miss_accounting} --output {output}
   - id: dp02_credible_set
     type: figure
     format: pdf
@@ -1084,7 +1084,7 @@ outputs:
     inputs: [ou24_miss_accounting]
     decisions: []
     recipe:
-      command: python src/dp02_miss.py figure --accounting {inputs.ou24_miss_accounting} --output {output}
+      command: python src/dp02_miss.py figure --legend outside --accounting {inputs.ou24_miss_accounting} --output {output}
   - id: ou24_offset_diagnostic
     type: figure
     format: pdf
