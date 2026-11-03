@@ -4,8 +4,8 @@
   "universe_id": "dlr_moments",
   "recipe": "python src/dp02_associate.py --positions results/dlr_moments/dp02_random_positions.parquet --candidates results/dlr_moments/dp02_random_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --candidate-quality none --output results/dlr_moments/dp02_random_associations.parquet",
   "definition_version": "sha256:e989d5f49dc3cf96e7a5cd66f33715dddc27635f22b00de9a385aad773f137c2",
-  "env_version": "sha256:91f79264785e657312ef2fbcf369a5688d5dc3972707aaaaa5d55533f3fda454",
-  "data_version": "sha256:4629353c327d27f44a9b53d227b40313ffa6c94da0fdf38aff88684c5bd1e502",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:90b1fe0799e9f324cf7b996862cf12a75a0adc70dc24ab1234fc152fde7f729b",
   "decisions": {
     "sbw_profile": "exponential",
     "band": "r",
@@ -16,10 +16,10 @@
     "candidate_quality": "none"
   },
   "input_versions": {
-    "dp02_random_positions": "sha256:e24e471eec460c66d34fc93c5c5c649fb4617529c81e799e4731cdaeceab7099",
-    "dp02_random_candidates": "sha256:7b84110076dab1c657559fcd52cada8610cdad509edb3a26ae703c5d482f2909"
+    "dp02_random_positions": "sha256:b32b9c4290edab5cfd2773867f11d09636f2533d50b4622ad1fc95510de1342d",
+    "dp02_random_candidates": "sha256:643599c465b09b28a2c4f72e43200bd8477276f2cc66eb249c8bcbb54903e644"
   },
-  "git_sha": "a353d9a2bb2510070313aa51230b2b503a88143e",
+  "git_sha": "8fb649171a654ba472071d32c1994e7719ddd529",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -29,8 +29,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T01:11:56.859+00:00",
-  "finished_at": "2026-10-28T01:14:30.738+00:00",
+  "started_at": "2026-11-03T03:52:53.891+00:00",
+  "finished_at": "2026-11-03T03:55:12.090+00:00",
   "uv_version": "0.13.5",
   "image": null
 }

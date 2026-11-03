@@ -2,15 +2,16 @@
   "schema_version": 1,
   "output_id": "ou24_credible_set_metrics",
   "universe_id": "dlr_moments",
-  "recipe": "python src/dp02_fig.py credible_set_metrics --tier ou24 --associations results/dlr_moments/ou24_associations.parquet --output results/dlr_moments/ou24_credible_set_metrics.json",
-  "definition_version": "sha256:d67b3dacffccbac3cd28f0a122d157273c5558337124a3ac0de5417abfa60822",
+  "recipe": "python src/dp02_fig.py credible_set_metrics --tier ou24 --dp02-credible-metrics results/dlr_moments/dp02_credible_set_metrics.json --associations results/dlr_moments/ou24_associations.parquet --output results/dlr_moments/ou24_credible_set_metrics.json",
+  "definition_version": "sha256:f2f7cc2dd2ccdeb72c2195a2643b3449e3b07025fb73a830a20cda1b986d8156",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:e3366b507c8bdd4d7c4c34be2e1a3b78b13409fa063add761090ab9722300f50",
+  "data_version": "sha256:8b5555ec7f23c2e275244308c603f9ed36530279bc970a5231e28afb49f147a8",
   "decisions": {},
   "input_versions": {
-    "ou24_associations": "sha256:52e021e5e70b75fc30faf403bb6579a000fc7a38c40c93504fde26241d56a2c6"
+    "ou24_associations": "sha256:ac2464d7534703f38440a744b2fe5e575d7416328b013f45ecb99bb2894041dc",
+    "dp02_credible_set_metrics": "sha256:21c801d09424ad12c4a69ecb6ec6ee65ffd3725c4662f244dbb47cd7d9526ecf"
   },
-  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
+  "git_sha": "8fb649171a654ba472071d32c1994e7719ddd529",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +21,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-30T23:03:39.439+00:00",
-  "finished_at": "2026-10-30T23:04:14.716+00:00",
+  "started_at": "2026-11-03T05:08:35.076+00:00",
+  "finished_at": "2026-11-03T05:09:06.705+00:00",
   "uv_version": "0.13.5",
   "image": null
 }

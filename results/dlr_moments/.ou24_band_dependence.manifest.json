@@ -5,7 +5,7 @@
   "recipe": "python src/dp02_sweep.py band_dependence --sample results/dlr_moments/ou24_sample.parquet --candidates results/dlr_moments/ou24_candidates.parquet --profile exponential --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --candidate-quality none --output results/dlr_moments/ou24_band_dependence.pdf",
   "definition_version": "sha256:a9d43163ce77fce32d537294f031202fa769292bca9599b00d6d8bc4ea143fce",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:3b1ca145ae6cdcef50a0e8926d64ad98f63c096917980be43c470ee9460b64ea",
+  "data_version": "sha256:80f09b7c37badd55b9ad112e86af8917ff79376ce7921aeeb47505cddaa173b0",
   "decisions": {
     "sbw_profile": "exponential",
     "search_radius": "r30",
@@ -15,10 +15,10 @@
     "candidate_quality": "none"
   },
   "input_versions": {
-    "ou24_sample": "sha256:c33c43241366929139b09e0cbd33b6ee9951054ea87cfd150cc2699291616383",
+    "ou24_sample": "sha256:ef17e33760a6249cf8faad2f97042bafa0e70faf549cf10c361ace753b515957",
     "ou24_candidates": "sha256:03cb20801d8df4469ba3225e7c56951588f29ef25b42cfa303cefbe0af78f83f"
   },
-  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
+  "git_sha": "8fb649171a654ba472071d32c1994e7719ddd529",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -28,8 +28,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-30T22:58:01.473+00:00",
-  "finished_at": "2026-10-30T23:01:21.791+00:00",
+  "started_at": "2026-11-03T05:09:43.845+00:00",
+  "finished_at": "2026-11-03T05:13:18.997+00:00",
   "uv_version": "0.13.5",
   "image": null
 }

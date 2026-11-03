@@ -5,15 +5,15 @@
   "recipe": "python src/dp02_offsets.py --associations results/dlr_moments/dp02_associations.parquet --shapes results/dlr_moments/dp02_host_truth_shapes.parquet --hostless-cut flb01 --output results/dlr_moments/dp02_offset_diagnostic.pdf",
   "definition_version": "sha256:efe132afe35e5eb6eb8dda2987eb6ded67e14b392da8296c15ea66fe53c2c084",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:9d65f5991dac7bfb9b202008404c4e7b8697759d28d12fa31fbb0d9a72988d41",
+  "data_version": "sha256:f77f1353dc2175e264a69c19a20dc768315c939d4f35675bd5bc1e77781c0f9c",
   "decisions": {
     "sbw_hostless_cut": "flb01"
   },
   "input_versions": {
-    "dp02_associations": "sha256:a68f1c45dc13d0131c36fd456d6a6219f961bb83f3ee58ccd1664594bfe57063",
+    "dp02_associations": "sha256:0e3b9c04ee3259a96772eafbd493fefb653077c7cc19e4ae1a5ae746200b2616",
     "dp02_host_truth_shapes": "sha256:121a9b13c9b38a10601c42ebe613114cc0b9a655809660d332771c6f8e421326"
   },
-  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
+  "git_sha": "8fb649171a654ba472071d32c1994e7719ddd529",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -23,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-30T22:42:04.834+00:00",
-  "finished_at": "2026-10-30T22:42:35.821+00:00",
+  "started_at": "2026-11-03T04:23:44.069+00:00",
+  "finished_at": "2026-11-03T04:24:23.344+00:00",
   "uv_version": "0.13.5",
   "image": null
 }

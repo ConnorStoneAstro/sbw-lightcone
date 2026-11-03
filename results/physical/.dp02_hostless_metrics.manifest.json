@@ -2,16 +2,16 @@
   "schema_version": 1,
   "output_id": "dp02_hostless_metrics",
   "universe_id": "physical",
-  "recipe": "python src/dp02_fig.py hostless_metrics --tier dp02 --associations results/physical/dp02_associations.parquet --random results/physical/dp02_random_associations.parquet --output results/physical/dp02_hostless_metrics.json",
-  "definition_version": "sha256:51314b795ab67a0bea545c03bd651a208736a5065748eb1fe782311a692a0a5f",
+  "recipe": "python src/dp02_fig.py hostless_metrics --tier dp02 --dp02-hostless-metrics own --associations results/physical/dp02_associations.parquet --random results/physical/dp02_random_associations.parquet --output results/physical/dp02_hostless_metrics.json",
+  "definition_version": "sha256:083fcbe9e9cdd6e9b719335206eb353c11b59b6070f995288682659eaa03cd81",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:b150687e3687f2ac04aa42fdd80e3533a2ff35d435359cfba259af7958daa113",
+  "data_version": "sha256:8d12098464a53a8c4f4e2d6141c067f7c905c8d9863d2fd56d01380f225bf4ca",
   "decisions": {},
   "input_versions": {
-    "dp02_associations": "sha256:e954aab554ec26297c34b0abbd6daf4e9f76b54098ee368625c4246679494542",
-    "dp02_random_associations": "sha256:10cdf8ed3be1d3d31e02982cd5b87d64b22439abe6533970d228af4d831cba15"
+    "dp02_associations": "sha256:39f9b31bef1a970ad04496f3dfa3cad1121df60f40f59a5d9e42973d9a8cb6fb",
+    "dp02_random_associations": "sha256:1c8b8dfe359fc2e350fb8ef9dde1491e1a09c8f395e1fe2a574d5242f34d7390"
   },
-  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
+  "git_sha": "8fb649171a654ba472071d32c1994e7719ddd529",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -21,8 +21,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-30T22:22:18.131+00:00",
-  "finished_at": "2026-10-30T22:23:26.563+00:00",
+  "started_at": "2026-11-03T04:16:50.148+00:00",
+  "finished_at": "2026-11-03T04:17:29.197+00:00",
   "uv_version": "0.13.5",
   "image": null
 }

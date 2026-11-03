@@ -5,7 +5,7 @@
   "recipe": "python src/dp02_sweep.py band --sample results/dlr_moments/ou24_sample.parquet --candidates results/dlr_moments/ou24_candidates.parquet --profile exponential --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --candidate-quality none --hostless-cut flb01 --output results/dlr_moments/ou24_calibration_by_band.pdf",
   "definition_version": "sha256:56fe103faf950dbafcbf0677417b7490b4a0fbdc25b97a38233166b5f9eb3bc9",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:a6f08c6d85ad2e0c35ffa2b06c29c5666c178dedde87bfabd705d9df18de1f30",
+  "data_version": "sha256:8d96279e32c1bd144a059dd4a1047500bf5d5945b331693531894ddfaf9f71ee",
   "decisions": {
     "sbw_profile": "exponential",
     "search_radius": "r30",
@@ -16,10 +16,10 @@
     "sbw_hostless_cut": "flb01"
   },
   "input_versions": {
-    "ou24_sample": "sha256:c33c43241366929139b09e0cbd33b6ee9951054ea87cfd150cc2699291616383",
+    "ou24_sample": "sha256:ef17e33760a6249cf8faad2f97042bafa0e70faf549cf10c361ace753b515957",
     "ou24_candidates": "sha256:03cb20801d8df4469ba3225e7c56951588f29ef25b42cfa303cefbe0af78f83f"
   },
-  "git_sha": "4a01056003338a0b0f503c86281206c1e2de8425",
+  "git_sha": "8fb649171a654ba472071d32c1994e7719ddd529",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -29,8 +29,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-30T22:53:31.886+00:00",
-  "finished_at": "2026-10-30T22:57:01.800+00:00",
+  "started_at": "2026-11-03T04:54:33.247+00:00",
+  "finished_at": "2026-11-03T04:58:12.663+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
