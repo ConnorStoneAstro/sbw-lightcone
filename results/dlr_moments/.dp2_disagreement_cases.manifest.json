@@ -11,11 +11,11 @@
     "exclude_suspect": "keep"
   },
   "input_versions": {
-    "dp2_associations": "sha256:d3e7ef557bcbbe4e27a7d5b7b33e7396f810d50a36935724e508407395b1539a",
+    "dp2_associations": "sha256:ae6ef4909f6812b9f73c716c8790906d02754a26f93432cb4192d82382841055",
     "dp2_association_sweep": "sha256:f4e6699744ba9f423c9601c53295ca74c9e37fcef152d09488a4dcedb1b6e6d9",
-    "dp2_candidates": "sha256:c244e5caff0503e81998fe6c84f7936bf62d9f99aec01c30490edbe45c58feeb"
+    "dp2_candidates": "sha256:fcacb8b760f0153c4c25cb6e4426c423949681de551b7d537f61908816658af8"
   },
-  "git_sha": "8fe1fcfffff1238946ba60c3be7e2bd094990ff8",
+  "git_sha": "8fb649171a654ba472071d32c1994e7719ddd529",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -25,8 +25,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T18:35:35.021+00:00",
-  "finished_at": "2026-10-28T18:36:35.176+00:00",
+  "started_at": "2026-11-03T04:53:12.302+00:00",
+  "finished_at": "2026-11-03T04:53:44.555+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
