@@ -2,27 +2,28 @@
   "schema_version": 1,
   "output_id": "des_hostless_metrics",
   "universe_id": "des_faithful",
-  "recipe": "python src/des_run.py fig hostless_metrics --tier des --associations results/des_faithful/des_associations.parquet --random results/des_faithful/des_random_associations.parquet --output results/des_faithful/des_hostless_metrics.json",
-  "definition_version": "sha256:c00e4dbfb5eea4fb8f76c9cc9f3f5f0e1a16f9c56b057115eb679edee92a4866",
+  "recipe": "python src/des_run.py fig hostless_metrics --tier des --dp02-hostless-metrics results/des_faithful/dp02_hostless_metrics.json --associations results/des_faithful/des_associations.parquet --random results/des_faithful/des_random_associations.parquet --output results/des_faithful/des_hostless_metrics.json",
+  "definition_version": "sha256:52779c1d4a27493adda59d33aaef80b7fbe59f4b42d03f8cc7601f77e974c02b",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:6439c290bed7c9aa8393f793d7c158c18fecf77b42d6568a5356da1e6dda09fc",
+  "data_version": "sha256:fb2f54126b3b6d549603932ba7e16f56547246543e2f2ce9dab3b6513dded572",
   "decisions": {},
   "input_versions": {
-    "des_associations": "sha256:82a4ee902da6d4dd9961ffddae3c6572bb50dbd5218321c9a5bfb6abe6f9e79e",
-    "des_random_associations": "sha256:5b0d804a3678203048d5a3a8bc91cf2575885dc98402e16060537df9e060fb45"
+    "des_associations": "sha256:1013a2a1dd875463d032c67e311e943f461dc81556420df772830a54997c4f5c",
+    "des_random_associations": "sha256:5b0d804a3678203048d5a3a8bc91cf2575885dc98402e16060537df9e060fb45",
+    "dp02_hostless_metrics": "sha256:e4832103c0d1bc9ae49bb172acb338064477f3b0cfdb671483d5695c571a7599"
   },
-  "git_sha": "a8e5039123a4bf250a7959ff703919dfd3f504f6",
-  "git_remote": "",
+  "git_sha": "21dafd633936ca231c73dd6041daf92b07fb121f",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
-    "mechanism": "landlock",
-    "fs": "declared",
+    "mechanism": "none",
+    "fs": "open",
     "network": "allowed",
-    "landlock_abi": 4,
-    "exec_allowlist_version": 1
+    "landlock_abi": null,
+    "exec_allowlist_version": null
   },
-  "started_at": "2026-10-29T18:57:10.723+00:00",
-  "finished_at": "2026-10-29T18:57:32.709+00:00",
+  "started_at": "2026-11-03T06:04:47.196+00:00",
+  "finished_at": "2026-11-03T06:05:11.152+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
