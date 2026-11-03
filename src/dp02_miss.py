@@ -147,22 +147,24 @@ def figure(a):
     n = pl["n_detectable"]
     fig, ax = plt.subplots(figsize=(7.4, 4.6))
     lo = max(0.0, np.floor((min(pl[m]["true_host"]["frac"] for m in ("sbw", "dlr")) - 0.03) * 20) / 20)
+    gap = 1.6 if a.legend == "outside" else 1.0   # room for the labels before the next bar
+    xs = [0.0, gap]
     for i, m in enumerate(("sbw", "dlr")):
         bottom = 0.0
         for c, color in STACK:
             f = pl[m][c]["frac"]
-            ax.bar(i, f, bottom=bottom, color=color, width=0.6, label=SHORT[c] if i == 0 else None)
+            ax.bar(xs[i], f, bottom=bottom, color=color, width=0.6, label=SHORT[c] if i == 0 else None)
             label = f"{100 * f:.2f}%"
             if "of_hosted" in pl[m][c] and c != "true_host":
                 label += f" ({100 * pl[m][c]['of_hosted']:.2f}% of hosted)"
             if bottom + f > lo and f > 0.0015:
-                ax.text(i + 0.33, max(bottom + f / 2, lo + 0.004), label, fontsize=6.5, va="center")
+                ax.text(xs[i] + 0.33, max(bottom + f / 2, lo + 0.004), label, fontsize=6.5, va="center")
             bottom += f
-    ax.set_xticks([0, 1], [f"{m.upper()}\nhosted {100 * pl[m]['frac_hosted']:.1f}%\ncontam. {100 * pl[m]['contamination']['of_hosted']:.2f}%"
+    ax.set_xticks(xs, [f"{m.upper()}\nhosted {100 * pl[m]['frac_hosted']:.1f}%\ncontam. {100 * pl[m]['contamination']['of_hosted']:.2f}%"
                            for m in ("sbw", "dlr")], fontsize=7.5)
     ax.set_ylim(lo, 1.0); ax.set_ylabel(f"fraction of detectable SNe (N = {n:,})")
     if a.legend == "outside":
-        ax.set_xlim(-0.5, 2.4)
+        ax.set_xlim(-0.5, gap + 1.4)
         ax.legend(fontsize=6.5, loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False)
         ax.text(1.0, 0.55, "contam. = wrong hosts of either cause\nover the hosted SNe", transform=ax.transAxes, fontsize=6.5, va="top")
     else:

@@ -53,6 +53,14 @@ inputs:
       and max_flux_<band>, the SN's largest flux in each band over the full
       ten-year light curve (nJy). 31.4 - 2.5 log10(max_flux_r) is the true
       peak r magnitude used by transient_peak_mag; t0 is the peak epoch.
+  - id: dp02_miss_script
+    type: data
+    source: src/dp02_miss.py
+    description: >-
+      The script that draws Fig 1, declared as an input of the two placement
+      figures (3 Nov 2026) so that a layout edit makes them stale; the
+      compute outputs do not list it, their identity is the recipe and its
+      decisions.
   - id: dp02_visits
     type: data
     source: "/global/cfs/cdirs/lsst/shared/rubin/DP0.2/visitTable/visitTable_LSSTCam-imSim_2_2i_runs_DP0_2_v23_0_2_PREOPS-905_step7_20220501T161443Z.parq"
@@ -703,7 +711,7 @@ outputs:
       from the placement block of dp02_miss_accounting. The earlier panels
       (conditional loss per stage, candidate_quality sweep) are gone; the
       sequential cat1-cat4 accounting stays in the json.
-    inputs: [dp02_miss_accounting]
+    inputs: [dp02_miss_accounting, dp02_miss_script]
     decisions: []
     recipe:
       command: python src/dp02_miss.py figure --legend outside --accounting {inputs.dp02_miss_accounting} --output {output}
@@ -1081,7 +1089,7 @@ outputs:
     type: figure
     format: pdf
     description: As dp02_miss_accounting_fig for OU2024 (one panel, hosted / rejected placement), drawn from ou24_miss_accounting.
-    inputs: [ou24_miss_accounting]
+    inputs: [ou24_miss_accounting, dp02_miss_script]
     decisions: []
     recipe:
       command: python src/dp02_miss.py figure --legend outside --accounting {inputs.ou24_miss_accounting} --output {output}
