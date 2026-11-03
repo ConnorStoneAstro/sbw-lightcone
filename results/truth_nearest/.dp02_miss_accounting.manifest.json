@@ -5,7 +5,7 @@
   "recipe": "python src/dp02_miss.py compute --sample results/truth_nearest/dp02_sample.parquet --associations results/truth_nearest/dp02_associations.parquet --candidates results/truth_nearest/dp02_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --hostless-cut flb01 --p-threshold p005 --tier dp02 --workers 16 --output results/truth_nearest/dp02_miss_accounting.json",
   "definition_version": "sha256:d61f695efe2a860479017be6a623362e0c72e0dd79e7f291eea7f1ed9c214577",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:9d4cbcf4a012e4d1bc27bde8773f5ec63adaf15ac943bec0db4e86cbea50e14c",
+  "data_version": "sha256:7a272c200b23b0cfdfd5f2108b53356f04e5a66feca20126b1c314a50635e0b0",
   "decisions": {
     "sbw_profile": "exponential",
     "band": "r",
@@ -17,11 +17,11 @@
     "p_true_threshold": "p005"
   },
   "input_versions": {
-    "dp02_sample": "sha256:c7f083a5adcb269bacaf69aabb1a5348aaa4033d32c15d473ef3e9948ae44f01",
-    "dp02_associations": "sha256:284928e8ffda31758799f51692de0245a17897a4098c287e5b31b43f9d37ec4b",
+    "dp02_sample": "sha256:fe67e7b084ceb5948884bae02cc54a8075564ca12f59a7fd8e1697033285624b",
+    "dp02_associations": "sha256:51cec39d551d47c018f0ec3284b98a3c8612d84d12bf657c6976c3a14c4f48bb",
     "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
   },
-  "git_sha": "b217b8a8dfe14a5a5726d0792846611e00e52c71",
+  "git_sha": "e9f2cd4129f302a126bfbcb466aca270e7f02375",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -31,8 +31,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-31T01:36:18.824+00:00",
-  "finished_at": "2026-10-31T01:38:04.399+00:00",
+  "started_at": "2026-11-03T08:00:45.325+00:00",
+  "finished_at": "2026-11-03T08:02:46.403+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
