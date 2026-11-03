@@ -5,15 +5,15 @@
   "recipe": "python src/dp02_candidates.py --positions results/physical/ou24_random_positions.parquet --objects data/ou24_objectTable_index.csv --search-radius r30 --workers 16 --output results/physical/ou24_random_candidates.parquet",
   "definition_version": "sha256:755c8841434529b3d0798bb571a254853bea38d4a2129e01750ac39a1d48cfa5",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:a35ab804b50c635a7653fe5cbec209da7be5c32feab8ee7cfb51f8f2eba18708",
+  "data_version": "sha256:e985212ac1e4f4395a0fb973c157c6efba1e1fdcbdb18936db05562b24d2c3ef",
   "decisions": {
     "search_radius": "r30"
   },
   "input_versions": {
-    "ou24_random_positions": "sha256:42ba23066cead1fe2000a5c6219db132f7b0d77354ce2563c6a2cff39d16c533",
+    "ou24_random_positions": "sha256:657f70b6371df943aaa35c1af1d3371249643466522ae304565a7cee84536836",
     "ou24_object": "sha256:9952f961603a6d8162fd99f6ab588f2a01cef90efff722298781ddb55c38647d"
   },
-  "git_sha": "72bced872e881980f3722e3bb3bd7c9e1b954a18",
+  "git_sha": "8fb649171a654ba472071d32c1994e7719ddd529",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -23,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-28T18:29:31.436+00:00",
-  "finished_at": "2026-10-28T18:36:37.599+00:00",
+  "started_at": "2026-11-03T05:24:42.335+00:00",
+  "finished_at": "2026-11-03T05:26:45.995+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
