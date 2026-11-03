@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "output_id": "hostless_roc_tiers",
+  "universe_id": "baseline",
+  "recipe": "python src/roc_tiers.py --dp02 results/baseline/dp02_hostless_metrics.json --ou24 results/baseline/ou24_hostless_metrics.json --des results/baseline/des_hostless_metrics.json --dp2 results/baseline/dp2_hostless_metrics.json --hostless-cut flb01 --dlr-max d4 --output results/baseline/hostless_roc_tiers.pdf",
+  "definition_version": "sha256:af83f9a67e3fe92c15bd71543dc68028a06d7331907e2aa604b53cb820534aa9",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:9b19756d10912d5a04376fe712d88fa4fff3b9e7d4e05917bd49a2edb6862471",
+  "decisions": {
+    "sbw_hostless_cut": "flb01",
+    "dlr_max": "d4"
+  },
+  "input_versions": {
+    "dp02_hostless_metrics": "sha256:3da95c7232249cdaedb00a56864e46eeace30bb3871cd03efa2b21ff66813603",
+    "ou24_hostless_metrics": "sha256:b0f207de2638effda46ffae7804061e2d2b9dd4568b8772f99fc3962dd84b4ae",
+    "des_hostless_metrics": "sha256:54a227cfd6a4212cbc65f78dbfd7d4766f4f8627d0ef8eb30bd40cd93d19bb1c",
+    "dp2_hostless_metrics": "sha256:e21e67870e9ad898f546eb8a5fd568eeba46e9c93ac8d9d1fc9ce925d1594f9b"
+  },
+  "git_sha": "21dafd633936ca231c73dd6041daf92b07fb121f",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-11-03T05:47:27.287+00:00",
+  "finished_at": "2026-11-03T05:48:02.993+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
