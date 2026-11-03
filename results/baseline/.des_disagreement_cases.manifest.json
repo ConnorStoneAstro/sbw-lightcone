@@ -10,11 +10,11 @@
     "sbw_hostless_cut": "flb01"
   },
   "input_versions": {
-    "des_associations": "sha256:a1874dffb85ef64f27cf5bb8039dd16b03f222fbded2489dca690380fe20cd5b",
-    "des_sample": "sha256:34af572c839f6806613536a2e90412e82f221ecdf270681cba0b80fd62de18b8",
+    "des_associations": "sha256:2c44ceb2fa70ad3b2e594cee3f4936271fd311ae649a477658e5a5485d921f64",
+    "des_sample": "sha256:a44667fe8e194246c9c8c08e0dc6f6900dbcad58d1660c9494318ed18c09e93b",
     "des_candidates": "sha256:4ce3a3570ad9a8d63ffcca59cb59945e906e3cf7a5b95d12a06eead76f7d8318"
   },
-  "git_sha": "17d075e33b4c74893b3774315f6c2a9b8872186c",
+  "git_sha": "5dbb6cfcbfa004e2b9ed23930308bb29ccf5b95d",
   "git_remote": "git@github.com:ConnorStoneAstro/sbw-lightcone.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -24,8 +24,8 @@
     "landlock_abi": 4,
     "exec_allowlist_version": 1
   },
-  "started_at": "2026-10-30T19:12:44.575+00:00",
-  "finished_at": "2026-10-30T19:13:08.879+00:00",
+  "started_at": "2026-11-03T02:21:59.915+00:00",
+  "finished_at": "2026-11-03T02:22:17.613+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
