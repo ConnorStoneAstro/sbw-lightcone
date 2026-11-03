@@ -291,11 +291,35 @@ def p_true_host(df, out):
 # ---------------------------------------------------------------- hostless indicator
 FLB_GRID = np.geomspace(1e-5, 1, 121)
 DLR_GRID = np.linspace(0, 12, 121)
-# Thresholds frozen from the DP0.2 baseline (27 Oct 2026: Youden-J optima of dp02_hostless_metrics and the knee
-# of dp02_credible_set_metrics), next to the defaults; every tier reports itself at these values, so OU2024
-# is a held-out test of whether the DP0.2 optima transfer.
-DP02_OPTIMA = {"flb_best": 0.0215, "d_dlr_min": 2.7, "credible_set_t": 0.034}
-TRANSFER = {"flb_best": (0.01, DP02_OPTIMA["flb_best"], 0.05), "d_dlr_min": (DP02_OPTIMA["d_dlr_min"], 4.0)}
+# The DP0.2 optima every tier is scored at (Youden-J optima of dp02_hostless_metrics, the knee of
+# dp02_credible_set_metrics), so OU2024, DES and DP2 are held-out tests of whether they transfer. Since 2 Nov
+# 2026 they are read from the DP0.2 outputs of the same universe (--dp02-hostless-metrics /
+# --dp02-credible-metrics; "own" on the DP0.2 tier computes them in place), not frozen constants.
+DP02_OPTIMA = {"flb_best": np.nan, "d_dlr_min": np.nan, "credible_set_t": np.nan, "source": "unset"}
+
+
+def set_optima(hostless_path=None, credible_path=None):
+    """Fill DP02_OPTIMA from the DP0.2 metric files of this universe ("own" = compute from the tables later)."""
+    if hostless_path and hostless_path != "own":
+        h = json.load(open(hostless_path))
+        DP02_OPTIMA["flb_best"] = float(h["youden_J"]["sbw_flb_best"]["t_opt"])
+        DP02_OPTIMA["d_dlr_min"] = float(h["youden_J"]["dlr_d_dlr_min"]["t_opt"])
+        DP02_OPTIMA["source"] = hostless_path
+    if credible_path and credible_path != "own":
+        DP02_OPTIMA["credible_set_t"] = float(json.load(open(credible_path))["knee"]["t"])
+        DP02_OPTIMA["source"] = credible_path
+
+
+def own_optima(df, rnd):
+    """The DP0.2 tier scoring itself: its own J optima are the reference."""
+    if not np.isfinite(DP02_OPTIMA["flb_best"]):
+        DP02_OPTIMA["flb_best"] = youden(df, rnd, "flb_best", FLB_GRID)[1]["t_opt"]
+        DP02_OPTIMA["d_dlr_min"] = youden(df, rnd, "d_dlr_min", DLR_GRID)[1]["t_opt"]
+        DP02_OPTIMA["source"] = "own"
+
+
+def transfer_points():
+    return {"flb_best": (0.01, DP02_OPTIMA["flb_best"], 0.05), "d_dlr_min": (DP02_OPTIMA["d_dlr_min"], 4.0)}
 
 
 def rejected(flag):
@@ -327,8 +351,9 @@ def youden(df, rnd, rule, grid):
 def transfer(df, rnd):
     """Real kept, random rejected and J at the frozen DP0.2 thresholds and the defaults, next to this table's own
     J optimum and the J lost by using the DP0.2 value instead."""
-    out = {"dp02_optima": DP02_OPTIMA}
-    for rule, ts in TRANSFER.items():
+    own_optima(df, rnd)
+    out = {"dp02_optima": dict(DP02_OPTIMA)}
+    for rule, ts in transfer_points().items():
         _, own = youden(df, rnd, rule, FLB_GRID if rule != "d_dlr_min" else DLR_GRID)
         pts = []
         for t in ts:
@@ -339,9 +364,20 @@ def transfer(df, rnd):
     return out
 
 
+def roc_curves(df, rnd):
+    """The full ROC sweeps (real kept, random rejected per threshold) so a figure can be drawn from the json
+    without the tables (hostless_roc_tiers combines the four tiers from their metric files)."""
+    out = {"flb_grid": FLB_GRID.tolist(), "d_dlr_grid": DLR_GRID.tolist()}
+    for rule, grid in (("flb_best", FLB_GRID), ("flb_max", FLB_GRID), ("d_dlr_min", DLR_GRID)):
+        real, rand = sweep(df, rnd, RULES[rule], grid)
+        out[rule] = {"real_kept": real[:, 0].round(5).tolist(), "random_rejected": rand[:, 0].round(5).tolist()}
+    return out
+
+
 def hostless_metrics(df, rnd, out):
     n2 = len(df)
     df = at_rung(df)
+    own_optima(df, rnd)
 
     def point(rule, t):
         kept = ~RULES[rule](df, t); rej = RULES[rule](rnd, t)
@@ -368,6 +404,7 @@ def hostless_metrics(df, rnd, out):
                         "flb_grid": [float(FLB_GRID[0]), float(FLB_GRID[-1]), len(FLB_GRID), "log"],
                         "d_dlr_grid": [float(DLR_GRID[0]), float(DLR_GRID[-1]), len(DLR_GRID), "linear"]},
            "dp02_optima_transfer": transfer(df, rnd),
+           "curves": roc_curves(df, rnd),
            "rule": "real kept = not hostless; SBW hostless = no SBW host or flb < t; DLR hostless = no candidate with d_DLR <= t",
            "settings": df.attrs}
     with open(out, "w") as f:
@@ -381,6 +418,7 @@ def band(ax, x, w, color, ls="-", label=None):
 
 def hostless_indicator(df, rnd, out, hostless_cut, dlr_max):
     df = at_rung(df)
+    own_optima(df, rnd)
     cut, dmax = HOSTLESS_CUT[hostless_cut], DLR_MAX[dlr_max]
     fig, axes = plt.subplots(2, 2, figsize=(8.4, 7.0))
     (aa, ab), (ac, ad) = axes
@@ -490,12 +528,15 @@ def knee(r):
 
 def credible_set_metrics(df, out):
     r, topk = credible_sets(df)
-    at = {f"t_{t:g}": credible_sets(df, [t])[0].iloc[0].to_dict() for t in T_MARK + (DP02_OPTIMA["credible_set_t"],)}
     kn = knee(r)
+    if not np.isfinite(DP02_OPTIMA["credible_set_t"]):   # the DP0.2 tier scoring itself
+        DP02_OPTIMA["credible_set_t"] = float(kn["t"]); DP02_OPTIMA["source"] = "own"
+    at = {f"t_{t:g}": credible_sets(df, [t])[0].iloc[0].to_dict() for t in T_MARK + (DP02_OPTIMA["credible_set_t"],)}
     res = {"n": int(rung_mask(df, 4).sum()), "rung": 4, "ladder": rung_counts(df),
            "coverage_note": "coverage, mean_size and frac_empty on rung 4; coverage_sample over the whole sample (rung 2)",
            "at_marked_thresholds": at, "top_k": topk, "knee": kn,
-           "dp02_knee_transfer": {"t": DP02_OPTIMA["credible_set_t"], **at[f"t_{DP02_OPTIMA['credible_set_t']:g}"],
+           "dp02_knee_transfer": {"t": DP02_OPTIMA["credible_set_t"], "source": DP02_OPTIMA["source"],
+                                  **at[f"t_{DP02_OPTIMA['credible_set_t']:g}"],
                                   "own_knee_t": kn["t"],
                                   "coverage_minus_own_knee": at[f"t_{DP02_OPTIMA['credible_set_t']:g}"]["coverage"] - kn["coverage"]},
            "knee_definition": "grid point of coverage vs mean set size farthest from the chord between its ends (axes scaled to [0, 1])",
@@ -547,6 +588,8 @@ def main(argv=None):
     ap.add_argument("--dlr-max", choices=sorted(DLR_MAX))
     ap.add_argument("--p-threshold", choices=sorted(P_TRUE))
     ap.add_argument("--tier", choices=sorted(TIER), default="dp02")
+    ap.add_argument("--dp02-hostless-metrics", help="dp02_hostless_metrics json of this universe, or 'own' on the DP0.2 tier")
+    ap.add_argument("--dp02-credible-metrics", help="dp02_credible_set_metrics json of this universe, or 'own' on the DP0.2 tier")
     ap.add_argument("--rung", choices=["auto", "none", "2", "3", "4"], default="auto",
                     help="sample-ladder rung the figures stand on; auto = 4 where the table has reference hosts, none on DP2")
     ap.add_argument("--survivors-only", action="store_true",
@@ -555,6 +598,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     LABEL["tier"] = TIER[a.tier]
     RUNG["rung"] = a.rung
+    set_optima(a.dp02_hostless_metrics, a.dp02_credible_metrics)
     df = load(a.associations)
     if a.kind == "recovery":
         recovery(df, a.output, a.hostless_cut, load(a.random), a.p_threshold)

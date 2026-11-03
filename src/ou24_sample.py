@@ -65,6 +65,8 @@ def main(argv=None):
     ap.add_argument("--truth-match", required=True, choices=["matches_truth", "nearest_1arcsec"])
     ap.add_argument("--cuts", required=True, choices=["clean3", "clean10", "physical", "all"])
     ap.add_argument("--peak-mag", required=True, choices=sorted(PEAK_MAG))
+    ap.add_argument("--record-decisions", action="store_true",
+                    help="write the active decisions into the parquet metadata (key 'decisions'), which the association copies into its attrs")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     df = pq.read_table(a.sn_table, columns=COLS).to_pandas(ignore_metadata=True, types_mapper=INT64)
@@ -123,7 +125,8 @@ def main(argv=None):
           f"peak {a.peak_mag}", file=sys.stderr)
     tab = pa.Table.from_pandas(df, preserve_index=False)
     tab = tab.replace_schema_metadata({**tab.schema.metadata, b"truth_match_precut": json.dumps(precut).encode(),
-                                       b"sample_ladder": json.dumps(ladder).encode()})
+                                       b"sample_ladder": json.dumps(ladder).encode(),
+                                       **({b"decisions": json.dumps({"transient_peak_mag": a.peak_mag, "dp02_sample_cuts": a.cuts, "truth_match": a.truth_match}).encode()} if a.record_decisions else {})})
     pq.write_table(tab, a.output, compression="zstd")
 
 

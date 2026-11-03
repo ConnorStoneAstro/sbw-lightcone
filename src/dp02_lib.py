@@ -68,7 +68,87 @@ PEAK_MAG = {"none": None, "r24": 24.0, "r23": 23.0}
 # passed). Rung 4: the true host is usable by both methods (cat2 passed: kept by the object-table cuts and
 # with a DLR ellipse). Every truth metric names its rung; rung 4 is the method's own performance.
 RUNGS = (2, 3, 4)
-RUNG_LABEL = {2: "sample (rung 2)", 3: "true host in the catalogue (rung 3)", 4: "true host usable (rung 4)"}
+RUNG_LABEL = {2: "detectable (the sample)", 3: "true host in the object table", 4: "true host usable by both methods"}
+# Paper vocabulary (2 Nov 2026): all -> detectable (the sample) -> rejected (hostless call) | hosted; hosted ->
+# true host / wrong host, true host not in the object table / wrong host, true host was there (a real miss).
+PLACEMENT = ("true_host", "wrong_host_miss", "wrong_host_not_in_table", "rejected_true_host_present",
+             "rejected_true_host_not_in_table")
+PLACEMENT_LABEL = {"true_host": "hosted: true host",
+                   "wrong_host_miss": "hosted: wrong host, true host was available",
+                   "wrong_host_not_in_table": "hosted: wrong host, true host not in the object table",
+                   "rejected_true_host_present": "rejected: true host was available",
+                   "rejected_true_host_not_in_table": "rejected: true host not in the object table"}
+
+
+def placement(df, cut, t):
+    """Per method, what the pipeline did with every detectable SN (the sample): hosted (a host assigned) or
+    rejected (hostless call), the hosted ones by whether the host is the true one and, when not, whether the
+    true host was available to the method at all; counts, fractions of the sample and of the hosted SNe."""
+    n = len(df)
+    st = df["true_host_status"].to_numpy().astype(str)
+    tr = df["host_objectId"].to_numpy()
+    out = {"n_detectable": n, "n_true_host_not_in_table": int((st != "kept").sum()),
+           "n_true_host_absent": int((st == "absent").sum()), "n_true_host_cut": int(((st != "kept") & (st != "absent")).sum())}
+    for m in ("sbw", "dlr"):
+        if m == "sbw":
+            hosted = ~sbw_hostless(df, cut)
+            correct = df["sbw_correct"].to_numpy(bool)
+            avail = st == "kept"
+        else:
+            hosted = df["dlr_objectId"].to_numpy() >= 0
+            correct = df["dlr_correct"].to_numpy(bool)
+            avail = (st == "kept") & np.isfinite(df["d_dlr_true"].to_numpy(dtype=float))
+        masks = {"true_host": hosted & avail & correct,
+                 "wrong_host_miss": hosted & avail & ~correct,
+                 "wrong_host_not_in_table": hosted & ~avail,
+                 "rejected_true_host_present": ~hosted & avail,
+                 "rejected_true_host_not_in_table": ~hosted & ~avail}
+        nh = int(hosted.sum())
+        r = {"n_hosted": nh, "frac_hosted": float(nh / n) if n else np.nan,
+             "n_rejected": n - nh, "frac_rejected": float((n - nh) / n) if n else np.nan}
+        for k, mk in masks.items():
+            kk = int(mk.sum())
+            pw, lo, hi = wilson(kk, n) if n else (np.nan,) * 3
+            r[k] = {"n": kk, "frac": float(pw), "ci68": [float(lo), float(hi)]}
+            if k.startswith(("true", "wrong")):
+                ph, lh, hh = wilson(kk, nh) if nh else (np.nan,) * 3
+                r[k]["of_hosted"] = float(ph); r[k]["of_hosted_ci68"] = [float(lh), float(hh)]
+            if k.endswith("not_in_table"):
+                r[k]["absent"] = int((mk & (st == "absent")).sum()); r[k]["cut"] = int((mk & (st != "absent")).sum())
+        if m == "sbw":   # of the real misses, how often the true host is still in the credible set
+            pt = p_true(df)
+            mm = masks["wrong_host_miss"]
+            r["wrong_host_miss"]["true_host_p_ge_t"] = int((mm & (pt >= t)).sum())
+        kw = r["wrong_host_miss"]["n"] + r["wrong_host_not_in_table"]["n"]
+        pc, lc, hc = wilson(kw, nh) if nh else (np.nan,) * 3
+        r["contamination"] = {"n": kw, "of_hosted": float(pc), "ci68": [float(lc), float(hc)],
+                              "note": "hosted SNe whose assigned host is not the true one, either cause"}
+        out[m] = r
+    return out
+
+
+def annulus_positions(sn, per_sn=10, seed=20261029, r_in=45.0, r_out=90.0):
+    """``per_sn`` random positions per SN, uniform in area in the r_in..r_out arcsec annulus around it (the
+    DES design, now every tier's): they share the SN's field and depth, and the 30 arcsec search cone around
+    a position never contains the SN itself. ``sn`` has sn_id, sn_ra, sn_dec (sorted by sn_id); ids are
+    -(100 k + j + 1) for the k-th SN and its j-th position, parent_sn_id records the SN; seeded."""
+    sn = sn.sort_values("sn_id").reset_index(drop=True)
+    rng = np.random.default_rng(seed)
+    n, m = len(sn), per_sn
+    r = np.sqrt(rng.uniform(r_in ** 2, r_out ** 2, (n, m))) / 3600.0
+    th = rng.uniform(0, 2 * np.pi, (n, m))
+    ra0, dec0 = np.deg2rad(sn.sn_ra.to_numpy(float))[:, None], np.deg2rad(sn.sn_dec.to_numpy(float))[:, None]
+    rr = np.deg2rad(r)
+    dec = np.arcsin(np.sin(dec0) * np.cos(rr) + np.cos(dec0) * np.sin(rr) * np.cos(th))
+    ra = ra0 + np.arctan2(np.sin(th) * np.sin(rr) * np.cos(dec0), np.cos(rr) - np.sin(dec0) * np.sin(dec))
+    k, j = np.meshgrid(np.arange(n), np.arange(m), indexing="ij")
+    out = pd.DataFrame({"sn_id": -(100 * k + j + 1).ravel().astype(np.int64),
+                        "sn_ra": np.rad2deg(ra).ravel() % 360.0, "sn_dec": np.rad2deg(dec).ravel(),
+                        "parent_sn_id": np.repeat(sn.sn_id.to_numpy(np.int64), m),
+                        "offset_arcsec": (r * 3600.0).ravel()})
+    out["host_objectId"] = np.int64(-1)
+    return out
+
 
 
 def rung_mask(df, r):

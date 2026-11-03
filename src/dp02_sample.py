@@ -68,6 +68,8 @@ def main(argv=None):
     ap.add_argument("--peak", required=True, help="DC2 SN truth summary parquet (t0, max_flux_r per SN)")
     ap.add_argument("--visits", required=True, help="DP0.2 visitTable parquet (expMidptMJD): the imaging window")
     ap.add_argument("--peak-mag", required=True, choices=sorted(PEAK_MAG))
+    ap.add_argument("--record-decisions", action="store_true",
+                    help="write the active decisions into the parquet metadata (key 'decisions'), which the association copies into its attrs")
     ap.add_argument("--truth-match", required=True, choices=["matches_truth", "nearest_1arcsec"])
     ap.add_argument("--cuts", required=True, choices=["clean3", "clean10", "physical", "all"])
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "4")))
@@ -163,7 +165,8 @@ def main(argv=None):
     print(f"sample: {len(df)} of {n0} SNe after cuts={a.cuts}, peak {a.peak_mag} ({time.time() - t0:.0f}s)", file=sys.stderr)
     tab = pa.Table.from_pandas(df, preserve_index=False)
     tab = tab.replace_schema_metadata({**tab.schema.metadata, b"truth_match_precut": json.dumps(precut).encode(),
-                                       b"sample_ladder": json.dumps(ladder).encode()})
+                                       b"sample_ladder": json.dumps(ladder).encode(),
+                                       **({b"decisions": json.dumps({"transient_peak_mag": a.peak_mag, "dp02_sample_cuts": a.cuts, "truth_match": a.truth_match}).encode()} if a.record_decisions else {})})
     pq.write_table(tab, a.output, compression="zstd")
 
 

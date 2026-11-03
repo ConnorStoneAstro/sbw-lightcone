@@ -19,8 +19,8 @@ import numpy as np
 import pyarrow.parquet as pq
 
 from dp02_fig import load
-from dp02_lib import (COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, PROFILES, QUALITY, RADIUS, associate_all,
-                      load_candidates, miss_categories, sample_mask, sbw_hostless, wilson)
+from dp02_lib import (COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, PLACEMENT, PLACEMENT_LABEL, PROFILES, QUALITY, RADIUS,
+                      associate_all, load_candidates, miss_categories, placement, sample_mask, sbw_hostless, wilson)
 
 STAGES = ("absent", "cut", "hostless", "genuine")   # cat1..cat4, in the order they are applied
 CATALOGUE = {"dp02": "DP0.2", "ou24": "OU2024"}
@@ -91,13 +91,29 @@ def compute(a):
         "outcome": "for cat1 and cat2, what the pipeline did instead: hostless_call (SBW: no SBW host or flb_best "
                    f"< {cut:g}; DLR: no candidate with d_DLR <= dlr_max) or wrong_host (a host was assigned, which "
                    "cannot be the true one); 'frac' of the category, 'of_sample' of the sample",
-        "cat3_hostless_sbw": f"true host survived; SBW declares the SN hostless (no SBW host or flb_best < {cut:g})",
+        "cat3_hostless_sbw": f"true host survived; SBW declares the SN hostless (no SBW host, or flb_best < {cut:g}; "
+                             "the same rule as the hostless indicator)",
         "cat3_hostless_dlr": "true host survived; no candidate has d_DLR <= dlr_max",
         "cat4_genuine_sbw": f"a host is assigned but P_SBW(true) < {t:g}",
         "cat4_genuine_dlr": "DLR assigns another candidate with smaller d_DLR",
         "success_sbw": f"P_SBW(true) >= {t:g} and not SBW hostless", "success_dlr": "DLR host = true host"},
         "tier": a.tier, "ladder": ladder,
         "p_true_threshold": t, "sbw_hostless_cut": cut, "settings": attrs,
+        "placement_definition": {
+            "detectable": "the sample: hosted transients with a host row, detectable under transient_peak_mag, within the offset cut",
+            "hosted": "the method assigned a host (SBW: an SBW host with flb_best >= cut; DLR: a candidate with d_DLR <= dlr_max)",
+            "rejected": "hostless call (the complement)",
+            "true_host": "hosted and the assigned host (SBW: most probable) is the true host",
+            "wrong_host_miss": "hosted, the true host was available to the method (in the object table, kept by the cuts, "
+                               "with a DLR ellipse for DLR) and another object was assigned; SBW: true_host_p_ge_t counts "
+                               "those where the true host still has P_SBW >= p_true_threshold",
+            "wrong_host_not_in_table": "hosted but the true host was never a candidate (absent from the object table or "
+                                       "removed by the object-table cuts), so the assigned host is wrong by construction",
+            "rejected_true_host_present": "hostless call although the true host was available (the hostless cut fired)",
+            "rejected_true_host_not_in_table": "hostless call and the true host was not available",
+            "contamination": "wrong_host_miss + wrong_host_not_in_table over the hosted SNe",
+            "fractions": "'frac' of the detectable sample, 'of_hosted' of the hosted SNe; Wilson 68% intervals"},
+        "placement": placement(head, cut, t),
         "headline": account(head, cut, t)}
     cand = load_candidates(a.candidates, bands=a.band)
     sweep = {}
@@ -114,62 +130,40 @@ def compute(a):
         json.dump(res, f, indent=2)
 
 
-STACK = [("success", "#4d9221"), ("genuine", "#d6604d"), ("hostless", "#92c5de"), ("cut", "#f4a582"),
-         ("absent", "#bababa")]
-SHORT = {"success": "success", "genuine": "cat4: genuine failure", "hostless": "cat3: no-host cut",
-         "cut": "cat2: object-table cut", "absent": "cat1: not in catalogue"}
-OUTCOME = [("wrong_host", "#67001f", "pipeline assigned a wrong host"), ("hostless_call", "#2166ac", "pipeline called it hostless")]
+STACK = [("true_host", "#4d9221"), ("wrong_host_miss", "#d6604d"), ("wrong_host_not_in_table", "#67001f"),
+         ("rejected_true_host_present", "#92c5de"), ("rejected_true_host_not_in_table", "#bababa")]
+SHORT = {"true_host": "hosted, true host", "wrong_host_miss": "hosted, wrong host (true host was available)",
+         "wrong_host_not_in_table": "hosted, wrong host (true host not in object table)",
+         "rejected_true_host_present": "rejected (true host was available)",
+         "rejected_true_host_not_in_table": "rejected (true host not in object table)"}
 
 
 def figure(a):
+    """One panel: for SBW and DLR, how the detectable SNe are placed (hosted with the true host, hosted with
+    a wrong host by either cause, or rejected), as fractions of the sample; the hosted-SN fractions of the
+    two wrong-host outcomes are written beside the bar, since those are the contamination a user meets."""
     res = json.load(open(a.accounting))
-    h = res["headline"]
-    cat = CATALOGUE[res.get("tier", "dp02")]
-    fig, (ax, ac) = plt.subplots(1, 2, figsize=(9.6, 4.4), width_ratios=[1.35, 1])
-    lo = max(0.0, np.floor((min(h[m]["success"]["frac"] for m in ("sbw", "dlr")) - 0.03) * 20) / 20)
-    W, WI = 0.6, 0.22
+    pl = res["placement"]
+    n = pl["n_detectable"]
+    fig, ax = plt.subplots(figsize=(6.0, 4.6))
+    lo = max(0.0, np.floor((min(pl[m]["true_host"]["frac"] for m in ("sbw", "dlr")) - 0.03) * 20) / 20)
     for i, m in enumerate(("sbw", "dlr")):
         bottom = 0.0
         for c, color in STACK:
-            f = h[m][c]["frac"]
-            ax.bar(i, f, bottom=bottom, color=color, width=W, label=SHORT[c] if i == 0 else None)
+            f = pl[m][c]["frac"]
+            ax.bar(i, f, bottom=bottom, color=color, width=0.6, label=SHORT[c] if i == 0 else None)
             label = f"{100 * f:.2f}%"
-            if "outcome" in h[m][c] and f > 0:
-                # bar in bar: the pipeline's outcome for SNe whose true host it could not have found
-                b = bottom
-                for key, col, lab in OUTCOME:
-                    fo = h[m][c]["outcome"][key]["of_sample"]
-                    ax.bar(i, fo, bottom=b, color=col, width=WI, label=lab if (i == 0 and c == "absent") else None)
-                    b += fo
-                label += f"\nwrong host {100 * h[m][c]['outcome']['wrong_host']['of_sample']:.2f}%"
-            if bottom + f > lo and f > 0.002:
+            if "of_hosted" in pl[m][c] and c != "true_host":
+                label += f" ({100 * pl[m][c]['of_hosted']:.2f}% of hosted)"
+            if bottom + f > lo and f > 0.0015:
                 ax.text(i + 0.33, max(bottom + f / 2, lo + 0.004), label, fontsize=6.5, va="center")
             bottom += f
-    ax.set_xticks([0, 1], ["SBW\n($P_{\\mathrm{SBW}}$(true) $\\geq$ " + f"{res['p_true_threshold']:g})", "DLR"])
-    ax.set_xlim(-0.5, 2.9); ax.set_ylim(lo, 1.0); ax.set_ylabel("fraction of the sample (rung 2)")
+    ax.set_xticks([0, 1], [f"{m.upper()}\nhosted {100 * pl[m]['frac_hosted']:.1f}%\ncontamination {100 * pl[m]['contamination']['of_hosted']:.2f}% of hosted"
+                           for m in ("sbw", "dlr")], fontsize=7.5)
+    ax.set_xlim(-0.5, 3.1); ax.set_ylim(lo, 1.0); ax.set_ylabel(f"fraction of detectable SNe (N = {n:,})")
     ax.legend(fontsize=6.5, loc="center right")
     ax.grid(axis="x", visible=False)
-    ax.set_title(f"(a) outcome per method (N = {h['n']:,}, y axis from {lo:g})", fontsize=9, loc="left")
-    # (b) conditional loss at each stage: of the SNe that reached it, the fraction lost there
-    x = np.arange(len(STAGES))
-    for m, color, dx in (("sbw", COLORS["sbw"], -0.18), ("dlr", COLORS["dlr"], 0.18)):
-        f = np.array([h[m][c]["conditional"]["frac"] for c in STAGES])
-        e = np.array([h[m][c]["conditional"]["ci68"] for c in STAGES])
-        ac.bar(x + dx, f, width=0.36, color=color, label=m.upper())
-        ac.errorbar(x + dx, f, yerr=[f - e[:, 0], e[:, 1] - f], fmt="none", ecolor="black", capsize=2, lw=0.8)
-        for xi, fi in zip(x + dx, f):
-            ac.text(xi, fi, f"{100 * fi:.1f}", ha="center", va="bottom", fontsize=6)
-    ac.set_xticks(x, ["cat1\nnot in\ncatalogue", "cat2\nobject-table\ncut", "cat3\nno-host\ncut",
-                      "cat4\ngenuine\nfailure"], fontsize=7)
-    ac.set_ylabel("fraction lost, of the SNe reaching the stage"); ac.legend(fontsize=7)
-    ac.grid(axis="x", visible=False)
-    ac.set_title("(b) conditional loss per stage (labels in %)", fontsize=9, loc="left")
-    s = res["settings"]
-    lad = res.get("ladder") or {}
-    peak = f" | peak {lad.get('peak_mag_cut', '?')}" if lad else ""
-    fig.suptitle(f"Where the true host is lost on {cat}: catalogue, object-table cuts, no-host cut, or the association\n"
-                 f"{s.get('profile')} | band {s.get('band')} | {s.get('search_radius')} | d_DLR<={s.get('dlr_max', 'd?')[1:]} "
-                 f"({s.get('dlr_radius')}) | quality {s.get('candidate_quality')} | flb < {res['sbw_hostless_cut']:g}{peak}", fontsize=8)
+    ax.set_title("How SNe are placed with a host", fontsize=10, loc="left")
     fig.tight_layout(); fig.savefig(a.output); plt.close(fig)
 
 

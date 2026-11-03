@@ -63,6 +63,7 @@ def main(argv=None):
     ap.add_argument("--legacy-sweeps", help="legacy_dr10_sweeps index csv (with --catalogue legacy_dr10)")
     ap.add_argument("--search-radius", required=True, choices=sorted(RADIUS))
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "16")))
+    ap.add_argument("--record-decisions", action="store_true", help="write the active decisions into the parquet metadata")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     t0 = time.time()
@@ -70,7 +71,8 @@ def main(argv=None):
     radius = RADIUS[a.search_radius]
     if a.catalogue == "legacy_dr10":
         import dp2_candidates_legacy
-        write(dp2_candidates_legacy.build(sn, a.legacy_sweeps, radius, a.workers), a.output, len(sn), radius, t0)
+        write(dp2_candidates_legacy.build(sn, a.legacy_sweeps, radius, a.workers), a.output, len(sn), radius, t0,
+              {"dp2_candidate_catalogue": a.catalogue} if a.record_decisions else None)
         return
     root = D.hats_root(a.objects)
     boxes = D.partition_boxes(root)
@@ -90,14 +92,23 @@ def main(argv=None):
             if out is not None:
                 parts.append(out)
     cand = pd.concat(parts, ignore_index=True).rename(columns=D.RENAME)
-    write(cand, a.output, len(sn), radius, t0)
+    write(cand, a.output, len(sn), radius, t0, {"dp2_candidate_catalogue": a.catalogue} if a.record_decisions else None)
 
 
-def write(cand, output, n_pos, radius, t0):
+def write(cand, output, n_pos, radius, t0, decisions=None):
     cand = cand.sort_values(["sn_id", "sep_arcsec"], kind="stable").reset_index(drop=True)
     for c in ("sn_id", "objectId", "parentObjectId"):
         cand[c] = cand[c].fillna(0).astype(np.int64)
-    cand.to_parquet(output, index=False, compression="zstd")
+    if decisions:
+        import json as _json
+        import pyarrow as _pa
+        import pyarrow.parquet as _pq
+        tab = _pa.Table.from_pandas(cand, preserve_index=False)
+        tab = tab.replace_schema_metadata({**(tab.schema.metadata or {}),
+                                           b"decisions": _json.dumps(decisions).encode()})
+        _pq.write_table(tab, output, compression="zstd")
+    else:
+        cand.to_parquet(output, index=False, compression="zstd")
     n_with = cand.sn_id.nunique()
     print(f"wrote {len(cand)} pairs for {n_with}/{n_pos} positions "
           f"(median {cand.groupby('sn_id').size().median():.0f} objects within {radius:g}\") in {time.time() - t0:.0f}s",

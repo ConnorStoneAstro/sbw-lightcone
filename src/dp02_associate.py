@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 
 import numpy as np
 import pyarrow as pa
@@ -35,6 +36,11 @@ def main(argv=None):
     if a.tier == "dp2":
         import dp2_lib
         dp2_lib.install(a.exclude_suspect)
+    recorded = {}
+    for path in (a.sample, a.candidates):   # decisions the upstream recipes recorded (--record-decisions)
+        md = pq.read_schema(path).metadata or {} if path else {}
+        if b"decisions" in md:
+            recorded.update(json.loads(md[b"decisions"]))
     if a.sample:
         sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     else:
@@ -46,6 +52,7 @@ def main(argv=None):
                         quality=a.candidate_quality, workers=a.workers)
     if a.tier == "dp2":
         out.attrs["exclude_suspect"] = a.exclude_suspect
+    out.attrs.update(recorded)   # so every settings block names the sample it stands on
     tab = pa.Table.from_pandas(out, preserve_index=False)
     tab = tab.replace_schema_metadata({k.encode(): str(v).encode() for k, v in out.attrs.items()})
     pq.write_table(tab, a.output, compression="zstd")

@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from dp02_fig import DP02_OPTIMA, binned_fraction, binned_mean, load, subtitle
+from dp02_fig import DP02_OPTIMA, binned_fraction, binned_mean, load, set_optima, subtitle
 from dp02_lib import BANDS, COLORS, HOSTLESS_CUT, P_TRUE, PROFILES, sbw_hostless
 
 PROFILE_SHORT = {"exponential": "exponential fit", "sersic": "free-n Sersic fit", "moments": "moment Gaussian"}
@@ -64,6 +64,8 @@ def summary(df, cut, t):
             "argmax_disagree": float((df.sbw_objectId.to_numpy() != df.dlr_objectId.to_numpy()).mean()),
             "sbw_hostless": float(sbw_hostless(df, cut).mean()), "dlr_hostless": float((~hosted).mean()),
             "mean_p_sbw_of_dlr_host": float(np.nanmean(p[hosted])) if hosted.any() else np.nan,
+            "p_sbw_max_median_hosted": float(np.nanmedian(df["p_sbw_max"].to_numpy(dtype=float)[~sbw_hostless(df, cut)])) if (~sbw_hostless(df, cut)).any() else np.nan,
+            "p_sbw_max_gt_0p9_hosted": float((df["p_sbw_max"].to_numpy(dtype=float)[~sbw_hostless(df, cut)] > 0.9).mean()) if (~sbw_hostless(df, cut)).any() else np.nan,
             "frac_p_sbw_of_dlr_host_lt_t": float((np.nan_to_num(p[hosted]) < t).mean()) if hosted.any() else np.nan}
 
 
@@ -306,8 +308,10 @@ def main(argv=None):
     ap.add_argument("--reference", help="dp02_associations, drawn dashed for comparison")
     ap.add_argument("--hostless-cut", required=True, choices=sorted(HOSTLESS_CUT))
     ap.add_argument("--p-threshold", choices=sorted(P_TRUE))
+    ap.add_argument("--dp02-credible-metrics", help="dp02_credible_set_metrics json of this universe (p_top_host: the DP0.2 knee)")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
+    set_optima(credible_path=a.dp02_credible_metrics)
     df = load(a.associations)
     if a.kind == "disagreement_rate":
         disagreement_rate(df, read_sweep(a.sweep), load(a.random), a.output, a.hostless_cut, a.p_threshold)

@@ -314,7 +314,7 @@ outputs:
     inputs: [dp02_sn_truth, dp02_truth_match, dp02_candidates, dp02_host_truth_shapes, dp02_sn_peak, dp02_visits]
     decisions: [truth_match, dp02_sample_cuts, transient_peak_mag]
     recipe:
-      command: python src/dp02_sample.py --truth {inputs.dp02_sn_truth} --match {inputs.dp02_truth_match} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --peak {inputs.dp02_sn_peak} --visits {inputs.dp02_visits} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --peak-mag {decisions.transient_peak_mag} --output {output}
+      command: python src/dp02_sample.py --truth {inputs.dp02_sn_truth} --match {inputs.dp02_truth_match} --candidates {inputs.dp02_candidates} --shapes {inputs.dp02_host_truth_shapes} --peak {inputs.dp02_sn_peak} --visits {inputs.dp02_visits} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --peak-mag {decisions.transient_peak_mag} --record-decisions --output {output}
       resources: {cpus: 4, memory: 24Gi}
   - id: dp02_associations
     type: table
@@ -496,16 +496,18 @@ outputs:
     type: table
     format: parquet
     description: >-
-      One random sky position per DC2 truth SN, uniform on the sphere within
-      the SN's tract (RA uniform, sin dec uniform inside the bounding box of the
-      tract's primary DP0.2 objects, redrawn unless a 1 arcmin cell there holds
-      a primary object, so edge-tract corners outside the footprint are
-      excluded). sn_id is the negated truth SN id; seeded.
-    inputs: [dp02_sn_truth, dp02_object]
+      Ten random sky positions per sample SN, uniform in area in the 45-90
+      arcsec annulus around it (the design every tier shares since 2 Nov
+      2026: they share the SN's field and depth, and the 30 arcsec search
+      cone around a position never contains the SN). Ids are -(100 k + j + 1)
+      for the k-th SN and its j-th position, parent_sn_id records the SN;
+      seeded. Before, one position per truth SN was drawn uniformly over the
+      SN's tract, so the random N was not the sample N and the baselines
+      differed between tiers.
+    inputs: [dp02_sample]
     decisions: []
     recipe:
-      command: python src/dp02_random_positions.py --truth {inputs.dp02_sn_truth} --objects {inputs.dp02_object} --output {output}
-      resources: {cpus: 16, memory: 40Gi}
+      command: python src/dp02_random_positions.py --sample {inputs.dp02_sample} --per-sn 10 --output {output}
   - id: dp02_random_candidates
     type: table
     format: parquet
@@ -541,15 +543,27 @@ outputs:
     inputs: [dp02_associations, dp02_random_associations]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
-      command: python src/dp02_fig.py hostless_indicator --tier dp02 --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+      command: python src/dp02_fig.py hostless_indicator --tier dp02 --dp02-hostless-metrics own --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
   - id: dp02_hostless_metrics
     type: metric
     format: json
-    description: Real SNe kept and random positions rejected at flb_best and flb_max thresholds 0.001, 0.01, 0.05, 0.1 and d_DLR thresholds 3, 4, 5 (Wilson intervals), the fraction of random positions whose SBW most probable host has P > 0.5 (landing on a galaxy), and the Youden-J-optimal flb_best, flb_max and d_DLR thresholds with J, real kept and random rejected there; dp02_optima_transfer gives real kept, random rejected and J at flb_best 0.01, 0.0215 and 0.05 and at d_DLR 2.7 and 4 (0.0215 and 2.7 are the baseline J optima of 27 Oct 2026, frozen in src/dp02_fig.py) and the J lost against this table's own optimum, so every tier is scored at the DP0.2 thresholds. Real SNe on rung 4 of the sample ladder (n_real; n_sample is rung 2).
+    description: >-
+      Real SNe (rung 4) kept and random positions rejected at flb_best and
+      flb_max thresholds 0.001, 0.01, 0.05, 0.1 and d_DLR thresholds 3, 4, 5
+      (Wilson intervals), the fraction of random positions whose SBW most
+      probable host has P > 0.5 (landing on a galaxy), the Youden-J-optimal
+      flb_best, flb_max and d_DLR thresholds with J, real kept and random
+      rejected there, and the full ROC sweeps (curves, for
+      hostless_roc_tiers); dp02_optima_transfer gives real kept, random
+      rejected and J at flb_best 0.01, the DP0.2 J optimum and 0.05 and at
+      d_DLR the DP0.2 J optimum and 4, and the J lost against this table's
+      own optimum. Since 2 Nov 2026 the DP0.2 optima are this universe's own
+      (the DP0.2 tier scores itself with the flag value own; the other tiers
+      read dp02_hostless_metrics of the same universe), not frozen constants. Real SNe on rung 4 of the sample ladder (n_real; n_sample is rung 2).
     inputs: [dp02_associations, dp02_random_associations]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py hostless_metrics --tier dp02 --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --output {output}
+      command: python src/dp02_fig.py hostless_metrics --tier dp02 --dp02-hostless-metrics own --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --output {output}
   - id: dp02_host_truth_shapes
     type: table
     format: parquet
@@ -658,7 +672,15 @@ outputs:
       association, the same recomputed in-process for every
       candidate_quality level (none, basic, strict) with the fraction of
       candidates each cut removes, and the sample's ladder (the SNe the
-      peak-magnitude cut removed are a number here, not a bar).
+      peak-magnitude cut removed are a number here, not a bar). The placement
+      block (2 Nov 2026) is the paper's framing of the same table: every
+      detectable SN is hosted (a host assigned) or rejected (hostless call);
+      hosted SNe hold the true host, a wrong host because the true host was
+      not in the object table, or a wrong host although it was (a real miss;
+      for SBW with the count whose true host still has P >= t); rejected SNe
+      split by whether the true host was available; contamination is the
+      wrong-host fraction of the hosted SNe. Counts, fractions of the sample
+      and of the hosted SNe with Wilson 68% intervals.
     inputs: [dp02_sample, dp02_associations, dp02_candidates]
     decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, sbw_hostless_cut, p_true_threshold]
     recipe:
@@ -668,15 +690,19 @@ outputs:
     type: figure
     format: pdf
     description: >-
-      (a) Stacked bars of success, cat4 (genuine failure), cat3 (no-host
-      cut), cat2 (object-table cut) and cat1 (absent from the catalogue) for
-      SBW and DLR side by side, as fractions of the sample (rung 2); inside
-      the cat1 and cat2 segments a narrower bar shows what the pipeline did
-      with those SNe, hostless call or wrong host assigned, with the
-      wrong-host fraction in the label; (b) the conditional loss at each
-      stage (of the SNe that reached it) for both methods. The
-      candidate_quality panel was dropped on 31 Oct 2026 (the sweep stays in
-      the json). Drawn from dp02_miss_accounting.
+      Fig 1 of the paper, "How SNe are placed with a host" (one panel, 2 Nov
+      2026): for SBW and DLR a stacked bar over the detectable SNe (the
+      sample) of hosted with the true host, hosted with a wrong host because
+      the true host was not in the object table, hosted with a wrong host
+      although the true host was available (a real miss), rejected although
+      the true host was available (the hostless cut fired), and rejected with
+      the true host not in the object table; beside the bar each fraction of
+      the sample and, for the two wrong-host outcomes, the fraction of the
+      hosted SNe, which is the contamination a user of the hosted sample
+      meets; under each bar the hosted fraction and the contamination. Drawn
+      from the placement block of dp02_miss_accounting. The earlier panels
+      (conditional loss per stage, candidate_quality sweep) are gone; the
+      sequential cat1-cat4 accounting stays in the json.
     inputs: [dp02_miss_accounting]
     decisions: []
     recipe:
@@ -695,7 +721,7 @@ outputs:
     inputs: [dp02_associations]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py credible_set --tier dp02 --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py credible_set --tier dp02 --dp02-credible-metrics own --associations {inputs.dp02_associations} --output {output}
   - id: dp02_credible_set_metrics
     type: metric
     format: json
@@ -703,7 +729,7 @@ outputs:
     inputs: [dp02_associations]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py credible_set_metrics --tier dp02 --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py credible_set_metrics --tier dp02 --dp02-credible-metrics own --associations {inputs.dp02_associations} --output {output}
   - id: dp02_pa_mirror
     type: figure
     format: pdf
@@ -826,7 +852,7 @@ outputs:
     inputs: [ou24_sn_table, ou24_truth_match]
     decisions: [truth_match, dp02_sample_cuts, transient_peak_mag]
     recipe:
-      command: python src/ou24_sample.py --sn-table {inputs.ou24_sn_table} --match {inputs.ou24_truth_match} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --peak-mag {decisions.transient_peak_mag} --output {output}
+      command: python src/ou24_sample.py --sn-table {inputs.ou24_sn_table} --match {inputs.ou24_truth_match} --truth-match {decisions.truth_match} --cuts {decisions.dp02_sample_cuts} --peak-mag {decisions.transient_peak_mag} --record-decisions --output {output}
       resources: {cpus: 4, memory: 24Gi}
   - id: ou24_associations
     type: table
@@ -840,11 +866,11 @@ outputs:
   - id: ou24_random_positions
     type: table
     format: parquet
-    description: As dp02_random_positions, one random position per ou24_sn_table transient inside its tract, drawn over the union of the tract's objectTable files (sn_id negated).
-    inputs: [ou24_sn_table, ou24_object]
+    description: As dp02_random_positions for the OU2024 sample (ten per transient in the 45-90 arcsec annulus, seeded).
+    inputs: [ou24_sample]
     decisions: []
     recipe:
-      command: python src/dp02_random_positions.py --sne {inputs.ou24_sn_table} --objects {inputs.ou24_object} --output {output}
+      command: python src/dp02_random_positions.py --sample {inputs.ou24_sample} --per-sn 10 --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_random_candidates
     type: table
@@ -1007,34 +1033,34 @@ outputs:
     type: figure
     format: pdf
     description: As dp02_hostless_indicator for OU2024 (real transients against ou24_random_positions), with the frozen DP0.2 J optima marked on the ROC. Real transients on rung 4 of the sample ladder.
-    inputs: [ou24_associations, ou24_random_associations]
+    inputs: [ou24_associations, ou24_random_associations, dp02_hostless_metrics]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
-      command: python src/dp02_fig.py hostless_indicator --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+      command: python src/dp02_fig.py hostless_indicator --tier ou24 --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
   - id: ou24_hostless_metrics
     type: metric
     format: json
     description: As dp02_hostless_metrics for OU2024, including its own Youden-J optima and dp02_optima_transfer, the held-out test of the frozen DP0.2 baseline optima (flb_best 0.0215, d_DLR 2.7) against the defaults (flb 0.01, d_DLR 4) and OU2024's own optimum. Real transients on rung 4 of the sample ladder (n_real; n_sample is rung 2).
-    inputs: [ou24_associations, ou24_random_associations]
+    inputs: [ou24_associations, ou24_random_associations, dp02_hostless_metrics]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py hostless_metrics --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --output {output}
+      command: python src/dp02_fig.py hostless_metrics --tier ou24 --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --output {output}
   - id: ou24_credible_set
     type: figure
     format: pdf
     description: As dp02_credible_set for OU2024, on rung 4 of the sample ladder (dashed curve, the whole sample, rung 2).
-    inputs: [ou24_associations]
+    inputs: [ou24_associations, dp02_credible_set_metrics]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py credible_set --tier ou24 --associations {inputs.ou24_associations} --output {output}
+      command: python src/dp02_fig.py credible_set --tier ou24 --dp02-credible-metrics {inputs.dp02_credible_set_metrics} --associations {inputs.ou24_associations} --output {output}
   - id: ou24_credible_set_metrics
     type: metric
     format: json
     description: As dp02_credible_set_metrics for OU2024; dp02_knee_transfer is the held-out test of the frozen DP0.2 baseline knee t = 0.034 against OU2024's own knee. Rung 4 of the sample ladder, with coverage_sample on rung 2 and the ladder counts.
-    inputs: [ou24_associations]
+    inputs: [ou24_associations, dp02_credible_set_metrics]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py credible_set_metrics --tier ou24 --associations {inputs.ou24_associations} --output {output}
+      command: python src/dp02_fig.py credible_set_metrics --tier ou24 --dp02-credible-metrics {inputs.dp02_credible_set_metrics} --associations {inputs.ou24_associations} --output {output}
   - id: ou24_miss_accounting
     type: metric
     format: json
@@ -1054,7 +1080,7 @@ outputs:
   - id: ou24_miss_accounting_fig
     type: figure
     format: pdf
-    description: As dp02_miss_accounting_fig for OU2024 (panels a and b, bar-in-bar outcome split), drawn from ou24_miss_accounting.
+    description: As dp02_miss_accounting_fig for OU2024 (one panel, hosted / rejected placement), drawn from ou24_miss_accounting.
     inputs: [ou24_miss_accounting]
     decisions: []
     recipe:
@@ -1107,7 +1133,7 @@ outputs:
     inputs: [des_sn5yr_hosts, des_dr2_objects]
     decisions: [reference_match]
     recipe:
-      command: python src/des_sample.py --hosts {inputs.des_sn5yr_hosts} --objects {inputs.des_dr2_objects} --reference-match {decisions.reference_match} --output {output}
+      command: python src/des_sample.py --hosts {inputs.des_sn5yr_hosts} --objects {inputs.des_dr2_objects} --reference-match {decisions.reference_match} --record-decisions --output {output}
   - id: des_candidates
     type: table
     format: parquet
@@ -1240,18 +1266,18 @@ outputs:
       random positions; rejected fractions and Youden J versus the flb_best and d_DLR_min thresholds; the ROC
       with the operating points and the frozen DP0.2 optima flb 0.0215, d_DLR 2.7). Every DES SN has a
       published host, so "real kept" is close to a true-positive rate here.
-    inputs: [des_associations, des_random_associations]
+    inputs: [des_associations, des_random_associations, dp02_hostless_metrics]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
-      command: python src/des_run.py fig hostless_indicator --tier des --associations {inputs.des_associations} --random {inputs.des_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+      command: python src/des_run.py fig hostless_indicator --tier des --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.des_associations} --random {inputs.des_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
   - id: des_hostless_metrics
     type: metric
     format: json
     description: dp02_hostless_metrics on DES (real SNe kept, random positions rejected, Youden J optima, dp02_optima_transfer at flb_best 0.01 / 0.0215 / 0.05 and d_DLR 2.7 / 4); *_sbw_correct = SBW most probable host is the published host.
-    inputs: [des_associations, des_random_associations]
+    inputs: [des_associations, des_random_associations, dp02_hostless_metrics]
     decisions: []
     recipe:
-      command: python src/des_run.py fig hostless_metrics --tier des --associations {inputs.des_associations} --random {inputs.des_random_associations} --output {output}
+      command: python src/des_run.py fig hostless_metrics --tier des --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.des_associations} --random {inputs.des_random_associations} --output {output}
   - id: des_band_consistency
     type: figure
     format: pdf
@@ -1306,7 +1332,7 @@ outputs:
     inputs: [dp2_transients, legacy_dr10_sweeps]
     decisions: [dp2_sample]
     recipe:
-      command: python src/dp2_sample.py --index {inputs.dp2_transients} --legacy-sweeps {inputs.legacy_dr10_sweeps} --sample {decisions.dp2_sample} --output {output}
+      command: python src/dp2_sample.py --index {inputs.dp2_transients} --legacy-sweeps {inputs.legacy_dr10_sweeps} --sample {decisions.dp2_sample} --record-decisions --output {output}
   - id: dp2_candidates
     type: table
     format: parquet
@@ -1334,7 +1360,7 @@ outputs:
     inputs: [dp2_sample, dp2_object, legacy_dr10_sweeps]
     decisions: [search_radius, dp2_candidate_catalogue]
     recipe:
-      command: python src/dp2_candidates.py --catalogue {decisions.dp2_candidate_catalogue} --positions {inputs.dp2_sample} --objects {inputs.dp2_object} --legacy-sweeps {inputs.legacy_dr10_sweeps} --search-radius {decisions.search_radius} --workers 16 --output {output}
+      command: python src/dp2_candidates.py --catalogue {decisions.dp2_candidate_catalogue} --positions {inputs.dp2_sample} --objects {inputs.dp2_object} --legacy-sweeps {inputs.legacy_dr10_sweeps} --search-radius {decisions.search_radius} --workers 16 --record-decisions --output {output}
       resources: {cpus: 16, memory: 56Gi}
   - id: dp2_associations
     type: table
@@ -1376,18 +1402,11 @@ outputs:
   - id: dp2_random_positions
     type: table
     format: parquet
-    description: >-
-      Ten random sky positions per dp2_sample transient, in the transient's
-      own DP2 patch (that of its nearest object): uniform on the sphere inside
-      the bounding box of the patch's objects and redrawn unless a 1 arcmin
-      cell there holds one, so they share the transient's field and depth and
-      never land on unobserved sky, as dp02_random_positions does per tract.
-      Ten per transient because the clean sample is small; parent_sn_id,
-      tract and patch are kept; seeded.
-    inputs: [dp2_sample, dp2_object]
+    description: As dp02_random_positions for the DP2 sample (ten per transient in the 45-90 arcsec annulus around it, seeded; before 2 Nov 2026 they were drawn over the transient's own patch).
+    inputs: [dp2_sample]
     decisions: []
     recipe:
-      command: python src/dp2_random_positions.py --sample {inputs.dp2_sample} --objects {inputs.dp2_object} --per-sn 10 --output {output}
+      command: python src/dp2_random_positions.py --sample {inputs.dp2_sample} --per-sn 10 --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp2_random_candidates
     type: table
@@ -1396,7 +1415,7 @@ outputs:
     inputs: [dp2_random_positions, dp2_object, legacy_dr10_sweeps]
     decisions: [search_radius, dp2_candidate_catalogue]
     recipe:
-      command: python src/dp2_candidates.py --catalogue {decisions.dp2_candidate_catalogue} --positions {inputs.dp2_random_positions} --objects {inputs.dp2_object} --legacy-sweeps {inputs.legacy_dr10_sweeps} --search-radius {decisions.search_radius} --workers 16 --output {output}
+      command: python src/dp2_candidates.py --catalogue {decisions.dp2_candidate_catalogue} --positions {inputs.dp2_random_positions} --objects {inputs.dp2_object} --legacy-sweeps {inputs.legacy_dr10_sweeps} --search-radius {decisions.search_radius} --workers 16 --record-decisions --output {output}
       resources: {cpus: 16, memory: 56Gi}
   - id: dp2_random_associations
     type: table
@@ -1418,18 +1437,18 @@ outputs:
       dlr_max operating points and the frozen DP0.2 J optima (flb_best
       0.0215, d_DLR 2.7) as open diamonds. "Real kept" is not a recovery
       here: some DP2 transients are truly hostless or have undetected hosts.
-    inputs: [dp2_associations, dp2_random_associations]
+    inputs: [dp2_associations, dp2_random_associations, dp02_hostless_metrics]
     decisions: [sbw_hostless_cut, dlr_max]
     recipe:
-      command: python src/dp02_fig.py hostless_indicator --tier dp2 --rung none --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+      command: python src/dp02_fig.py hostless_indicator --tier dp2 --rung none --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
   - id: dp2_hostless_metrics
     type: metric
     format: json
     description: dp02_hostless_metrics for DP2 (real transients kept, random positions rejected, Youden J optima, and dp02_optima_transfer at flb_best 0.01, 0.0215, 0.05 and d_DLR 2.7, 4); the *_sbw_correct entries are meaningless without truth.
-    inputs: [dp2_associations, dp2_random_associations]
+    inputs: [dp2_associations, dp2_random_associations, dp02_hostless_metrics]
     decisions: []
     recipe:
-      command: python src/dp02_fig.py hostless_metrics --tier dp2 --rung none --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --output {output}
+      command: python src/dp02_fig.py hostless_metrics --tier dp2 --rung none --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --output {output}
   - id: dp2_disagreement_rate
     type: metric
     format: json
@@ -1495,11 +1514,14 @@ outputs:
       P_SBW of the most probable host for SBW-hosted DP2 transients, DP2
       random positions and (dashed) the DP0.2 SNe of the same universe; (b)
       mean credible-set size (candidates with P_SBW > t) versus t for the same
-      three, with the DP0.2 knee t = 0.034 marked.
-    inputs: [dp2_associations, dp2_random_associations, dp02_associations]
+      three, with the DP0.2 credible-set knee of the same universe marked
+      (read from dp02_credible_set_metrics). The numbers the text quotes
+      (median P of the most probable host, fraction above 0.9) are in
+      dp2_disagreement_rate.headline.
+    inputs: [dp2_associations, dp2_random_associations, dp02_associations, dp02_credible_set_metrics]
     decisions: [sbw_hostless_cut]
     recipe:
-      command: python src/dp2_fig.py p_top_host --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --reference {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp2_fig.py p_top_host --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --reference {inputs.dp02_associations} --dp02-credible-metrics {inputs.dp02_credible_set_metrics} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
   - id: dp2_disagreement_cases
     type: table
     format: csv
@@ -1560,6 +1582,22 @@ outputs:
     decisions: [reference_match, sbw_hostless_cut]
     recipe:
       command: python src/dp2_cross_method.py agreement --associations {inputs.dp2_associations} --candidates {inputs.dp2_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --workers 16 --output {output}
+  - id: dp2_cross_method_matrix
+    type: figure
+    format: pdf
+    description: >-
+      Fig 9 of the paper (in the dp2_ddf_clean universe): SBW, DLR and
+      DELIGHT compared three ways on the cleaned deep-drilling sample, drawn
+      from dp2_cross_method_metrics (subset all): for each pair of methods a
+      2x2 of hosted / hostless with the hosted-hosted cell split into same
+      host and different host, the same-host fraction given both hosted in
+      the title, and the P_SBW bands of the DELIGHT host (> 0.5, t..0.5, < t,
+      SBW hostless) over the transients whose DELIGHT position matched a
+      candidate.
+    inputs: [dp2_cross_method_metrics]
+    decisions: []
+    recipe:
+      command: python src/cross_method_matrix.py --metrics {inputs.dp2_cross_method_metrics} --subset all --output {output}
   - id: dp2_cross_method_metrics
     type: metric
     format: json
@@ -1634,9 +1672,37 @@ outputs:
   - id: summary_table
     type: table
     format: csv
-    description: One row per dataset and method with recovery (where a reference exists), disagreement rate and sample size.
+    description: >-
+      Table 2 of the paper: one row per tier (DP0.2, OU2024, DES-SN5YR, DP2)
+      with the same quantities under the same names, read from the recovery
+      and disagreement metric files: N detectable / host in the object table /
+      host usable (the ladder), mean P_SBW(reference) with its standard error,
+      the four P bands (> 0.5, t..0.5, < t, SBW hostless), SBW argmax and DLR
+      agreement with the reference (Wilson 68%), DLR hostless fraction, SBW-DLR
+      agreement, random positions rejected by each method, the calibration
+      error, and the two fixed thresholds. DP2 has no reference: its
+      "reference" is the DLR host, so its agreement column is same-host given
+      DLR hosted and its calibration columns are empty.
     inputs: [dp02_recovery, ou24_recovery, des_recovery, dp2_disagreement_rate]
     decisions: []
+    recipe:
+      command: python src/summary_table.py --dp02 {inputs.dp02_recovery} --ou24 {inputs.ou24_recovery} --des {inputs.des_recovery} --dp2 {inputs.dp2_disagreement_rate} --output {output}
+  - id: hostless_roc_tiers
+    type: figure
+    format: pdf
+    description: >-
+      Fig 5 of the paper: the hostless ROC (random positions rejected versus
+      real transients kept) of SBW (flb_best) and DLR (d_DLR_min) on every
+      tier, one panel each (DP0.2, OU2024, DES-SN5YR, DP2), drawn from the
+      curves block of the four *_hostless_metrics files, with the fixed
+      operating points (sbw_hostless_cut, dlr_max) as filled circles and the
+      DP0.2 J optima of the same universe as open diamonds. Real transients
+      are on rung 4 where a reference exists; the random positions are the
+      ten-per-transient annulus draws of each tier.
+    inputs: [dp02_hostless_metrics, ou24_hostless_metrics, des_hostless_metrics, dp2_hostless_metrics]
+    decisions: [sbw_hostless_cut, dlr_max]
+    recipe:
+      command: python src/roc_tiers.py --dp02 {inputs.dp02_hostless_metrics} --ou24 {inputs.ou24_hostless_metrics} --des {inputs.des_hostless_metrics} --dp2 {inputs.dp2_hostless_metrics} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
 
 decisions:
   sbw_profile:

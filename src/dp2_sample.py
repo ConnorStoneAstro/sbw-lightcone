@@ -30,6 +30,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 from astropy.io import fits
 from scipy.spatial import cKDTree
@@ -152,6 +153,7 @@ def main(argv=None):
     ap.add_argument("--sample", required=True, choices=sorted(FILES))
     ap.add_argument("--legacy-sweeps", help="legacy_dr10_sweeps index csv; read only for the parsnip_ddf_* "
                     "star/AGN-cleaned options")
+    ap.add_argument("--record-decisions", action="store_true", help="write the active decisions into the parquet metadata")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     idx = pd.read_csv(a.index)
@@ -173,6 +175,8 @@ def main(argv=None):
     df["host_objectId"] = np.int64(-1)
     df = df.sort_values("sn_id").reset_index(drop=True)
     meta = {"dp2_sample": a.sample, "source": path}
+    if a.record_decisions:
+        meta["decisions"] = json.dumps({"dp2_sample": a.sample})
     if a.sample in CLEAN:
         if not a.legacy_sweeps:
             raise SystemExit(f"{a.sample} needs --legacy-sweeps")
@@ -180,7 +184,9 @@ def main(argv=None):
         meta["dp2_sample_accounting"] = json.dumps(acc)
         print(json.dumps(acc, indent=1), file=sys.stderr)
     df.attrs = meta
-    df.to_parquet(a.output, index=False)
+    tab = pa.Table.from_pandas(df, preserve_index=False)
+    tab = tab.replace_schema_metadata({**(tab.schema.metadata or {}), **{k.encode(): str(v).encode() for k, v in meta.items()}})
+    pq.write_table(tab, a.output)
     print(f"{a.sample}: {len(df)} transients from {path}", file=sys.stderr)
 
 

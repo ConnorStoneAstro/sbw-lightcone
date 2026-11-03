@@ -118,7 +118,8 @@ def recovery(a):
         "kept_sbw_picks_other": int(((st == "kept") & ~hl & (sb != h1)).sum()),
         "kept_sbw_other_and_dlr_same_other": int(((st == "kept") & ~hl & (sb != h1) & (dl == sb)).sum())}
     sw = pq.read_table(a.sweep).to_pandas(ignore_metadata=True).merge(s[["sn_id", "host_objectId"]], on="sn_id")
-    res["per_band_profile"] = {}
+    sw = sw[sw.sn_id.isin(df.sn_id[L.rung_mask(df, 4)])]   # the headline's denominator (rung 4), 2 Nov 2026
+    res["per_band_profile"] = {"note": "on the headline's denominator: SNe whose published host is usable by both methods (rung 4)"}
     for (b, p), g in sw.groupby(["band", "profile"]):
         hb = sbw_hostless(g, cut)
         res["per_band_profile"][f"{b}/{p}"] = {

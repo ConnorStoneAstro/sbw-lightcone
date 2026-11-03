@@ -79,6 +79,7 @@ def main(argv=None):
     ap.add_argument("--hosts", required=True, help="directory with DES-Dovekie_Metadata.csv and DES-SN5YR_DES_HEAD.FITS.gz")
     ap.add_argument("--objects", required=True, help="des_dr2_objects cache (data/des_dr2_candidates.parquet)")
     ap.add_argument("--reference-match", required=True, choices=sorted(MATCH))
+    ap.add_argument("--record-decisions", action="store_true", help="write the active decisions into the parquet metadata")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     m = pd.read_csv(f"{a.hosts}/DES-Dovekie_Metadata.csv", sep=r"\s+", comment="#")
@@ -111,7 +112,16 @@ def main(argv=None):
     out.attrs = {"reference_match": a.reference_match, "n_sn": str(len(out)),
                  "frac_host_matched": str(float((out.host_objectId >= 0).mean())),
                  "frac_host2_present": str(float(out.host2_ra.notna().mean()))}
-    out.to_parquet(a.output, index=False)
+    if a.record_decisions:
+        import json as _json
+        import pyarrow as _pa
+        import pyarrow.parquet as _pq
+        tab = _pa.Table.from_pandas(out, preserve_index=False)
+        tab = tab.replace_schema_metadata({**(tab.schema.metadata or {}),
+                                           b"decisions": _json.dumps({"reference_match": a.reference_match}).encode()})
+        _pq.write_table(tab, a.output)
+    else:
+        out.to_parquet(a.output, index=False)
     print(f"{len(out)} SNe; published host matched to DR2 ({a.reference_match}) for "
           f"{100 * (out.host_objectId >= 0).mean():.2f}%; median match sep {np.nanmedian(out.host_match_sep_arcsec):.3f}\"; "
           f"HOSTGAL2 present {out.host2_ra.notna().sum()}, matched {(out.host2_objectId >= 0).sum()}", file=sys.stderr)
