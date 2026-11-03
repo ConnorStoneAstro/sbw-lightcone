@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "output_id": "dp2_cross_method_matrix",
+  "universe_id": "dp2_ddf_clean",
+  "recipe": "python src/cross_method_matrix.py --metrics results/dp2_ddf_clean/dp2_cross_method_metrics.json --subset all --output results/dp2_ddf_clean/dp2_cross_method_matrix.pdf",
+  "definition_version": "sha256:770b82d7a3bd71f2bec42956d7c9c37a4a5faf1fb8635fb9b166c2744e09d059",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:712636ff1e657231a9931cccc602e858f8bc7bc512eaa7b7c8453d82f5d4fdcc",
+  "decisions": {},
+  "input_versions": {
+    "dp2_cross_method_metrics": "sha256:f3a540231c2507cd0813023f7d940d569b766c5ff90c0cc9046999171e8c6c2c"
+  },
+  "git_sha": "e9f2cd4129f302a126bfbcb466aca270e7f02375",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-11-03T07:16:49.117+00:00",
+  "finished_at": "2026-11-03T07:17:23.718+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
