@@ -2,19 +2,20 @@
   "schema_version": 1,
   "output_id": "ou24_hostless_indicator",
   "universe_id": "ext_none",
-  "recipe": "python src/dp02_fig.py hostless_indicator --tier ou24 --associations results/ext_none/ou24_associations.parquet --random results/ext_none/ou24_random_associations.parquet --hostless-cut flb01 --dlr-max d4 --output results/ext_none/ou24_hostless_indicator.pdf",
-  "definition_version": "sha256:c13e9fdf1a3fe02711c41dc20137ad4c8b7c7c001635710775cb4b995e5d4f8f",
+  "recipe": "python src/dp02_fig.py hostless_indicator --tier ou24 --dp02-hostless-metrics results/ext_none/dp02_hostless_metrics.json --associations results/ext_none/ou24_associations.parquet --random results/ext_none/ou24_random_associations.parquet --hostless-cut flb01 --dlr-max d4 --output results/ext_none/ou24_hostless_indicator.pdf",
+  "definition_version": "sha256:3d2946e20ba66168399196e3173f73d3ccc940ee04faf0186f2450fceacdaea9",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:3e51650cda3caf4aeafa05bf5fdd86b1f0c326c15aa4a79a2685cea672429f1c",
+  "data_version": "sha256:f02b457d661712fa0a4722adeb29f52f928dd80cfd573f6b482229de9ab61ea2",
   "decisions": {
     "sbw_hostless_cut": "flb01",
     "dlr_max": "d4"
   },
   "input_versions": {
-    "ou24_associations": "sha256:1e148f10c30df9b415ca2468e5166196c5efa6250bc138fef25af1ecf4299fe4",
-    "ou24_random_associations": "sha256:fa1760be6f2b75f4efd619f569fb59df17d174278e6d673e79b0cf20f0a31e26"
+    "ou24_associations": "sha256:111e1ab25ccc7c2453e518770f32b9dc170daa80f0f0e707a7e440b5d3eb90ee",
+    "ou24_random_associations": "sha256:8167f388189d461ec9009b7c08d7bf574835c9dc809c5026353280e34cf68618",
+    "dp02_hostless_metrics": "sha256:8c67694600c0be0bb87f3e2d91cf6b17b0e2b4265b7439032add6d451d63625b"
   },
-  "git_sha": "b217b8a8dfe14a5a5726d0792846611e00e52c71",
+  "git_sha": "b6ee15a3dffe452834f4f60a8d7cf9fb60ee33ac",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -24,8 +25,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-31T00:39:26.780+00:00",
-  "finished_at": "2026-10-31T00:40:10.765+00:00",
+  "started_at": "2026-11-03T11:11:05.018+00:00",
+  "finished_at": "2026-11-03T11:11:56.511+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
