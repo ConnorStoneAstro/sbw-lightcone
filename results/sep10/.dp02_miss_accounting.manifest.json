@@ -5,7 +5,7 @@
   "recipe": "python src/dp02_miss.py compute --sample results/sep10/dp02_sample.parquet --associations results/sep10/dp02_associations.parquet --candidates results/sep10/dp02_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --hostless-cut flb01 --p-threshold p005 --tier dp02 --workers 16 --output results/sep10/dp02_miss_accounting.json",
   "definition_version": "sha256:4d9f000166f8cffeb8d1fc5f80bb321fb7e63695c337546c0fa93a40fa2719b2",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:d92f592fd88417cf6598ca8db84d78874c0d2093c121359f5c340c2d1578cbd1",
+  "data_version": "sha256:3ce2fdcb3ac4084d97667311da62c10f42c86a4af62978d4638611b8d1f0be93",
   "decisions": {
     "sbw_profile": "exponential",
     "band": "r",
@@ -17,11 +17,11 @@
     "p_true_threshold": "p005"
   },
   "input_versions": {
-    "dp02_sample": "sha256:4d6c1c16e012eb5e3b749558fec173675443f3e17f930eecae2b85044aa0aff9",
-    "dp02_associations": "sha256:f01b6e05eee50b23beb43c4dad956c309c46c6a44e35ab8830e8be06b0e5ba74",
+    "dp02_sample": "sha256:d7915db1551a8caf40281756cf04ea0a8581e364657c7986a291d60bd83638f5",
+    "dp02_associations": "sha256:fdc6cf316940642ca14de1d278eb6d6e2ab452dbbafa50ad909c4c595831ae4d",
     "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
   },
-  "git_sha": "b217b8a8dfe14a5a5726d0792846611e00e52c71",
+  "git_sha": "e9f2cd4129f302a126bfbcb466aca270e7f02375",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -31,8 +31,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-31T01:09:24.337+00:00",
-  "finished_at": "2026-10-31T01:11:57.388+00:00",
+  "started_at": "2026-11-03T10:03:06.894+00:00",
+  "finished_at": "2026-11-03T10:05:01.671+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
