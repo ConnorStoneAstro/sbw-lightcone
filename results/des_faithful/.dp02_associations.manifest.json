@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_associations",
+  "universe_id": "des_faithful",
+  "recipe": "python src/dp02_associate.py --sample results/des_faithful/dp02_sample.parquet --candidates results/des_faithful/dp02_candidates.parquet --profile exponential --band r --search-radius r15 --dlr-max d4 --dlr-radius moments --extendedness ext05 --candidate-quality none --workers 16 --output results/des_faithful/dp02_associations.parquet",
+  "definition_version": "sha256:eb6b2691b42765221dc2c91dffd1ed0d80007a4038e9975a4e555d5357915026",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:549d604c16502fc29e178f2a387703292703ce9efc477bc4aabaa014c706187b",
+  "decisions": {
+    "sbw_profile": "exponential",
+    "band": "r",
+    "search_radius": "r15",
+    "dlr_max": "d4",
+    "dlr_radius": "moments",
+    "extendedness_cut": "ext05",
+    "candidate_quality": "none"
+  },
+  "input_versions": {
+    "dp02_sample": "sha256:224395ee7aed16b6897894ef5ece64b11a8581936480343b54776dc99703b831",
+    "dp02_candidates": "sha256:01fcf7d973026d315c148b9baae7a6fc6ac8121787e732565c4c9dc3c61bccce"
+  },
+  "git_sha": "21dafd633936ca231c73dd6041daf92b07fb121f",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-11-03T05:51:50.138+00:00",
+  "finished_at": "2026-11-03T05:52:40.436+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
