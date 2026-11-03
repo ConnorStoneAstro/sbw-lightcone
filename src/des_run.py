@@ -79,6 +79,9 @@ def recovery(a):
     cut, t = HOSTLESS_CUT[a.hostless_cut], P_TRUE[a.p_threshold]
     s = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     df = df.merge(s.drop(columns=[c for c in s.columns if c in df.columns and c != "sn_id"]), on="sn_id", how="left")
+    full = df
+    st_full = full.true_host_status.to_numpy()
+    df = df[L.rung_mask(df, 4)]   # every agreement number below on the headline's denominator (rung 4), 2 Nov 2026
     n = len(df)
     sb, dl = df.sbw_objectId.to_numpy(), df.dlr_objectId.to_numpy()
     h1, h2 = df.host_objectId.to_numpy(), df.host2_objectId.to_numpy()
@@ -102,8 +105,9 @@ def recovery(a):
         "of_sbw_ne_published_hosted_is_host2": frac(((sb == h2) & has2)[(sb >= 0) & (sb != h1)]),
         "of_dlr_ne_published_hosted_is_host2": frac(((dl == h2) & has2)[(dl >= 0) & (dl != h1)])}
     st = df.true_host_status.to_numpy()
-    res["published_host_status"] = {k: int((st == k).sum()) for k in L.STATUS}
-    ecc = df.host_extended_class_coadd.to_numpy()
+    res["published_host_status"] = {k: int((st_full == k).sum()) for k in L.STATUS}   # the ladder, over the whole sample
+    res["published_host_status_note"] = "over all sample SNe; every agreement number is on rung 4 (published host usable)"
+    ecc = full.host_extended_class_coadd.to_numpy()
     res["published_host_extended_class_coadd"] = {str(k): int((ecc == k).sum()) for k in sorted(set(ecc.tolist()))}
     dd = df.host_ddlr_published.to_numpy(float)
     res["published_ddlr"] = {"median": float(np.nanmedian(dd)), "frac_gt_3": float(np.mean(dd > 3)),
@@ -111,9 +115,10 @@ def recovery(a):
                              "median_when_dlr_disagrees": float(np.nanmedian(dd[~df.dlr_correct])) if (~df.dlr_correct).any() else None,
                              "our_d_dlr_of_published_median": float(np.nanmedian(df.d_dlr_true))}
     res["sbw_ne_published_split"] = {
-        "published_absent_from_dr2_or_search": int((st == "absent").sum()),
-        "published_point_source": int((st == "point_source").sum()),
-        "published_unusable": int((st == "unusable").sum()),
+        "note": "the first three over the whole sample, the kept_* over rung 4",
+        "published_absent_from_dr2_or_search": int((st_full == "absent").sum()),
+        "published_point_source": int((st_full == "point_source").sum()),
+        "published_unusable": int((st_full == "unusable").sum()),
         "kept_sbw_hostless": int(((st == "kept") & hl).sum()),
         "kept_sbw_picks_other": int(((st == "kept") & ~hl & (sb != h1)).sum()),
         "kept_sbw_other_and_dlr_same_other": int(((st == "kept") & ~hl & (sb != h1) & (dl == sb)).sum())}
