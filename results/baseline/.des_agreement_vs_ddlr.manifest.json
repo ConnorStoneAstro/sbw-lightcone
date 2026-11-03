@@ -5,12 +5,12 @@
   "recipe": "python src/des_run.py fig agreement_vs_ddlr --tier des --associations results/baseline/des_associations.parquet --output results/baseline/des_agreement_vs_ddlr.pdf",
   "definition_version": "sha256:9a6fa5dbfe50f7a8b3327cf0c55b4374a30031d574a76db70909a2a22a7ea1b4",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:a918067e6b479ae6c1fb13a4954d9f0ab406d969f74ef04739029182118703dc",
+  "data_version": "sha256:1302be94711c5972630b6a6f12b8aff94eb08e9f17f8bfde7eedbdd5c482e935",
   "decisions": {},
   "input_versions": {
-    "des_associations": "sha256:a1874dffb85ef64f27cf5bb8039dd16b03f222fbded2489dca690380fe20cd5b"
+    "des_associations": "sha256:2c44ceb2fa70ad3b2e594cee3f4936271fd311ae649a477658e5a5485d921f64"
   },
-  "git_sha": "17d075e33b4c74893b3774315f6c2a9b8872186c",
+  "git_sha": "5dbb6cfcbfa004e2b9ed23930308bb29ccf5b95d",
   "git_remote": "git@github.com:ConnorStoneAstro/sbw-lightcone.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": 4,
     "exec_allowlist_version": 1
   },
-  "started_at": "2026-10-30T19:12:44.578+00:00",
-  "finished_at": "2026-10-30T19:13:14.200+00:00",
+  "started_at": "2026-11-03T02:21:59.899+00:00",
+  "finished_at": "2026-11-03T02:22:21.651+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
