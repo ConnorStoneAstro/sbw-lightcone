@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_random_associations",
+  "universe_id": "dp2_ddf_clean_legacy",
+  "recipe": "python src/dp02_associate.py --positions results/dp2_ddf_clean_legacy/dp02_random_positions.parquet --candidates results/dp2_ddf_clean_legacy/dp02_random_candidates.parquet --profile exponential --band r --search-radius r30 --dlr-max d4 --dlr-radius half_light --extendedness ext05 --candidate-quality none --output results/dp2_ddf_clean_legacy/dp02_random_associations.parquet",
+  "definition_version": "sha256:92d1ac0779fcdb6389fbacfc4dbaca3b4c1b7648eada111ec1e826665f6e3b4d",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:1c8b8dfe359fc2e350fb8ef9dde1491e1a09c8f395e1fe2a574d5242f34d7390",
+  "decisions": {
+    "sbw_profile": "exponential",
+    "band": "r",
+    "search_radius": "r30",
+    "dlr_max": "d4",
+    "dlr_radius": "half_light",
+    "extendedness_cut": "ext05",
+    "candidate_quality": "none"
+  },
+  "input_versions": {
+    "dp02_random_positions": "sha256:78a8dab402864d5a5d18d47eeef16c2aa01be77eb90de000c46efa9e1af955d2",
+    "dp02_random_candidates": "sha256:7ffe74e37e5680b70611099f38e4535d40a15869a6d03d782bb1ed75bbd32085"
+  },
+  "git_sha": "b6ee15a3dffe452834f4f60a8d7cf9fb60ee33ac",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-11-03T10:51:48.198+00:00",
+  "finished_at": "2026-11-03T10:53:53.698+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
