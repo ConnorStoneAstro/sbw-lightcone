@@ -145,7 +145,7 @@ def figure(a):
     res = json.load(open(a.accounting))
     pl = res["placement"]
     n = pl["n_detectable"]
-    fig, ax = plt.subplots(figsize=(6.0, 4.6))
+    fig, ax = plt.subplots(figsize=(7.4, 4.6))
     lo = max(0.0, np.floor((min(pl[m]["true_host"]["frac"] for m in ("sbw", "dlr")) - 0.03) * 20) / 20)
     for i, m in enumerate(("sbw", "dlr")):
         bottom = 0.0
@@ -158,10 +158,11 @@ def figure(a):
             if bottom + f > lo and f > 0.0015:
                 ax.text(i + 0.33, max(bottom + f / 2, lo + 0.004), label, fontsize=6.5, va="center")
             bottom += f
-    ax.set_xticks([0, 1], [f"{m.upper()}\nhosted {100 * pl[m]['frac_hosted']:.1f}%\ncontamination {100 * pl[m]['contamination']['of_hosted']:.2f}% of hosted"
+    ax.set_xticks([0, 1], [f"{m.upper()}\nhosted {100 * pl[m]['frac_hosted']:.1f}%\ncontam. {100 * pl[m]['contamination']['of_hosted']:.2f}%"
                            for m in ("sbw", "dlr")], fontsize=7.5)
-    ax.set_xlim(-0.5, 3.1); ax.set_ylim(lo, 1.0); ax.set_ylabel(f"fraction of detectable SNe (N = {n:,})")
-    ax.legend(fontsize=6.5, loc="center right")
+    ax.set_xlim(-0.5, 2.4); ax.set_ylim(lo, 1.0); ax.set_ylabel(f"fraction of detectable SNe (N = {n:,})")
+    ax.legend(fontsize=6.5, loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False)
+    ax.text(1.0, 0.55, "contam. = wrong hosts of either cause\nover the hosted SNe", transform=ax.transAxes, fontsize=6.5, va="top")
     ax.grid(axis="x", visible=False)
     ax.set_title("How SNe are placed with a host", fontsize=10, loc="left")
     fig.tight_layout(); fig.savefig(a.output); plt.close(fig)
