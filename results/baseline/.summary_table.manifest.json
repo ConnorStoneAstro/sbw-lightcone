@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "output_id": "summary_table",
+  "universe_id": "baseline",
+  "recipe": "python src/summary_table.py --dp02 results/baseline/dp02_recovery.json --ou24 results/baseline/ou24_recovery.json --des results/baseline/des_recovery.json --dp2 results/baseline/dp2_disagreement_rate.json --output results/baseline/summary_table.csv",
+  "definition_version": "sha256:5f1f5007d0a6ac0e34892dd3d236ca29bde618e1e37cfaf7cf663323871cec85",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:a4c59ccdc06134a23f165b59525c1efd08155601efe7ad5f91bae68fb562519a",
+  "decisions": {},
+  "input_versions": {
+    "dp02_recovery": "sha256:6c7c23e58e6cfb0056066c202056fd0777d6063495d4c4c0a18ba1bb2942d78b",
+    "ou24_recovery": "sha256:b03c30a1053443e2c3d4615ddcc019d1b51ccd1f1c604e7034d21dccc2be5a09",
+    "des_recovery": "sha256:30e1d131958f14d67f70afaada2772cd4b0888a5f391e6ec8a9a81905c788a00",
+    "dp2_disagreement_rate": "sha256:5a923e0fc78903d97b82e105ce3e1969a4fa43abe37d207441cf9541b44daeb1"
+  },
+  "git_sha": "21dafd633936ca231c73dd6041daf92b07fb121f",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-11-03T05:46:54.275+00:00",
+  "finished_at": "2026-11-03T05:46:55.211+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
