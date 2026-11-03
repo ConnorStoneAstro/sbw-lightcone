@@ -2,15 +2,15 @@
   "schema_version": 1,
   "output_id": "ou24_miss_accounting_fig",
   "universe_id": "dlr_moments",
-  "recipe": "python src/dp02_miss.py figure --accounting results/dlr_moments/ou24_miss_accounting.json --output results/dlr_moments/ou24_miss_accounting_fig.pdf",
-  "definition_version": "sha256:9f1fc8d9053d7c6e25ed73d65590eecbcc1aab2d4b2a789dd280291919ddd001",
+  "recipe": "python src/dp02_miss.py figure --legend outside --accounting results/dlr_moments/ou24_miss_accounting.json --output results/dlr_moments/ou24_miss_accounting_fig.pdf",
+  "definition_version": "sha256:c70df23eaf00bab2e4c95fdeb6fa840604bda1e095e31e207b492f72537c23fc",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:67b363618147656f33751f3a89fcacf3fad0b08d68567ee80d6bd84398366ddd",
+  "data_version": "sha256:b06454b69ee06839940109a78910cca58caccd666f90bdf77e7aa66f4e49185e",
   "decisions": {},
   "input_versions": {
     "ou24_miss_accounting": "sha256:c334051f6727267a958af8fdaa5b3cdd2d8fa93af7f98fd3a92a72028030a117"
   },
-  "git_sha": "8fb649171a654ba472071d32c1994e7719ddd529",
+  "git_sha": "b6ee15a3dffe452834f4f60a8d7cf9fb60ee33ac",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +20,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T05:08:34.745+00:00",
-  "finished_at": "2026-11-03T05:09:08.765+00:00",
+  "started_at": "2026-11-03T10:15:55.842+00:00",
+  "finished_at": "2026-11-03T10:16:27.188+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
