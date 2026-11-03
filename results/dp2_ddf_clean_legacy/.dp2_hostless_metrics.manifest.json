@@ -2,16 +2,17 @@
   "schema_version": 1,
   "output_id": "dp2_hostless_metrics",
   "universe_id": "dp2_ddf_clean_legacy",
-  "recipe": "python src/dp02_fig.py hostless_metrics --tier dp2 --rung none --associations results/dp2_ddf_clean_legacy/dp2_associations.parquet --random results/dp2_ddf_clean_legacy/dp2_random_associations.parquet --output results/dp2_ddf_clean_legacy/dp2_hostless_metrics.json",
-  "definition_version": "sha256:982315ae7e6beab816b39b5629c4744982a8f0c641c65c85075060f2e1473e2d",
+  "recipe": "python src/dp02_fig.py hostless_metrics --tier dp2 --rung none --dp02-hostless-metrics results/dp2_ddf_clean_legacy/dp02_hostless_metrics.json --associations results/dp2_ddf_clean_legacy/dp2_associations.parquet --random results/dp2_ddf_clean_legacy/dp2_random_associations.parquet --output results/dp2_ddf_clean_legacy/dp2_hostless_metrics.json",
+  "definition_version": "sha256:d68dc3592ea7588c582a64cba7422bba119dc724aad2f59f886e9436d7a833de",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:3ff3deba145dde08d8ccc20c18dc4888c45f2c81ed85b06916a1380390902182",
+  "data_version": "sha256:9145ca9f2319609e1db744c72713bf4ff7a6d8b42d7788778bbca022fc502410",
   "decisions": {},
   "input_versions": {
-    "dp2_associations": "sha256:81d0d514b6d392b4befefabe3347014f4b2d305e0c44dee673bd6da11da36c1d",
-    "dp2_random_associations": "sha256:70798bc44a17633ee7c6b9298db78a0270ed50dca2ceaa0f6f4342f322e56a5c"
+    "dp2_associations": "sha256:76eb307eb81654b084c51e7a9cc6ac8ddc527ed25791e9c5e411144a9dc4e66b",
+    "dp2_random_associations": "sha256:3c2b48b552a6e27d625374e758ed957fc5c9f5e60f07708bead6e6c41da0a321",
+    "dp02_hostless_metrics": "sha256:8d12098464a53a8c4f4e2d6141c067f7c905c8d9863d2fd56d01380f225bf4ca"
   },
-  "git_sha": "81242f9e651de16daaa4c0877371b8e6d226893e",
+  "git_sha": "b6ee15a3dffe452834f4f60a8d7cf9fb60ee33ac",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -21,8 +22,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-10-31T03:35:28.868+00:00",
-  "finished_at": "2026-10-31T03:35:49.563+00:00",
+  "started_at": "2026-11-03T10:58:48.486+00:00",
+  "finished_at": "2026-11-03T10:59:31.350+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
