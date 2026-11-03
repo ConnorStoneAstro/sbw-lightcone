@@ -1,11 +1,12 @@
 # Fig 5. Hostless indicators on every tier (ROC)
 
 ## Outputs
-- `results/baseline/hostless_roc_tiers.pdf` (annex pointer here; content on the machine that made it); made at commit `?` with `?`
-- `results/baseline/dp02_hostless_metrics.json` (annex pointer here; content on the machine that made it); made at commit `6cfae476` with `python src/dp02_fig.py hostless_metrics --tier dp02 --associations results/baseline/dp02_associations.parquet --random results/baseline/dp02_random_associations.parquet --output results/baseline/dp02_hostless_metrics.json`
-- `results/baseline/ou24_hostless_metrics.json` (annex pointer here; content on the machine that made it); made at commit `6cfae476` with `python src/dp02_fig.py hostless_metrics --tier ou24 --associations results/baseline/ou24_associations.parquet --random results/baseline/ou24_random_associations.parquet --output results/baseline/ou24_hostless_metrics.json`
-- `results/baseline/des_hostless_metrics.json` (content on this machine); made at commit `17d075e3` with `python src/des_run.py fig hostless_metrics --tier des --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --output results/baseline/des_hostless_metrics.json`
-- `results/baseline/dp2_hostless_metrics.json` (annex pointer here; content on the machine that made it); made at commit `24c6577a` with `python src/dp02_fig.py hostless_metrics --tier dp2 --rung none --associations results/baseline/dp2_associations.parquet --random results/baseline/dp2_random_associations.parquet --output results/baseline/dp2_hostless_metrics.json`
+- `results/baseline/hostless_roc_tiers.pdf` (content on this machine); made at commit `21dafd63` with `python src/roc_tiers.py --dp02 results/baseline/dp02_hostless_metrics.json --ou24 results/baseline/ou24_hostless_metrics.json --des results/baseline/des_hostless_metrics.json --dp2 results/baseline/dp2_hostless_metrics.json --hostless-cut flb01 --dlr-max d4 --output results/baseline/hostless_roc_tiers.pdf`
+  - decisions in the recipe: sbw_hostless_cut = flb01, dlr_max = d4
+- `results/baseline/dp02_hostless_metrics.json` (content on this machine); made at commit `b5df709b` with `python src/dp02_fig.py hostless_metrics --tier dp02 --dp02-hostless-metrics own --associations results/baseline/dp02_associations.parquet --random results/baseline/dp02_random_associations.parquet --output results/baseline/dp02_hostless_metrics.json`
+- `results/baseline/ou24_hostless_metrics.json` (content on this machine); made at commit `b5df709b` with `python src/dp02_fig.py hostless_metrics --tier ou24 --dp02-hostless-metrics results/baseline/dp02_hostless_metrics.json --associations results/baseline/ou24_associations.parquet --random results/baseline/ou24_random_associations.parquet --output results/baseline/ou24_hostless_metrics.json`
+- `results/baseline/des_hostless_metrics.json` (content on this machine); made at commit `21dafd63` with `python src/des_run.py fig hostless_metrics --tier des --dp02-hostless-metrics results/baseline/dp02_hostless_metrics.json --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --output results/baseline/des_hostless_metrics.json`
+- `results/baseline/dp2_hostless_metrics.json` (content on this machine); made at commit `b5df709b` with `python src/dp02_fig.py hostless_metrics --tier dp2 --rung none --dp02-hostless-metrics results/baseline/dp02_hostless_metrics.json --associations results/baseline/dp2_associations.parquet --random results/baseline/dp2_random_associations.parquet --output results/baseline/dp2_hostless_metrics.json`
 
 ## Sample
 
@@ -21,7 +22,7 @@ Fixed operating points, never retuned: SBW hostless when flb_best < 0.01 (or no 
 
 ## Numbers
 
-- DC2 / DP0.2: result file not readable here
-- OpenUniverse2024: result file not readable here
-- DES-SN5YR: N real 1,594 (sample 1,623), random 16,230; at flb 0.01 kept 99.7 %, random rejected 75.8 %, J 0.755; at d_DLR 4 kept 99.6 %, rejected 87.9 %, J 0.875; own J optimum flb 0.133 (J 0.869), d_DLR 2.6 (J 0.910); DP0.2 optima used: flb 0.0215, d_DLR 2.7 (source ?); random positions landing on a P > 0.5 host 98.0 %
-- Rubin DP2 rc_salt: result file not readable here
+- DC2 / DP0.2: N real 30,642 (sample 31,955), random 319,550; at flb 0.01 kept 98.0 %, random rejected 85.6 %, J 0.836; at d_DLR 4 kept 96.7 %, rejected 85.2 %, J 0.818; own J optimum flb 0.0316 (J 0.852), d_DLR 3.2 (J 0.833); DP0.2 optima used: flb 0.0316, d_DLR 3.2 (source own); random positions landing on a P > 0.5 host 97.0 %
+- OpenUniverse2024: N real 15,851 (sample 19,058), random 190,580; at flb 0.01 kept 96.3 %, random rejected 91.9 %, J 0.882; at d_DLR 4 kept 97.8 %, rejected 91.6 %, J 0.894; own J optimum flb 0.0133 (J 0.884), d_DLR 3.6 (J 0.898); DP0.2 optima used: flb 0.0316, d_DLR 3.2 (source results/baseline/dp02_hostless_metrics.json); random positions landing on a P > 0.5 host 98.5 %
+- DES-SN5YR: N real 1,594 (sample 1,623), random 16,230; at flb 0.01 kept 99.7 %, random rejected 75.8 %, J 0.755; at d_DLR 4 kept 99.6 %, rejected 87.9 %, J 0.875; own J optimum flb 0.133 (J 0.869), d_DLR 2.6 (J 0.910); DP0.2 optima used: flb 0.0316, d_DLR 3.2 (source results/baseline/dp02_hostless_metrics.json); random positions landing on a P > 0.5 host 98.0 %
+- Rubin DP2 rc_salt: N real 690 (sample 690), random 6,900; at flb 0.01 kept 85.9 %, random rejected 83.8 %, J 0.697; at d_DLR 4 kept 85.1 %, rejected 83.8 %, J 0.688; own J optimum flb 0.0562 (J 0.737), d_DLR 2.3 (J 0.721); DP0.2 optima used: flb 0.0316, d_DLR 3.2 (source results/baseline/dp02_hostless_metrics.json); random positions landing on a P > 0.5 host 99.7 %

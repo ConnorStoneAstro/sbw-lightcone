@@ -211,6 +211,11 @@ universe unless stated.
   cost in J and moves on the real tiers because real SNe sit closer to
   their hosts; random positions still get a P > 0.5 most probable host
   almost always, so hostlessness must come from flb, never from P.
+- One sentence on DES: at flb 0.01 SBW rejects only 75.8 % of the random
+  positions against DLR's 87.9 % (own J optimum flb 0.13; see the
+  numbers block), because the DR2 SExtractor light models put more
+  light at 45-90 arcsec than the Rubin models do; the operating point is
+  not retuned, the paper states the sensitivity to the light model.
 - Per-tier detail figures stay as outputs (`*_hostless_indicator.pdf`),
   not paper figures.
 
@@ -281,10 +286,81 @@ Appendix C: Tractor and SExtractor conventions.
 ## 4. Headline numbers (baseline; filled from the result files)
 
 See the `## Numbers` section of each caption file for the full set. This
-table is the short version the text will quote; it is rewritten after
-every materialization.
+block is the short version the text will quote; `python src/write_captions.py`
+rewrites it (between the markers) after every materialization.
 
-NUMBERS_TABLE
+<!-- numbers:begin -->
+**Table A. Headline per tier** (`results/baseline/summary_table.csv`; rung 4 = true host usable where a reference exists; DP2 has no truth, its reference is the DLR host and its N is the whole sample)
+
+| quantity | DC2 / DP0.2 | OpenUniverse2024 | DES-SN5YR | DP2 rc_salt |
+|---|---|---|---|---|
+| reference | DC2 truth host | OU2024 truth host | DES-SN5YR published host | DLR host (no truth) |
+| N detectable (the sample) | 31,955 | 19,058 | 1,623 | 690 |
+| N true host in the object table | 30,806 | 17,033 | 1,609 |  |
+| N true host usable (rung 4) | 30,642 | 15,851 | 1,594 |  |
+| mean P_SBW(reference) | 97.63 % | 98.64 % | 99.04 % | 98.70 % |
+|   standard error | 0.0007 | 0.0008 | 0.0014 |  |
+| P_SBW(reference) > 0.5 | 95.98 % | 95.92 % | 99.31 % | 83.91 % |
+| 0.05 <= P <= 0.5 | 1.04 % | 0.21 % | 0.38 % | 0.14 % |
+| P < 0.05 (reference excluded) | 0.96 % | 0.15 % | 0.00 % | 0.29 % |
+| SBW hostless | 2.02 % | 3.72 % | 0.31 % | 14.06 % |
+| SBW most probable = reference | 97.92 % | 98.79 % | 99.56 % | 98.64 % |
+|   Wilson 68 % | [97.84, 98.00] | [98.70, 98.87] | [99.36, 99.70] |  |
+| DLR = reference | 92.36 % | 97.04 % | 99.37 % |  |
+|   Wilson 68 % | [92.21, 92.51] | [96.90, 97.17] | [99.14, 99.54] |  |
+| DLR hostless | 3.35 % | 2.18 % | 0.44 % | 14.93 % |
+| SBW and DLR same host | 94.12 % | 96.46 % | 99.44 % | 83.91 % |
+| random positions rejected, SBW | 85.62 % | 91.91 % | 75.77 % | 83.80 % |
+| random positions rejected, DLR | 85.18 % | 91.62 % | 87.90 % | 83.75 % |
+| N random positions | 319,550 | 190,580 | 16,230 | 6,900 |
+| calibration error (Fig 2) | 0.0227 | 0.0032 | 0.0124 |  |
+|   on N SNe | 30,023 | 15,261 | 1,589 |  |
+
+**Table B. Placement of the detectable SNe** (Fig 1; `results/baseline/{dp02,ou24}_miss_accounting.json`; percentages of the sample unless marked *of hosted*)
+
+| quantity | DC2 / DP0.2 SBW | DC2 / DP0.2 DLR | OpenUniverse2024 SBW | OpenUniverse2024 DLR |
+|---|---|---|---|---|
+| all transients | 394,022 | 394,022 | 511,108 | 511,108 |
+| detectable (peak r < 24, in window, within 3 R_e) | 39,352 | 39,352 | 21,383 | 21,383 |
+| the sample (N) | 31,955 | 31,955 | 19,058 | 19,058 |
+| true host not in the object table | 1,313 (4.11 %) | 1,313 (4.11 %) | 3,207 (16.83 %) | 3,207 (16.83 %) |
+| hosted | 30,422 (95.20 %) | 29,994 (93.86 %) | 16,110 (84.53 %) | 16,341 (85.74 %) |
+|   with the true host | 92.05 % | 88.57 % | 79.78 % | 80.71 % |
+|   wrong host, true host available (real miss) | 609 (2.00 % of hosted) | 1,314 (4.38 % of hosted) | 57 (0.35 % of hosted) | 123 (0.75 % of hosted) |
+|   wrong host, true host not in table | 399 (1.31 % of hosted) | 378 (1.26 % of hosted) | 849 (5.27 % of hosted) | 836 (5.12 % of hosted) |
+|   contamination (wrong hosts of hosted) | 3.31 % [3.21, 3.42] | 5.64 % [5.51, 5.78] | 5.62 % [5.45, 5.81] | 5.87 % [5.69, 6.06] |
+| rejected | 1,533 | 1,961 | 2,948 | 2,717 |
+|   true host available | 619 (1.94 %) | 1,026 (3.21 %) | 590 (3.10 %) | 346 (1.82 %) |
+|   true host not in table | 914 | 935 | 2,358 | 2,371 |
+
+**Hostless thresholds** (Fig 5; `results/baseline/*_hostless_metrics.json`; fixed operating points flb 0.01 and d_DLR 4; the DP0.2 Youden-J optima of the baseline universe are what the other tiers are tested against)
+
+- DC2 / DP0.2: flb 0.01 keeps 98.0 % of real SNe and rejects 85.6 % of random positions (J 0.836); d_DLR 4 keeps 96.7 %, rejects 85.2 % (J 0.818); own optimum flb 0.0316, d_DLR 3.2; random positions with a P > 0.5 host 97.0 %
+- OpenUniverse2024: flb 0.01 keeps 96.3 % of real SNe and rejects 91.9 % of random positions (J 0.882); d_DLR 4 keeps 97.8 %, rejects 91.6 % (J 0.894); own optimum flb 0.0133, d_DLR 3.6; random positions with a P > 0.5 host 98.5 %
+- DES-SN5YR: flb 0.01 keeps 99.7 % of real SNe and rejects 75.8 % of random positions (J 0.755); d_DLR 4 keeps 99.6 %, rejects 87.9 % (J 0.875); own optimum flb 0.133, d_DLR 2.6; random positions with a P > 0.5 host 98.0 %
+- DP2 rc_salt: flb 0.01 keeps 85.9 % of real SNe and rejects 83.8 % of random positions (J 0.697); d_DLR 4 keeps 85.1 %, rejects 83.8 % (J 0.688); own optimum flb 0.0562, d_DLR 2.3; random positions with a P > 0.5 host 99.7 %
+
+**DES-SN5YR** (Fig 6; `results/baseline/des_recovery.json`)
+
+- rung 4 N 1,594 of 1,623; SBW most probable = published 99.56 % [99.36, 99.70]; DLR = published 99.37 % [99.14, 99.54]; mean P_SBW(published) 99.04 %; of SBW picks that differ from the published host, HOSTGAL2 is the pick for 85.71 % (DLR 66.67 %); published host status: {'absent': 14, 'point_source': 15, 'unusable': 0, 'quality': 0, 'kept': 1594}
+
+**DP2 rc_salt** (Fig 7; `results/baseline/dp2_disagreement_rate.json`)
+
+- N 690: same host 83.91 %, different host 0.43 %, SBW hostless only 0.72 %, DLR hostless only 1.59 %, both hostless 13.33 %; same host given DLR hosted 98.64 %; mean P_SBW(DLR host) 98.70 %; random positions N 6,900: SBW hostless 83.80 %, DLR hostless 83.75 %
+
+**DP2 DDF with DELIGHT** (Fig 9; `results/dp2_ddf_clean/dp2_cross_method_metrics.json`)
+
+- N 2,601; hostless: SBW 23.26 %, DLR 27.99 %, DELIGHT 16.69 %, DELIGHT-SEx 3.31 %
+- SBW|DLR: same 1,812 (69.67 %), different 24, same given both hosted 98.69 %; A-only hostless 37, B-only hostless 160, both hostless 568
+- SBW|DELIGHT: same 1,419 (54.56 %), different 282, same given both hosted 83.42 %; A-only hostless 466, B-only hostless 295, both hostless 139
+- SBW|DELIGHT-SEx: same 1,590 (61.13 %), different 350, same given both hosted 81.96 %; A-only hostless 575, B-only hostless 56, both hostless 30
+- DLR|DELIGHT: same 1,411 (54.25 %), different 188, same given both hosted 88.24 %; A-only hostless 568, B-only hostless 274, both hostless 160
+- DLR|DELIGHT-SEx: same 1,584 (60.90 %), different 239, same given both hosted 86.89 %; A-only hostless 692, B-only hostless 50, both hostless 36
+- DELIGHT|DELIGHT-SEx: same 2,102 (80.82 %), different 42, same given both hosted 98.04 %; A-only hostless 371, B-only hostless 23, both hostless 63
+- P_SBW of the DELIGHT host (N 2,167): > 0.5 65.48 %, 0.05..0.5 0.37 %, < 0.05 12.64 %, SBW hostless 21.50 %; DELIGHT status of those: {'kept': 1522, 'point_source': 645}
+- DELIGHT matched under each reference_match: pos_1arcsec 83.3 %, pos_3arcsec 96.2 %, frac_semimajor 33.9 %
+- median SN-to-DELIGHT separation 0.54 arcsec
+<!-- numbers:end -->
 
 ---
 
@@ -326,12 +402,23 @@ NUMBERS_TABLE
   `dp2_disagreement_rate.headline`; grid statement in the ROC caption.
 - 4.16 Stale numbers in AGENTS.md: the paper quotes only the caption
   files and result files; AGENTS.md keeps its history as history.
+- 4.17 Everything remade under this configuration (2-3 Nov 2026, NERSC
+  allocations remake3 to remake7 plus the laptop for the DES chain):
+  every output of every universe-tier pair is current, including the
+  cross-tier `hostless_roc_tiers`, `summary_table` and the DES hostless
+  outputs. `src/dp02_miss.py` is a declared input of the two Fig 1
+  outputs, so a layout edit to it makes them stale. The captions and
+  the numbers block of Section 4 were regenerated from these files.
 
 ## 6. Still open
 
 - `index.md` (the MyST report) has not been rewritten to the new
   framing.
 - `ext_none` on DP2 and a DP2 `ext_none` sentence are not materialized.
+- `physical/` and `dlr_moments/` `summary_table` and `hostless_roc_tiers`
+  are not materialized: they need a DES chain those universes never
+  held (DES is in `baseline` and `des_faithful` only); the appendix
+  quotes their `*_recovery.json` instead.
 - The `ou24_dp02_comparison` suptitle overlaps the panel titles
   (cosmetic).
 - The paper-figure styling (fonts, sizes, colours) is the diagnostic

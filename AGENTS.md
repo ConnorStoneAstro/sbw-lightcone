@@ -904,3 +904,39 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   success 80.0 / 80.7 %. The cat1 wrong-host fractions agree between
   methods because with the true host absent the outcome is set by whether
   any other object lies in the search radius, not by the indicator.
+- **Paper framing and full remake (2-3 Nov 2026).** Baseline = spec
+  defaults (moments DLR, physical cuts, DELIGHT training tier dropped);
+  the vocabulary is all / detectable (the sample) / rejected / hosted with
+  the three hosted outcomes (true host, wrong host because the true host
+  was not in the object table, wrong host although it was available) and
+  contamination = wrong hosts over hosted (`dp02_lib.placement`). Fig 1 is
+  one panel, "How SNe are placed with a host", `--legend outside` in the
+  recipe (a src-only cosmetic edit does not make an output stale; a flag
+  does). Every output of every universe-tier was remade: baseline,
+  `physical`, `dlr_moments` on NERSC (allocations remake3/4), the
+  cross-tier outputs (`hostless_roc_tiers`, `summary_table`,
+  `des_hostless_*` in baseline and `des_faithful`) on NERSC too, after the
+  laptop-made DES chain (`data/des_sn5yr`, `data/des_dr2_candidates.parquet`,
+  `results/{baseline,des_faithful}/des_*`, 214 MB) was rsynced to
+  `.../host_association/des_stage` and reinjected there: the laptop cannot
+  make anything whose chain reaches `dp02_candidates` (16 CPUs, 56 GB), and
+  the `des_hostless_*` recipes read `dp02_hostless_metrics`, so `des_faithful`
+  now holds its own dp02 chain as well. The remaining universes (`sep10`,
+  `truth_nearest`, `ext_none`, the five `dp2_ddf*`) were remade on
+  remake5/remake6; they each rebuild a dp02 chain (`dp2_p_top_host` and the
+  `--dp02-hostless-metrics` inputs), which is why a 198-target chain hit
+  the 4 h wall with 41 targets left (an expired allocation leaves deleted
+  files in the tree: `git checkout --` them, then recount with `--check`).
+  `python src/write_captions.py` now also rewrites the numbers block of
+  `OUTLINE.md` (between `<!-- numbers:begin/end -->`), so the outline, the
+  captions and the result files cannot drift; run it after every
+  materialization and commit the result. Headline (baseline, rung 4):
+  DP0.2 mean P_SBW(true) 97.6 %, argmax 97.9 %, DLR 92.4 %; OU2024 98.6 /
+  98.8 / 97.0 %; DES 99.0 / 99.6 / 99.4 %; contamination of the hosted
+  sample DP0.2 SBW 3.31 % vs DLR 5.64 %, OU2024 5.62 vs 5.87 % (OU2024's is
+  almost all "true host not in the object table", 5.3 % of hosted for both
+  methods, the extendedness cut on faint hosts). DES random positions: SBW
+  rejects only 75.8 % against DLR's 87.9 % (the own J optimum is flb 0.13,
+  an order of magnitude above the fixed 0.01): the DR2 SExtractor models
+  put more light at 45-90 arcsec than the Rubin ones; worth a sentence in
+  the hostless section, not a retune.

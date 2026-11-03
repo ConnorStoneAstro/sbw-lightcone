@@ -1,8 +1,8 @@
 # Fig 9. SBW, DLR and DELIGHT on the DP2 deep-drilling transients
 
 ## Outputs
-- `results/dp2_ddf_clean/dp2_cross_method_matrix.pdf` (annex pointer here; content on the machine that made it); made at commit `?` with `?`
-- `results/dp2_ddf_clean/dp2_cross_method_metrics.json` (annex pointer here; content on the machine that made it); made at commit `6fdffc57` with `python src/dp2_cross_method.py metrics --associations results/dp2_ddf_clean/dp2_associations.parquet --candidates results/dp2_ddf_clean/dp2_candidates.parquet --delight data/dp2_delight_yjkang_index.csv --reference-match pos_1arcsec --hostless-cut flb01 --p-threshold p005 --kang-ls-id-shift 20 --workers 16 --output results/dp2_ddf_clean/dp2_cross_method_metrics.json`
+- `results/dp2_ddf_clean/dp2_cross_method_matrix.pdf` (content on this machine); made at commit `e9f2cd41` with `python src/cross_method_matrix.py --metrics results/dp2_ddf_clean/dp2_cross_method_metrics.json --subset all --output results/dp2_ddf_clean/dp2_cross_method_matrix.pdf`
+- `results/dp2_ddf_clean/dp2_cross_method_metrics.json` (content on this machine); made at commit `e9f2cd41` with `python src/dp2_cross_method.py metrics --associations results/dp2_ddf_clean/dp2_associations.parquet --candidates results/dp2_ddf_clean/dp2_candidates.parquet --delight data/dp2_delight_yjkang_index.csv --reference-match pos_1arcsec --hostless-cut flb01 --p-threshold p005 --kang-ls-id-shift 20 --workers 16 --output results/dp2_ddf_clean/dp2_cross_method_metrics.json`
   - decisions in the recipe: reference_match = pos_1arcsec, sbw_hostless_cut = flb01, p_true_threshold = p005
 
 ## Sample
@@ -19,4 +19,13 @@ Fixed operating points, never retuned: SBW hostless when flb_best < 0.01 (or no 
 
 ## Numbers
 
-- dp2_cross_method_metrics not readable here
+- N 2,601; hostless: SBW 23.26 %, DLR 27.99 %, DELIGHT 16.69 %, DELIGHT-SEx 3.31 %
+- SBW|DLR: same 1,812 (69.67 %), different 24, same given both hosted 98.69 %; A-only hostless 37, B-only hostless 160, both hostless 568
+- SBW|DELIGHT: same 1,419 (54.56 %), different 282, same given both hosted 83.42 %; A-only hostless 466, B-only hostless 295, both hostless 139
+- SBW|DELIGHT-SEx: same 1,590 (61.13 %), different 350, same given both hosted 81.96 %; A-only hostless 575, B-only hostless 56, both hostless 30
+- DLR|DELIGHT: same 1,411 (54.25 %), different 188, same given both hosted 88.24 %; A-only hostless 568, B-only hostless 274, both hostless 160
+- DLR|DELIGHT-SEx: same 1,584 (60.90 %), different 239, same given both hosted 86.89 %; A-only hostless 692, B-only hostless 50, both hostless 36
+- DELIGHT|DELIGHT-SEx: same 2,102 (80.82 %), different 42, same given both hosted 98.04 %; A-only hostless 371, B-only hostless 23, both hostless 63
+- P_SBW of the DELIGHT host (N 2,167): > 0.5 65.48 %, 0.05..0.5 0.37 %, < 0.05 12.64 %, SBW hostless 21.50 %; DELIGHT status of those: {'kept': 1522, 'point_source': 645}
+- DELIGHT matched under each reference_match: pos_1arcsec 83.3 %, pos_3arcsec 96.2 %, frac_semimajor 33.9 %
+- median SN-to-DELIGHT separation 0.54 arcsec

@@ -1,11 +1,11 @@
 # Fig 2. Candidate-level reliability of P_SBW (DP0.2 and OU2024; DES in text)
 
 ## Outputs
-- `results/baseline/dp02_calibration.pdf` (content on this machine); made at commit `6cfae476` with `python src/dp02_fig.py calibration --associations results/baseline/dp02_associations.parquet --hostless-cut flb01 --output results/baseline/dp02_calibration.pdf`
+- `results/baseline/dp02_calibration.pdf` (content on this machine); made at commit `b5df709b` with `python src/dp02_fig.py calibration --associations results/baseline/dp02_associations.parquet --hostless-cut flb01 --output results/baseline/dp02_calibration.pdf`
   - decisions in the recipe: sbw_hostless_cut = flb01
-- `results/baseline/ou24_calibration.pdf` (content on this machine); made at commit `6cfae476` with `python src/dp02_fig.py calibration --tier ou24 --associations results/baseline/ou24_associations.parquet --hostless-cut flb01 --output results/baseline/ou24_calibration.pdf`
+- `results/baseline/ou24_calibration.pdf` (content on this machine); made at commit `b5df709b` with `python src/dp02_fig.py calibration --tier ou24 --associations results/baseline/ou24_associations.parquet --hostless-cut flb01 --output results/baseline/ou24_calibration.pdf`
   - decisions in the recipe: sbw_hostless_cut = flb01
-- `results/baseline/des_calibration.pdf` (content on this machine); made at commit `17d075e3` with `python src/des_run.py fig calibration --tier des --associations results/baseline/des_associations.parquet --hostless-cut flb01 --output results/baseline/des_calibration.pdf`
+- `results/baseline/des_calibration.pdf` (content on this machine); made at commit `5dbb6cfc` with `python src/des_run.py fig calibration --tier des --associations results/baseline/des_associations.parquet --hostless-cut flb01 --output results/baseline/des_calibration.pdf`
   - decisions in the recipe: sbw_hostless_cut = flb01
 
 ## Sample

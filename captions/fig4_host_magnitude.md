@@ -1,8 +1,8 @@
 # Fig 4. Recovery at fixed host magnitude, DP0.2 against OU2024
 
 ## Outputs
-- `results/baseline/ou24_dp02_comparison.pdf` (content on this machine); made at commit `6cfae476` with `python src/ou24_host_mag.py dp02_comparison --associations results/baseline/ou24_associations.parquet --dp02-associations results/baseline/dp02_associations.parquet --output results/baseline/ou24_dp02_comparison.pdf`
-- `results/baseline/ou24_recovery_by_host_mag.json` (annex pointer here; content on the machine that made it); made at commit `6cfae476` with `python src/ou24_host_mag.py by_host_mag --associations results/baseline/ou24_associations.parquet --hostless-cut flb01 --output results/baseline/ou24_recovery_by_host_mag.json`
+- `results/baseline/ou24_dp02_comparison.pdf` (content on this machine); made at commit `b5df709b` with `python src/ou24_host_mag.py dp02_comparison --associations results/baseline/ou24_associations.parquet --dp02-associations results/baseline/dp02_associations.parquet --output results/baseline/ou24_dp02_comparison.pdf`
+- `results/baseline/ou24_recovery_by_host_mag.json` (content on this machine); made at commit `b5df709b` with `python src/ou24_host_mag.py by_host_mag --associations results/baseline/ou24_associations.parquet --hostless-cut flb01 --output results/baseline/ou24_recovery_by_host_mag.json`
   - decisions in the recipe: sbw_hostless_cut = flb01
 
 ## Sample
@@ -19,5 +19,8 @@ Fixed operating points, never retuned: SBW hostless when flb_best < 0.01 (or no 
 
 ## Numbers
 
-- ou24_recovery_by_host_mag not readable here
+- OU2024 rung4 (true host usable by both methods), all_z: N 15,851, mean P 98.64 %, DLR 97.04 %; host r < 24: N 12,076, mean P 99.42 %, DLR 96.71 %
+- OU2024 rung4 (true host usable by both methods), z_lt_1: N 15,766, mean P 98.65 %, DLR 97.04 %; host r < 24: N 12,064, mean P 99.42 %, DLR 96.71 %
+- OU2024 rung2 (detectable (the sample)), all_z: N 19,058, mean P 82.04 %, DLR 80.71 %; host r < 24: N 12,643, mean P 94.97 %, DLR 92.38 %
+- OU2024 rung2 (detectable (the sample)), z_lt_1: N 18,705, mean P 83.15 %, DLR 81.79 %; host r < 24: N 12,631, mean P 94.96 %, DLR 92.37 %
 - DP0.2 rung 4: N 30,642, mean P 97.63 %, DLR 92.36 %

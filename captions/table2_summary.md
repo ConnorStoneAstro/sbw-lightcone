@@ -1,7 +1,7 @@
 # Table 2. Summary of every tier
 
 ## Outputs
-- `results/baseline/summary_table.csv` (annex pointer here; content on the machine that made it); made at commit `?` with `?`
+- `results/baseline/summary_table.csv` (content on this machine); made at commit `21dafd63` with `python src/summary_table.py --dp02 results/baseline/dp02_recovery.json --ou24 results/baseline/ou24_recovery.json --des results/baseline/des_recovery.json --dp2 results/baseline/dp2_disagreement_rate.json --output results/baseline/summary_table.csv`
 
 ## Sample
 
@@ -17,4 +17,9 @@ Fixed operating points, never retuned: SBW hostless when flb_best < 0.01 (or no 
 
 ## Rows
 
-- summary_table not readable here
+| tier | reference | n_detectable | n_host_in_table | n_host_usable | mean_p_sbw_reference | mean_p_sbw_reference_se | p_gt_0p5 | p_t_to_0p5 | p_lt_t | sbw_hostless | sbw_argmax_agreement | sbw_argmax_agreement_ci68 | dlr_agreement | dlr_agreement_ci68 | dlr_hostless | sbw_dlr_agreement | random_rejected_sbw | random_rejected_dlr | n_random | calibration_error | calibration_n | p_true_threshold | sbw_hostless_cut |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| dp02 | DC2 truth host | 31,955 | 30,806 | 30,642 | 97.63 % | 0.0007 | 95.98 % | 1.04 % | 0.96 % | 2.02 % | 97.92 % | [97.84, 98.00] | 92.36 % | [92.21, 92.51] | 3.35 % | 94.12 % | 85.62 % | 85.18 % | 319,550 | 0.0227 | 30,023 | 0.0500 | 0.0100 |
+| ou24 | OU2024 truth host | 19,058 | 17,033 | 15,851 | 98.64 % | 0.0008 | 95.92 % | 0.21 % | 0.15 % | 3.72 % | 98.79 % | [98.70, 98.87] | 97.04 % | [96.90, 97.17] | 2.18 % | 96.46 % | 91.91 % | 91.62 % | 190,580 | 0.0032 | 15,261 | 0.0500 | 0.0100 |
+| des | DES-SN5YR published host | 1,623 | 1,609 | 1,594 | 99.04 % | 0.0014 | 99.31 % | 0.38 % | 0.00 % | 0.31 % | 99.56 % | [99.36, 99.70] | 99.37 % | [99.14, 99.54] | 0.44 % | 99.44 % | 75.77 % | 87.90 % | 16,230 | 0.0124 | 1,589 | 0.0500 | 0.0100 |
+| dp2 | DLR host (no truth) | 690 |  |  | 98.70 % |  | 83.91 % | 0.14 % | 0.29 % | 14.06 % | 98.64 % |  |  |  | 14.93 % | 83.91 % | 83.80 % | 83.75 % | 6,900 |  |  |  |  |

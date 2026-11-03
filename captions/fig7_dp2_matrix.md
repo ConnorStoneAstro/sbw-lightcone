@@ -1,9 +1,9 @@
 # Fig 7. Rubin DP2 without a reference: SBW against DLR
 
 ## Outputs
-- `results/baseline/dp2_agreement_matrix.pdf` (annex pointer here; content on the machine that made it); made at commit `6cfae476` with `python src/dp2_fig.py agreement_matrix --associations results/baseline/dp2_associations.parquet --random results/baseline/dp2_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/dp2_agreement_matrix.pdf`
+- `results/baseline/dp2_agreement_matrix.pdf` (content on this machine); made at commit `b5df709b` with `python src/dp2_fig.py agreement_matrix --associations results/baseline/dp2_associations.parquet --random results/baseline/dp2_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/dp2_agreement_matrix.pdf`
   - decisions in the recipe: sbw_hostless_cut = flb01, p_true_threshold = p005
-- `results/baseline/dp2_disagreement_rate.json` (content on this machine); made at commit `6cfae476` with `python src/dp2_fig.py disagreement_rate --associations results/baseline/dp2_associations.parquet --sweep results/baseline/dp2_association_sweep.parquet --random results/baseline/dp2_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/dp2_disagreement_rate.json`
+- `results/baseline/dp2_disagreement_rate.json` (content on this machine); made at commit `b5df709b` with `python src/dp2_fig.py disagreement_rate --associations results/baseline/dp2_associations.parquet --sweep results/baseline/dp2_association_sweep.parquet --random results/baseline/dp2_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/dp2_disagreement_rate.json`
   - decisions in the recipe: sbw_hostless_cut = flb01, p_true_threshold = p005
 
 ## Sample
@@ -20,6 +20,6 @@ Fixed operating points, never retuned: SBW hostless when flb_best < 0.01 (or no 
 
 ## Numbers
 
-- settings: profile = exponential, band = r, search_radius = r30, dlr_max = d4, dlr_radius = moments, extendedness = ext05, candidate_quality = none, exclude_suspect = keep
-- N 690: same host 83.91 %, different host 0.43 %, SBW hostless only 0.72 %, DLR hostless only 1.59 %, both hostless 13.33 %; SBW hostless 14.06 %, DLR hostless 14.93 %; same host given DLR hosted 98.64 %; mean P_SBW(DLR host) 98.70 %; P(DLR host) < 0.05 0.85 %
-- random positions N 6,900: SBW hostless 83.04 %, DLR hostless 83.16 %
+- settings: profile = exponential, band = r, search_radius = r30, dlr_max = d4, dlr_radius = moments, extendedness = ext05, candidate_quality = none, dp2_sample = rc_salt, dp2_candidate_catalogue = dp2_object, exclude_suspect = keep
+- N 690: same host 83.91 %, different host 0.43 %, SBW hostless only 0.72 %, DLR hostless only 1.59 %, both hostless 13.33 %; SBW hostless 14.06 %, DLR hostless 14.93 %; same host given DLR hosted 98.64 %; mean P_SBW(DLR host) 98.70 %; P(DLR host) < 0.05 0.85 %; P of the most probable host: median 1.000, > 0.9 for 98.99 %
+- random positions N 6,900: SBW hostless 83.80 %, DLR hostless 83.75 %

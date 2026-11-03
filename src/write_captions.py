@@ -50,6 +50,23 @@ def ci(v, d=2):
     return "n/a" if not v else f"[{100 * v[0]:.{d}f}, {100 * v[1]:.{d}f}]"
 
 
+def cell(key, v):
+    """One summary_table cell for markdown: counts as ints, fractions as percentages, CIs as percentages."""
+    if v in ("", None):
+        return ""
+    if key.startswith("n_") or key.endswith("_n"):
+        return f"{int(float(v)):,}"
+    if key.endswith("_ci68"):
+        lo, hi = json.loads(v)
+        return f"[{100 * lo:.2f}, {100 * hi:.2f}]"
+    if key in ("p_true_threshold", "sbw_hostless_cut", "calibration_error", "mean_p_sbw_reference_se"):
+        return f"{float(v):.4f}"
+    try:
+        return f"{100 * float(v):.2f} %"
+    except ValueError:
+        return str(v)
+
+
 def head(title, outputs, sample, decisions_note):
     lines = [f"# {title}", ""]
     lines.append("## Outputs")
@@ -350,14 +367,130 @@ def table2():
         lines.append("| " + " | ".join(keys) + " |")
         lines.append("|" + "---|" * len(keys))
         for r in rows:
-            lines.append("| " + " | ".join(str(r[k])[:12] for k in keys) + " |")
+            lines.append("| " + " | ".join(cell(k, r[k]) for k in keys) + " |")
     else:
         lines.append("- summary_table not readable here")
     return lines
 
 
+def outline_numbers():
+    """The short table of headline numbers the paper text quotes, written into OUTLINE.md between the
+    ``<!-- numbers:begin -->`` and ``<!-- numbers:end -->`` markers (section 4)."""
+    L = []
+    p = ROOT / "results/baseline/summary_table.csv"
+    if not readable(str(p.relative_to(ROOT))):
+        return ["- summary_table not readable here"]
+    rows = {r["tier"]: r for r in csv.DictReader(open(p))}
+    tiers = [("dp02", "DC2 / DP0.2"), ("ou24", "OpenUniverse2024"), ("des", "DES-SN5YR"), ("dp2", "DP2 rc_salt")]
+    L += ["**Table A. Headline per tier** (`results/baseline/summary_table.csv`; rung 4 = true host usable where a "
+          "reference exists; DP2 has no truth, its reference is the DLR host and its N is the whole sample)", ""]
+    L.append("| quantity | " + " | ".join(n for _, n in tiers) + " |")
+    L.append("|---|" + "---|" * len(tiers))
+    def row(label, key):
+        L.append(f"| {label} | " + " | ".join(cell(key, rows[t][key]) for t, _ in tiers) + " |")
+    row("reference", "reference")
+    row("N detectable (the sample)", "n_detectable")
+    row("N true host in the object table", "n_host_in_table")
+    row("N true host usable (rung 4)", "n_host_usable")
+    row("mean P_SBW(reference)", "mean_p_sbw_reference")
+    row("  standard error", "mean_p_sbw_reference_se")
+    row("P_SBW(reference) > 0.5", "p_gt_0p5")
+    row("0.05 <= P <= 0.5", "p_t_to_0p5")
+    row("P < 0.05 (reference excluded)", "p_lt_t")
+    row("SBW hostless", "sbw_hostless")
+    row("SBW most probable = reference", "sbw_argmax_agreement")
+    row("  Wilson 68 %", "sbw_argmax_agreement_ci68")
+    row("DLR = reference", "dlr_agreement")
+    row("  Wilson 68 %", "dlr_agreement_ci68")
+    row("DLR hostless", "dlr_hostless")
+    row("SBW and DLR same host", "sbw_dlr_agreement")
+    row("random positions rejected, SBW", "random_rejected_sbw")
+    row("random positions rejected, DLR", "random_rejected_dlr")
+    row("N random positions", "n_random")
+    row("calibration error (Fig 2)", "calibration_error")
+    row("  on N SNe", "calibration_n")
+    L += ["", "**Table B. Placement of the detectable SNe** (Fig 1; `results/baseline/{dp02,ou24}_miss_accounting.json`; "
+          "percentages of the sample unless marked *of hosted*)", ""]
+    cols = []
+    vals = {}
+    for tier, name in tiers[:2]:
+        j = load_json(f"results/baseline/{tier}_miss_accounting.json")
+        if not j or "placement" not in j:
+            continue
+        pl, lad = j["placement"], j.get("ladder") or {}
+        for m in ("sbw", "dlr"):
+            r = pl[m]; c = f"{name} {m.upper()}"; cols.append(c)
+            vals[c] = {
+                "all transients": f"{lad.get('transients', 0):,}",
+                "detectable (peak r < 24, in window, within 3 R_e)": f"{lad.get('detectable', 0):,}",
+                "the sample (N)": f"{pl['n_detectable']:,}",
+                "true host not in the object table": f"{pl['n_true_host_not_in_table']:,} ({pct(pl['n_true_host_not_in_table'] / pl['n_detectable'])})",
+                "hosted": f"{r['n_hosted']:,} ({pct(r['frac_hosted'])})",
+                "  with the true host": pct(r['true_host']['frac']),
+                "  wrong host, true host available (real miss)": f"{r['wrong_host_miss']['n']:,} ({pct(r['wrong_host_miss']['of_hosted'])} of hosted)",
+                "  wrong host, true host not in table": f"{r['wrong_host_not_in_table']['n']:,} ({pct(r['wrong_host_not_in_table']['of_hosted'])} of hosted)",
+                "  contamination (wrong hosts of hosted)": f"{pct(r['contamination']['of_hosted'])} {ci(r['contamination']['ci68'])}",
+                "rejected": f"{r['n_rejected']:,}",
+                "  true host available": f"{r['rejected_true_host_present']['n']:,} ({pct(r['rejected_true_host_present']['frac'])})",
+                "  true host not in table": f"{r['rejected_true_host_not_in_table']['n']:,}",
+            }
+    if cols:
+        L.append("| quantity | " + " | ".join(cols) + " |")
+        L.append("|---|" + "---|" * len(cols))
+        for k in vals[cols[0]]:
+            L.append(f"| {k} | " + " | ".join(vals[c][k] for c in cols) + " |")
+    L += ["", "**Hostless thresholds** (Fig 5; `results/baseline/*_hostless_metrics.json`; fixed operating points flb 0.01 and d_DLR 4; "
+          "the DP0.2 Youden-J optima of the baseline universe are what the other tiers are tested against)", ""]
+    for t, name in tiers:
+        j = load_json(f"results/baseline/{t}_hostless_metrics.json")
+        if not j:
+            L.append(f"- {name}: not readable here"); continue
+        y, tr = j["youden_J"], j["dp02_optima_transfer"]
+        pts = {p["threshold"]: p for p in tr["flb_best"]["at"]}; dpt = {p["threshold"]: p for p in tr["d_dlr_min"]["at"]}
+        p01 = pts.get(0.01) or next(iter(pts.values())); d4 = dpt.get(4.0) or next(iter(dpt.values()))
+        L.append(f"- {name}: flb 0.01 keeps {pct(p01['real_kept'], 1)} of real SNe and rejects {pct(p01['random_rejected'], 1)} of random positions "
+                 f"(J {p01['J']:.3f}); d_DLR 4 keeps {pct(d4['real_kept'], 1)}, rejects {pct(d4['random_rejected'], 1)} (J {d4['J']:.3f}); "
+                 f"own optimum flb {y['sbw_flb_best']['t_opt']:.3g}, d_DLR {y['dlr_d_dlr_min']['t_opt']:.3g}; "
+                 f"random positions with a P > 0.5 host {pct(j['random_p_sbw_gt_0p5'], 1)}")
+    j = load_json("results/baseline/des_recovery.json")
+    if j:
+        a, h2 = j["agreement_with_published"], j["hostgal2"]
+        L += ["", "**DES-SN5YR** (Fig 6; `results/baseline/des_recovery.json`)", "",
+              f"- rung 4 N {j['n']:,} of {int(rows['des']['n_detectable']):,}; SBW most probable = published {pct(a['sbw_argmax']['frac'])} {ci(a['sbw_argmax']['ci68'])}; "
+              f"DLR = published {pct(a['dlr']['frac'])} {ci(a['dlr']['ci68'])}; mean P_SBW(published) {pct(a['mean_p_sbw_published'])}; "
+              f"of SBW picks that differ from the published host, HOSTGAL2 is the pick for {pct(h2['of_sbw_ne_published_hosted_is_host2']['frac'])} "
+              f"(DLR {pct(h2['of_dlr_ne_published_hosted_is_host2']['frac'])}); published host status: {j['published_host_status']}"]
+    j = load_json("results/baseline/dp2_disagreement_rate.json")
+    if j:
+        h, r = j["headline"], j["random_positions"]
+        L += ["", "**DP2 rc_salt** (Fig 7; `results/baseline/dp2_disagreement_rate.json`)", "",
+              f"- N {h['n']}: same host {pct(h['same_host'])}, different host {pct(h['different_host'])}, SBW hostless only {pct(h['sbw_hostless_only'])}, "
+              f"DLR hostless only {pct(h['dlr_hostless_only'])}, both hostless {pct(h['both_hostless'])}; same host given DLR hosted "
+              f"{pct(h['same_host'] / (1 - h['dlr_hostless']))}; mean P_SBW(DLR host) {pct(h['mean_p_sbw_of_dlr_host'])}; random positions "
+              f"N {r['n']:,}: SBW hostless {pct(r['sbw_hostless'])}, DLR hostless {pct(r['dlr_hostless'])}"]
+    j = load_json("results/dp2_ddf_clean/dp2_cross_method_metrics.json")
+    if j:
+        L += ["", "**DP2 DDF with DELIGHT** (Fig 9; `results/dp2_ddf_clean/dp2_cross_method_metrics.json`)", ""]
+        f9 = fig9()
+        L += f9[f9.index("## Numbers") + 2:]
+    return L
+
+
+def write_outline_numbers():
+    path = ROOT / "OUTLINE.md"
+    text = path.read_text()
+    b, e = "<!-- numbers:begin -->", "<!-- numbers:end -->"
+    if b not in text or e not in text:
+        print("OUTLINE.md has no numbers markers; skipped", file=sys.stderr); return
+    pre, rest = text.split(b, 1); _, post = rest.split(e, 1)
+    body = "\n".join(outline_numbers())
+    path.write_text(f"{pre}{b}\n{body}\n{e}{post}")
+    print("wrote OUTLINE.md numbers block")
+
+
 def main():
     OUT.mkdir(exist_ok=True)
+    write_outline_numbers()
     for name, fn in (("fig1_placement", fig1), ("fig2_reliability", fig2), ("fig3_matrix_sims", fig3),
                      ("fig4_host_magnitude", fig4), ("fig5_hostless_roc", fig5), ("fig6_des_matrix", fig6),
                      ("fig7_dp2_matrix", fig7), ("fig8_dp2_consistency", fig8), ("fig9_delight", fig9),
