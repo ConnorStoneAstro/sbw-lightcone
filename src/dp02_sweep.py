@@ -14,7 +14,8 @@ import pyarrow.parquet as pq
 
 from dp02_fig import plot_calibration, plt as _plt  # noqa: F401  (rcParams)
 import dp02_lib as L
-from dp02_lib import (BANDS, COLORS, DLR_MAX, HOSTLESS_CUT, PROFILES, PROFILE_LABEL, QUALITY, RADIUS, associate_all, calibration_curve,
+from dp02_lib import (BANDS, COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, PROFILES, PROFILE_LABEL, QUALITY, RADIUS, associate_all, calibration_curve,
+                      dlr_in_sbw_set, sbw_success,
                       p_true, rung, wilson)
 
 
@@ -28,16 +29,16 @@ def run(sample, candpath, bands, profiles, cfg, workers):
     return res
 
 
-def panel_grid(res, keys, titles, out, suptitle, cut):
+def panel_grid(res, keys, titles, out, suptitle, cut, t):
     n = len(keys)
     ncol = 3 if n > 4 else n
     nrow = int(np.ceil(n / ncol))
     fig, axes = plt.subplots(nrow, ncol, figsize=(3.0 * ncol, 3.0 * nrow), squeeze=False)
-    for ax, k, t in zip(axes.flat, keys, titles):
+    for ax, k, title in zip(axes.flat, keys, titles):
         df = rung(res[k], 4)
         _, ece = plot_calibration(ax, df, cut)
-        ax.set_title(f"{t}\nmean P(true) {100 * p_true(df).mean():.2f}%, most probable = true "
-                     f"{100 * df.sbw_correct.mean():.2f}%  N={len(df):,}", fontsize=7)
+        ax.set_title(f"{title}\nmean P(true) {100 * p_true(df).mean():.2f}%, P(true) $\\geq$ {t:g}: "
+                     f"{100 * sbw_success(df, t).mean():.2f}%  N={len(df):,}", fontsize=7)
         ax.set_xlabel(""); ax.set_ylabel("")
     for ax in axes.flat[n:]:
         ax.axis("off")
@@ -47,13 +48,13 @@ def panel_grid(res, keys, titles, out, suptitle, cut):
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
-def band_dependence(res, profile, out, cfgtxt):
+def band_dependence(res, profile, out, cfgtxt, t):
     res = {k: rung(v, 4) for k, v in res.items()}   # the method's own performance
     bands = list(BANDS)
-    rec = [res[(b, profile)].sbw_correct.mean() for b in bands]
+    rec = [sbw_success(res[(b, profile)], t).mean() for b in bands]
     mp = [p_true(res[(b, profile)]).mean() for b in bands]
     drec = [res[(b, profile)].dlr_correct.mean() for b in bands]
-    agr = [res[(b, profile)].agree.mean() for b in bands]
+    agr = [dlr_in_sbw_set(res[(b, profile)], t).mean() for b in bands]
     n = [len(res[(b, profile)]) for b in bands]
     ref = res[("r", profile)].set_index("sn_id")["sbw_objectId"]
     changed = []
@@ -64,9 +65,9 @@ def band_dependence(res, profile, out, cfgtxt):
     x = np.arange(6)
     fig, ax = plt.subplots(figsize=(5.2, 3.4))
     for y, name, color, mk, ls in [(mp, "mean $P_{\\mathrm{SBW}}$(true host)", COLORS["sbw"], "o", "-"),
-                                   (rec, "SBW most probable host = true host", COLORS["sbw"], "o", "--"),
+                                   (rec, f"$P_{{\\mathrm{{SBW}}}}$(true host) $\\geq$ {t:g} (in the credible set)", COLORS["sbw"], "o", "--"),
                                    (drec, "DLR host = true host", COLORS["dlr"], "s", "-"),
-                                   (agr, "SBW most probable host = DLR host", COLORS["agree"], "^", "-"),
+                                   (agr, f"DLR host in SBW's credible set ($P \\geq$ {t:g})", COLORS["agree"], "^", "-"),
                                    (changed, "SBW most probable host differs from r band", "#7b4ea3", "d", "-")]:
         ax.plot(x, y, marker=mk, ms=5, color=color, ls=ls, label=name, mfc="none" if ls == "--" else color)
     ax.set_xticks(x, bands); ax.set_xlabel("band"); ax.set_ylabel("fraction"); ax.set_ylim(0, 1.02)
@@ -75,26 +76,28 @@ def band_dependence(res, profile, out, cfgtxt):
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
-def profile_table(res, band, out, cut):
+def profile_table(res, band, out, cut, t):
     rows = []
     for p in PROFILES:
         df = rung(res[(band, p)], 4)
         n = len(df)
         _, ece, _ = calibration_curve(df, cut)
-        ps, lo, hi = wilson(df.sbw_correct.sum(), n)
+        ok, agr = sbw_success(df, t), dlr_in_sbw_set(df, t)
+        ps, lo, hi = wilson(int(ok.sum()), n)
         rows.append({"profile": p, "label": PROFILE_LABEL[p], "band": band, "rung": 4, "n": n,
-                     "mean_p_sbw_true": p_true(df).mean(),
+                     "mean_p_sbw_true": p_true(df).mean(), "p_true_threshold": t,
                      "sbw_recovery": ps, "sbw_recovery_lo": lo, "sbw_recovery_hi": hi,
-                     "dlr_recovery": df.dlr_correct.mean(), "agreement": df.agree.mean(),
+                     "dlr_recovery": df.dlr_correct.mean(), "agreement": agr.mean(),
                      "sbw_no_host": (df.sbw_objectId < 0).mean(), "median_p_true": np.nanmedian(df.p_sbw_true),
                      "expected_calibration_error": ece,
-                     "disagree_sbw_right": (~df.agree & df.sbw_correct).mean(),
-                     "disagree_dlr_right": (~df.agree & df.dlr_correct).mean()})
+                     "disagree_sbw_right": (~agr & ok).mean(),
+                     "disagree_dlr_right": (~agr & df.dlr_correct.to_numpy()).mean()})
     pd.DataFrame(rows).to_csv(out, index=False)
 
 
 TABLE_COLS = ["sn_id", "band", "profile", "n_cand_used", "sbw_objectId", "p_sbw_max", "flb_best", "flb_max",
-              "sep_sbw", "dlr_objectId", "p_sbw_dlr", "d_dlr_min", "d_dlr_sbw", "sep_dlr", "agree", "dlr_hostless"]
+              "sep_sbw", "dlr_objectId", "p_sbw_dlr", "d_dlr_min", "d_dlr_sbw", "sep_dlr", "agree", "dlr_hostless",
+              "p_sbw_true", "flb_true"]   # p_sbw_true: P_SBW of the reference host (nan without one)
 
 
 def long_table(res, out):
@@ -123,6 +126,7 @@ def main(argv=None):
     ap.add_argument("--candidate-quality", required=True, choices=QUALITY)
     ap.add_argument("--hostless-cut", choices=sorted(HOSTLESS_CUT), default="flb01",
                     help="calibration curves and ECE are on SNe SBW keeps as hosted under this cut")
+    ap.add_argument("--p-threshold", choices=sorted(P_TRUE), help="success = P_SBW(true) >= t (every mode but table)")
     ap.add_argument("--tier", choices=["dp02", "ou24", "dp2"], default="dp02")
     ap.add_argument("--exclude-suspect", choices=["keep", "drop"], default="keep", help="DP2 only (sbw_host suspect fits)")
     ap.add_argument("--workers", type=int, default=None)
@@ -135,6 +139,9 @@ def main(argv=None):
     cfg = dict(search_radius=a.search_radius, dlr_max=a.dlr_max, dlr_radius=a.dlr_radius, extendedness=a.extendedness,
                quality=a.candidate_quality)
     cut = HOSTLESS_CUT[a.hostless_cut]
+    if a.mode != "table" and not a.p_threshold:
+        raise SystemExit("--p-threshold is required for every mode but table")
+    t = P_TRUE[a.p_threshold] if a.p_threshold else None
     cfgtxt = f"{a.search_radius} | d_DLR<={a.dlr_max[1:]} ({a.dlr_radius}) | {a.extendedness} | quality {a.candidate_quality}"
     sample = pq.read_table(a.sample).to_pandas(ignore_metadata=True)
     if a.max_sn:
@@ -147,16 +154,16 @@ def main(argv=None):
         res = run(sample, a.candidates, BANDS, [a.profile], cfg, a.workers)
         if a.mode == "band":
             panel_grid(res, [(b, a.profile) for b in BANDS], [f"{b} band" for b in BANDS], a.output,
-                       f"SBW calibration per band ({PROFILE_LABEL[a.profile]}) | hosted at flb >= {cut:g} | {cfgtxt}", cut)
+                       f"SBW calibration per band ({PROFILE_LABEL[a.profile]}) | hosted at flb >= {cut:g} | {cfgtxt}", cut, t)
         else:
-            band_dependence(res, a.profile, a.output, cfgtxt)
+            band_dependence(res, a.profile, a.output, cfgtxt, t)
     else:
         res = run(sample, a.candidates, [a.band], PROFILES, cfg, a.workers)
         if a.mode == "profile":
             panel_grid(res, [(a.band, p) for p in PROFILES], [PROFILE_LABEL[p] for p in PROFILES], a.output,
-                       f"SBW calibration per light model ({a.band} band) | hosted at flb >= {cut:g} | {cfgtxt}", cut)
+                       f"SBW calibration per light model ({a.band} band) | hosted at flb >= {cut:g} | {cfgtxt}", cut, t)
         else:
-            profile_table(res, a.band, a.output, cut)
+            profile_table(res, a.band, a.output, cut, t)
 
 
 if __name__ == "__main__":

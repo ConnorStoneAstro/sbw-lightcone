@@ -28,10 +28,10 @@ import des_lib
 des_lib.install()
 
 import dp02_lib as L   # noqa: E402
-from dp02_lib import HOSTLESS_CUT, P_TRUE, dlr_cols, prob_rows, sbw_hostless, wilson   # noqa: E402
+from dp02_lib import HOSTLESS_CUT, P_TRUE, dlr_cols, prob_rows, sbw_hostless, sbw_success, wilson   # noqa: E402
 
 SWEEP_BANDS = "griz"
-WORDS = [("true host", "published host"), ("= true", "= published"), ("most probable host wrong", "most probable host != published"),
+WORDS = [("true host", "published host"), ("= true", "= published"),
          ("DLR host wrong", "DLR host != published"), ("DLR recovery", "DLR = published"), (" truth", " published hosts"),
          ("Host recovery", "Agreement with the published host"), ("(true)", "(published)"), ("DP2", "DES-SN5YR"),
          ("real SNe", "DES SNe"), ("(no truth;", "(no reference;")]
@@ -86,11 +86,13 @@ def recovery(a):
     sb, dl = df.sbw_objectId.to_numpy(), df.dlr_objectId.to_numpy()
     h1, h2 = df.host_objectId.to_numpy(), df.host2_objectId.to_numpy()
     hl = sbw_hostless(df, cut)
+    ok = sbw_success(df, t)
     rows, cols = prob_rows(df, cut, t), dlr_cols(df)
     res["reference"] = ("published DES-SN5YR host (HOSTGAL), the DES-SN DLR assignment on deep SN-field coadds, "
                         "matched to DES DR2 under reference_match: agreement with a DLR-derived reference, not recovery of truth")
     res["agreement_with_published"] = {
-        "sbw_argmax": frac(df.sbw_correct), "sbw_argmax_hosted": frac(df.sbw_correct & ~hl),
+        "sbw": frac(ok), "sbw_hosted": frac(ok & ~hl),
+        "sbw_note": f"P_SBW(published host) >= {t:g}: the published host is in SBW's credible set",
         "dlr": frac(df.dlr_correct), "mean_p_sbw_published": res["mean_p_sbw_true"],
         "published_matched_in_dr2": frac(h1 >= 0), "published_kept_as_candidate": frac(df.true_in_cand)}
     res["p_band_matrix_fractions"] = {f"{r}/{c}": float((rm & cm).mean()) for r, rm in rows.items() for c, cm in cols.items()}
@@ -120,16 +122,17 @@ def recovery(a):
         "published_point_source": int((st_full == "point_source").sum()),
         "published_unusable": int((st_full == "unusable").sum()),
         "kept_sbw_hostless": int(((st == "kept") & hl).sum()),
-        "kept_sbw_picks_other": int(((st == "kept") & ~hl & (sb != h1)).sum()),
-        "kept_sbw_other_and_dlr_same_other": int(((st == "kept") & ~hl & (sb != h1) & (dl == sb)).sum())}
+        "kept_sbw_excludes_published": int(((st == "kept") & ~hl & ~ok).sum()),
+        "kept_sbw_excludes_published_and_dlr_elsewhere": int(((st == "kept") & ~hl & ~ok & (dl >= 0) & (dl != h1)).sum())}
     sw = pq.read_table(a.sweep).to_pandas(ignore_metadata=True).merge(s[["sn_id", "host_objectId"]], on="sn_id")
     sw = sw[sw.sn_id.isin(df.sn_id[L.rung_mask(df, 4)])]   # the headline's denominator (rung 4), 2 Nov 2026
     res["per_band_profile"] = {"note": "on the headline's denominator: SNe whose published host is usable by both methods (rung 4)"}
     for (b, p), g in sw.groupby(["band", "profile"]):
         hb = sbw_hostless(g, cut)
+        ob = sbw_success(g, t)
         res["per_band_profile"][f"{b}/{p}"] = {
-            "sbw_argmax_agrees": float((g.sbw_objectId == g.host_objectId).mean()),
-            "sbw_hosted_agrees": float(((g.sbw_objectId == g.host_objectId) & ~hb).mean()),
+            "sbw_agrees": float(ob.mean()), "sbw_hosted_agrees": float((ob & ~hb).mean()),
+            "mean_p_sbw_published": float(L.p_true(g).mean()),
             "dlr_agrees": float((g.dlr_objectId == g.host_objectId).mean()),
             "sbw_hostless": float(hb.mean()), "dlr_hostless": float((g.dlr_objectId < 0).mean())}
     with open(a.output, "w") as f:

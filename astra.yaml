@@ -53,6 +53,14 @@ inputs:
       and max_flux_<band>, the SN's largest flux in each band over the full
       ten-year light curve (nJy). 31.4 - 2.5 log10(max_flux_r) is the true
       peak r magnitude used by transient_peak_mag; t0 is the peak epoch.
+  - id: dp02_lib_script
+    type: data
+    source: src/dp02_lib.py
+    description: >-
+      The analysis library, declared as an input of the outputs whose numbers
+      follow its definitions (success = P_SBW(true) >= p_true_threshold,
+      agreement = P_SBW(DLR host) >= p_true_threshold, the placement
+      accounting), so an edit there remakes them (4 Nov 2026).
   - id: dp02_miss_script
     type: data
     source: src/dp02_miss.py
@@ -332,7 +340,12 @@ outputs:
       and its p_sbw, p_sbw of the true host and its rank, p_top (every
       candidate probability above 0.001, descending), frac_light_beyond, DLR
       host and d_dlr, d_dlr of the true host, and the derived flags
-      sbw_correct (most probable host = true host), dlr_correct, agree.
+      sbw_correct (most probable host = true host) and agree (most probable
+      host = DLR host), kept as diagnostics only since 4 Nov 2026: SBW's most
+      probable host has no special meaning, and every success or agreement
+      number uses P_SBW(true) >= p_true_threshold resp. P_SBW(DLR host) >=
+      p_true_threshold (src/dp02_lib.py sbw_success, dlr_in_sbw_set);
+      dlr_correct.
       flb_max is the largest frac_light_beyond over all candidates (an
       alternative hostless statistic to flb_best, the most probable host's).
       Candidates are cut in order: search radius, extendedness_cut, no usable
@@ -358,16 +371,18 @@ outputs:
       drawn from the SBW probabilities), with and without the hostless cut,
       and the fractions in the four bands
       P(true) > 0.5 / p_true_threshold..0.5 / below the threshold (excluded) /
-      SBW hostless; argmax recovery (most probable host = true host) and DLR
-      recovery with binomial intervals as secondary numbers; the SBW-DLR
-      agreement rate, the fraction SBW declares hostless under
-      sbw_hostless_cut, the 4x3 probabilistic agreement-matrix cells (and the
-      old argmax 3x3), and the random-position 2x2 with the fraction each
-      method correctly rejects. ladder counts the sample at rungs 2, 3 and 4
-      and by_rung repeats mean P_SBW(true), argmax and DLR recovery and the
+      SBW hostless; SBW recovery (P_SBW(true) >= p_true_threshold: the true
+      host is in the credible set; SBW's most probable host has no special
+      meaning, so 'most probable = true' is not reported since 4 Nov 2026)
+      and DLR recovery with binomial intervals; the SBW-DLR agreement rate
+      (P_SBW(DLR host) >= p_true_threshold), the fraction SBW declares
+      hostless under sbw_hostless_cut, the 4x3 probabilistic agreement-matrix
+      cells, and the random-position 2x2 with the fraction each method
+      correctly rejects. ladder counts the sample at rungs 2, 3 and 4 and
+      by_rung repeats mean P_SBW(true), SBW and DLR recovery and the
       hostless fractions on each rung (P = 0 where the true host is absent or
       cut), so the catalogue's and the method's losses are read side by side.
-    inputs: [dp02_associations, dp02_random_associations]
+    inputs: [dp02_associations, dp02_random_associations, dp02_lib_script]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/dp02_fig.py recovery --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
@@ -396,18 +411,18 @@ outputs:
     format: pdf
     description: The candidate-level reliability curve (as dp02_calibration) recomputed in each of u g r i z y with the headline profile, one panel per band, independent of the band decision. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_sweep.py band --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_sweep.py band --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_calibration_by_profile
     type: figure
     format: pdf
     description: The candidate-level reliability curve (as dp02_calibration) recomputed for each analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian) in the headline band, independent of the sbw_profile decision. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_sweep.py profile --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_sweep.py profile --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_agreement_matrix
     type: figure
@@ -425,80 +440,80 @@ outputs:
       under each panel the real recovery with the cuts and the random
       fraction correctly rejected.
       The real-SN panel is rung 4 of the sample ladder; its title gives N against the sample.
-    inputs: [dp02_associations, dp02_random_associations]
+    inputs: [dp02_associations, dp02_random_associations, dp02_lib_script]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/dp02_fig.py agreement_matrix --survivors-only --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_agreement_vs_ddlr
     type: figure
     format: pdf
-    description: Fraction of SNe where the SBW most probable host is the DLR host, with mean P_SBW(true host) and DLR recovery, as a function of the DLR host's d_DLR (and of the SBW most probable host's d_DLR). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
+    description: Fraction of SNe whose DLR host is in SBW's credible set (P_SBW(DLR host) >= p_true_threshold), with mean P_SBW(true host) and DLR recovery, as a function of the true host's d_DLR and of the DLR host's d_DLR. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py agreement_vs_ddlr --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py agreement_vs_ddlr --associations {inputs.dp02_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_recovery_vs_ddlr
     type: figure
     format: pdf
-    description: Mean P_SBW(true host) (with the argmax recovery dashed), DLR recovery and SBW-DLR agreement as a function of the true host's d_DLR. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
+    description: Mean P_SBW(true host) (with the fraction P_SBW(true) >= p_true_threshold dashed), DLR recovery and SBW-DLR agreement (the DLR host in SBW's credible set) as a function of the true host's d_DLR. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery_vs --x ddlr --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py recovery_vs --x ddlr --associations {inputs.dp02_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_recovery_vs_separation
     type: figure
     format: pdf
-    description: Mean P_SBW(true host), argmax and DLR recovery versus transient-host angular separation. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
+    description: Mean P_SBW(true host), SBW (P_SBW(true) >= p_true_threshold) and DLR recovery versus transient-host angular separation. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery_vs --x separation --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py recovery_vs --x separation --associations {inputs.dp02_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_recovery_vs_host_mag
     type: figure
     format: pdf
-    description: Mean P_SBW(true host), argmax and DLR recovery versus true-host r magnitude (faint-host regime). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
+    description: Mean P_SBW(true host), SBW (P_SBW(true) >= p_true_threshold) and DLR recovery versus true-host r magnitude (faint-host regime). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery_vs --x host_mag --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py recovery_vs --x host_mag --associations {inputs.dp02_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_recovery_vs_redshift
     type: figure
     format: pdf
-    description: Mean P_SBW(true host), argmax and DLR recovery versus SN redshift (hosts shrink and fade with z). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
+    description: Mean P_SBW(true host), SBW (P_SBW(true) >= p_true_threshold) and DLR recovery versus SN redshift (hosts shrink and fade with z). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery_vs --x redshift --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py recovery_vs --x redshift --associations {inputs.dp02_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_p_true_host
     type: figure
     format: pdf
-    description: Distribution of the p_sbw assigned to the true host (log scale), split by whether SBW ranked it first; shows how confident the failures are. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
+    description: Distribution of the p_sbw assigned to the true host (log scale), split at p_true_threshold (in the credible set / excluded); shows how confident the failures are. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py p_true_host --associations {inputs.dp02_associations} --output {output}
+      command: python src/dp02_fig.py p_true_host --associations {inputs.dp02_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_band_dependence
     type: figure
     format: pdf
-    description: Mean P_SBW(true host), argmax and DLR recovery and SBW-DLR agreement per band (u g r i z y), and how often the SBW most probable host changes between bands. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
+    description: Mean P_SBW(true host), SBW (P_SBW(true) >= p_true_threshold) and DLR recovery and SBW-DLR agreement (the DLR host in SBW's credible set) per band (u g r i z y), and how often the SBW most probable host changes between bands (a stability diagnostic of the top candidate, not a success measure). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, p_true_threshold]
     recipe:
-      command: python src/dp02_sweep.py band_dependence --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
+      command: python src/dp02_sweep.py band_dependence --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --p-threshold {decisions.p_true_threshold} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_profile_sweep
     type: table
     format: csv
     description: >-
-      Mean P_SBW(true host), argmax recovery, DLR agreement and calibration error for every
+      Mean P_SBW(true host), SBW recovery (P_SBW(true) >= p_true_threshold), DLR agreement and calibration error for every
       analytic SBW form (exponential n = 1, de Vaucouleurs n = 4, moment Gaussian)
       side by side, independent of the headline sbw_profile choice. The stamp
       form joins once dp02_deblended_stamps exists.
       Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_sample, dp02_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_sweep.py profile_table --sample {inputs.dp02_sample} --candidates {inputs.dp02_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: dp02_random_positions
     type: table
@@ -549,9 +564,9 @@ outputs:
       its maximum.
       Real SNe on rung 4 of the sample ladder (an SN whose true host is absent or cut has no host to keep).
     inputs: [dp02_associations, dp02_random_associations]
-    decisions: [sbw_hostless_cut, dlr_max]
+    decisions: [sbw_hostless_cut, dlr_max, p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py hostless_indicator --tier dp02 --dp02-hostless-metrics own --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+      command: python src/dp02_fig.py hostless_indicator --tier dp02 --dp02-hostless-metrics own --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_hostless_metrics
     type: metric
     format: json
@@ -569,9 +584,9 @@ outputs:
       (the DP0.2 tier scores itself with the flag value own; the other tiers
       read dp02_hostless_metrics of the same universe), not frozen constants. Real SNe on rung 4 of the sample ladder (n_real; n_sample is rung 2).
     inputs: [dp02_associations, dp02_random_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py hostless_metrics --tier dp02 --dp02-hostless-metrics own --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --output {output}
+      command: python src/dp02_fig.py hostless_metrics --tier dp02 --dp02-hostless-metrics own --associations {inputs.dp02_associations} --random {inputs.dp02_random_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_host_truth_shapes
     type: table
     format: parquet
@@ -598,9 +613,9 @@ outputs:
       both-wrong upturn sets N of the physical sample cut.
       Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [dp02_associations, dp02_host_truth_shapes]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_offsets.py --associations {inputs.dp02_associations} --shapes {inputs.dp02_host_truth_shapes} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_offsets.py --associations {inputs.dp02_associations} --shapes {inputs.dp02_host_truth_shapes} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp02_truth_match_comparison
     type: metric
     format: json
@@ -611,7 +626,7 @@ outputs:
       DLR recovery restricted to SNe where the matchers agree and where they
       differ, and the 3x3 agreement-matrix cells against each truth on the SNe
       both matchers resolve.
-    inputs: [dp02_sample, dp02_associations]
+    inputs: [dp02_sample, dp02_associations, dp02_lib_script]
     decisions: [sbw_hostless_cut]
     recipe:
       command: python src/dp02_truth_match.py --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
@@ -623,8 +638,8 @@ outputs:
       truth_matchers_disagree (MatchesTruth and nearest-within-1-arcsec name
       different objects), sbw_excludes_true_host (true host survived the cuts
       but P_SBW(true) < p_true_threshold), dlr_wrong_or_hostless,
-      sbw_most_probable_ne_dlr (SBW most probable host differs from the DLR
-      host) and true_host_cut_by_object_table (cat2: point source, unusable
+      dlr_host_excluded_by_sbw (DLR names a host SBW gives P_SBW <
+      p_true_threshold) and true_host_cut_by_object_table (cat2: point source, unusable
       radius or flux, or candidate_quality).
       Columns case_id, class, class_n (size of the class), sn_id, sn_ra,
       sn_dec, label, marker positions truth_pos (host truth position),
@@ -634,7 +649,7 @@ outputs:
       come from the one sample (dp02_sample always carries both), so a single
       universe's associations suffice.
       A sixth class, true_host_not_in_catalogue, draws SNe whose host has no DP0.2 object and to which SBW still assigned one (31 Oct 2026).
-    inputs: [dp02_associations, dp02_candidates]
+    inputs: [dp02_associations, dp02_candidates, dp02_lib_script]
     decisions: [p_true_threshold]
     recipe:
       command: python src/dp02_cases.py --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --p-threshold {decisions.p_true_threshold} --output {output}
@@ -685,11 +700,12 @@ outputs:
       detectable SN is hosted (a host assigned) or rejected (hostless call);
       hosted SNe hold the true host, a wrong host because the true host was
       not in the object table, or a wrong host although it was (a real miss;
-      for SBW with the count whose true host still has P >= t); rejected SNe
+      for SBW the true host is recovered when P_SBW(true) >= t, i.e. it is in
+      the credible set, since 4 Nov 2026); rejected SNe
       split by whether the true host was available; contamination is the
       wrong-host fraction of the hosted SNe. Counts, fractions of the sample
       and of the hosted SNe with Wilson 68% intervals.
-    inputs: [dp02_sample, dp02_associations, dp02_candidates]
+    inputs: [dp02_sample, dp02_associations, dp02_candidates, dp02_lib_script]
     decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/dp02_miss.py compute --sample {inputs.dp02_sample} --associations {inputs.dp02_associations} --candidates {inputs.dp02_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --tier dp02 --workers 16 --output {output}
@@ -901,8 +917,8 @@ outputs:
   - id: ou24_recovery
     type: metric
     format: json
-    description: As dp02_recovery for OU2024 (rung 4 headline with the ladder and by_rung blocks; mean P_SBW(true host), the four P bands, argmax and DLR recovery as secondary numbers, the 4x3 matrix cells and the random 2x2), population-averaged over OU2024's too-faint host population; see ou24_recovery_by_host_mag.
-    inputs: [ou24_associations, ou24_random_associations]
+    description: As dp02_recovery for OU2024 (rung 4 headline with the ladder and by_rung blocks; mean P_SBW(true host), the four P bands, SBW and DLR recovery, the 4x3 matrix cells and the random 2x2), population-averaged over OU2024's too-faint host population; see ou24_recovery_by_host_mag.
+    inputs: [ou24_associations, ou24_random_associations, dp02_lib_script]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/dp02_fig.py recovery --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
@@ -910,18 +926,19 @@ outputs:
     type: metric
     format: json
     description: >-
-      Mean P_SBW(true host) (with and without the hostless cut), SBW argmax
-      and DLR recovery (Wilson intervals), SBW hostless (under
-      sbw_hostless_cut) and DLR hostless fractions, SBW-DLR agreement and
+      Mean P_SBW(true host) (with and without the hostless cut), SBW
+      (P_SBW(true) >= p_true_threshold) and DLR recovery (Wilson intervals),
+      SBW hostless (under sbw_hostless_cut) and DLR hostless fractions,
+      SBW-DLR agreement (the DLR host in SBW's credible set) and
       true-host-in-candidates in true-host r bins (< 20, 20-22, 22-23, 23-24,
       24-25, 25-26, 26-27, > 27), for all transients and for z < 1, with the
       host r < 24 summaries. OU2024 hosts are about 1 dex too light, so these
       bins, not the headline, are what compares with DP0.2.
       Since 31 Oct 2026 the blocks are keyed rung4 (true host usable: the method) and rung2 (whole sample, an absent or cut host is a miss: the catalogue's selection function).
     inputs: [ou24_associations]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/ou24_host_mag.py by_host_mag --associations {inputs.ou24_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/ou24_host_mag.py by_host_mag --associations {inputs.ou24_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_dp02_comparison
     type: figure
     format: pdf
@@ -950,24 +967,24 @@ outputs:
     format: pdf
     description: As dp02_calibration_by_band for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_sweep.py band --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_sweep.py band --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_calibration_by_profile
     type: figure
     format: pdf
     description: As dp02_calibration_by_profile for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_sweep.py profile --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_sweep.py profile --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_agreement_matrix
     type: figure
     format: pdf
     description: As dp02_agreement_matrix for OU2024 (4x3 P_SBW(true)-band layout on real transients, 2x2 on random positions). The real-transient panel is rung 4 of the sample ladder.
-    inputs: [ou24_associations, ou24_random_associations]
+    inputs: [ou24_associations, ou24_random_associations, dp02_lib_script]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/dp02_fig.py agreement_matrix --survivors-only --tier ou24 --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
@@ -976,83 +993,83 @@ outputs:
     format: pdf
     description: As dp02_agreement_vs_ddlr for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py agreement_vs_ddlr --tier ou24 --associations {inputs.ou24_associations} --output {output}
+      command: python src/dp02_fig.py agreement_vs_ddlr --tier ou24 --associations {inputs.ou24_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_recovery_vs_ddlr
     type: figure
     format: pdf
     description: As dp02_recovery_vs_ddlr for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery_vs --tier ou24 --x ddlr --associations {inputs.ou24_associations} --output {output}
+      command: python src/dp02_fig.py recovery_vs --tier ou24 --x ddlr --associations {inputs.ou24_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_recovery_vs_separation
     type: figure
     format: pdf
     description: As dp02_recovery_vs_separation for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery_vs --tier ou24 --x separation --associations {inputs.ou24_associations} --output {output}
+      command: python src/dp02_fig.py recovery_vs --tier ou24 --x separation --associations {inputs.ou24_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_recovery_vs_host_mag
     type: figure
     format: pdf
     description: As dp02_recovery_vs_host_mag for OU2024 (skyCatalog host r). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery_vs --tier ou24 --x host_mag --associations {inputs.ou24_associations} --output {output}
+      command: python src/dp02_fig.py recovery_vs --tier ou24 --x host_mag --associations {inputs.ou24_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_recovery_vs_redshift
     type: figure
     format: pdf
     description: As dp02_recovery_vs_redshift for OU2024, out to z = 3. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py recovery_vs --tier ou24 --x redshift --associations {inputs.ou24_associations} --output {output}
+      command: python src/dp02_fig.py recovery_vs --tier ou24 --x redshift --associations {inputs.ou24_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_p_true_host
     type: figure
     format: pdf
     description: As dp02_p_true_host for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py p_true_host --tier ou24 --associations {inputs.ou24_associations} --output {output}
+      command: python src/dp02_fig.py p_true_host --tier ou24 --associations {inputs.ou24_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_band_dependence
     type: figure
     format: pdf
     description: As dp02_band_dependence for OU2024. Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
+    decisions: [sbw_profile, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, p_true_threshold]
     recipe:
-      command: python src/dp02_sweep.py band_dependence --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --output {output}
+      command: python src/dp02_sweep.py band_dependence --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --p-threshold {decisions.p_true_threshold} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_profile_sweep
     type: table
     format: csv
     description: As dp02_profile_sweep for OU2024 (exponential, de Vaucouleurs, moment Gaussian side by side). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_sample, ou24_candidates]
-    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut]
+    decisions: [band, search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_sweep.py profile_table --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_sweep.py profile_table --sample {inputs.ou24_sample} --candidates {inputs.ou24_candidates} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
       resources: {cpus: 16, memory: 40Gi}
   - id: ou24_hostless_indicator
     type: figure
     format: pdf
     description: As dp02_hostless_indicator for OU2024 (real transients against ou24_random_positions), with the frozen DP0.2 J optima marked on the ROC. Real transients on rung 4 of the sample ladder.
     inputs: [ou24_associations, ou24_random_associations, dp02_hostless_metrics]
-    decisions: [sbw_hostless_cut, dlr_max]
+    decisions: [sbw_hostless_cut, dlr_max, p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py hostless_indicator --tier ou24 --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+      command: python src/dp02_fig.py hostless_indicator --tier ou24 --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_hostless_metrics
     type: metric
     format: json
     description: As dp02_hostless_metrics for OU2024, including its own Youden-J optima and dp02_optima_transfer, the held-out test of the frozen DP0.2 baseline optima (flb_best 0.0215, d_DLR 2.7) against the defaults (flb 0.01, d_DLR 4) and OU2024's own optimum. Real transients on rung 4 of the sample ladder (n_real; n_sample is rung 2).
     inputs: [ou24_associations, ou24_random_associations, dp02_hostless_metrics]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/dp02_fig.py hostless_metrics --tier ou24 --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --output {output}
+      command: python src/dp02_fig.py hostless_metrics --tier ou24 --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.ou24_associations} --random {inputs.ou24_random_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_credible_set
     type: figure
     format: pdf
@@ -1080,7 +1097,7 @@ outputs:
       transients and conditional on reaching each stage, and the
       candidate_quality sweep. Under ext05 most of cat2 is the faint compact
       true hosts with refExtendedness < 0.5 (compare universe ext_none).
-    inputs: [ou24_sample, ou24_associations, ou24_candidates]
+    inputs: [ou24_sample, ou24_associations, ou24_candidates, dp02_lib_script]
     decisions: [sbw_profile, band, search_radius, dlr_max, dlr_radius, extendedness_cut, sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/dp02_miss.py compute --sample {inputs.ou24_sample} --associations {inputs.ou24_associations} --candidates {inputs.ou24_candidates} --profile {decisions.sbw_profile} --band {decisions.band} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --tier ou24 --workers 16 --output {output}
@@ -1098,9 +1115,9 @@ outputs:
     format: pdf
     description: As dp02_offset_diagnostic for OU2024, with the offsets in skyCatalog bulge / disk / dominant-component half-light radii that ou24_sample carries (B/T_i from the component SEDs). Rung 4 of the sample ladder (true host usable by both methods; N in the title).
     inputs: [ou24_associations]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp02_offsets.py --tier ou24 --associations {inputs.ou24_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp02_offsets.py --tier ou24 --associations {inputs.ou24_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: ou24_pa_check
     type: figure
     format: pdf
@@ -1162,7 +1179,7 @@ outputs:
     format: parquet
     description: >-
       One row per DES SN with the dp02_associations columns, the published host in place of the true host
-      (host_objectId, so sbw_correct / dlr_correct / p_sbw_true / true_host_status refer to the published host)
+      (host_objectId, so dlr_correct / p_sbw_true / true_host_status refer to the published host)
       and the des_sample columns. Light models on DES DR2 (src/des_lib.py): exponential = n = 1 and sersic =
       n = 4 on the band's FLUX_RADIUS (circular half-light radius, PSF included) as the determinant radius of
       the A/B, THETA ellipse with flux_auto (DR2 has no Sersic fit); moments = a Gaussian with the A, B rms
@@ -1180,22 +1197,22 @@ outputs:
       Agreement of SBW and DLR with the published DES-SN host (a DLR-derived reference, not truth), with
       Wilson 68% intervals: the dp02_recovery keys (mean P_SBW of the published host, the P-band matrix rows
       P_SBW(published) > 0.5 / t-0.5 / < t / SBW hostless against DLR = published / != published / hostless,
-      the argmax matrix, the random-position 2x2) plus agreement_with_published, the matrix as fractions with
+      the random-position 2x2) plus agreement_with_published (SBW: P_SBW(published) >= t), the matrix as fractions with
       intervals, the HOSTGAL2 agreement (either host counts), where the published host stands in the candidate
       cuts and its DR2 class, the published versus our d_DLR, a split of the SBW disagreements, and per band
       and light model agreement from des_association_sweep.
-    inputs: [des_associations, des_random_associations, des_sample, des_association_sweep]
+    inputs: [des_associations, des_random_associations, des_sample, des_association_sweep, dp02_lib_script]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/des_run.py recovery --associations {inputs.des_associations} --random {inputs.des_random_associations} --sample {inputs.des_sample} --sweep {inputs.des_association_sweep} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: des_agreement_vs_ddlr
     type: figure
     format: pdf
-    description: dp02_agreement_vs_ddlr on DES against the published host - SBW-DLR agreement, mean P_SBW of the published host and DLR = published versus d_DLR of the SBW host and of the DLR host.
+    description: dp02_agreement_vs_ddlr on DES against the published host - SBW-DLR agreement (the DLR host in SBW's credible set), mean P_SBW of the published host and DLR = published versus d_DLR of the published host and of the DLR host.
     inputs: [des_associations]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/des_run.py fig agreement_vs_ddlr --tier des --associations {inputs.des_associations} --output {output}
+      command: python src/des_run.py fig agreement_vs_ddlr --tier des --associations {inputs.des_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: des_disagreement_gallery
     type: figure
     format: pdf
@@ -1242,7 +1259,7 @@ outputs:
       The des_associations computation for every DES band (griz; DR2 has no u, and Y is shallow and unused by
       DES-SN) and light model (exponential and n = 4 on FLUX_RADIUS, moment Gaussian), one row per (SN, band,
       profile) with the columns of dp2_association_sweep.
-    inputs: [des_sample, des_candidates]
+    inputs: [des_sample, des_candidates, dp02_lib_script]
     decisions: [search_radius, dlr_max, dlr_radius, extendedness_cut, candidate_quality]
     recipe:
       command: python src/des_run.py sweep table --sample {inputs.des_sample} --candidates {inputs.des_candidates} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --workers 8 --output {output}
@@ -1262,7 +1279,7 @@ outputs:
       dp02_agreement_matrix on DES: real SNe 4x3 (P_SBW of the published host > 0.5 / in [t, 0.5] / < t, or SBW
       hostless at flb_best < sbw_hostless_cut, against DLR = published / DLR another object / DLR hostless) and
       the random-position 2x2 (SBW and DLR hostless or not).
-    inputs: [des_associations, des_random_associations]
+    inputs: [des_associations, des_random_associations, dp02_lib_script]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/des_run.py fig agreement_matrix --tier des --associations {inputs.des_associations} --random {inputs.des_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
@@ -1275,25 +1292,25 @@ outputs:
       with the operating points and the frozen DP0.2 optima flb 0.0215, d_DLR 2.7). Every DES SN has a
       published host, so "real kept" is close to a true-positive rate here.
     inputs: [des_associations, des_random_associations, dp02_hostless_metrics]
-    decisions: [sbw_hostless_cut, dlr_max]
+    decisions: [sbw_hostless_cut, dlr_max, p_true_threshold]
     recipe:
-      command: python src/des_run.py fig hostless_indicator --tier des --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.des_associations} --random {inputs.des_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --output {output}
+      command: python src/des_run.py fig hostless_indicator --tier des --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.des_associations} --random {inputs.des_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --dlr-max {decisions.dlr_max} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: des_hostless_metrics
     type: metric
     format: json
-    description: dp02_hostless_metrics on DES (real SNe kept, random positions rejected, Youden J optima, dp02_optima_transfer at flb_best 0.01 / 0.0215 / 0.05 and d_DLR 2.7 / 4); *_sbw_correct = SBW most probable host is the published host.
+    description: dp02_hostless_metrics on DES (real SNe kept, random positions rejected, Youden J optima, dp02_optima_transfer at flb_best 0.01 / 0.0215 / 0.05 and d_DLR 2.7 / 4); real_kept_and_true_in_set = kept and P_SBW(published) >= p_true_threshold.
     inputs: [des_associations, des_random_associations, dp02_hostless_metrics]
-    decisions: []
+    decisions: [p_true_threshold]
     recipe:
-      command: python src/des_run.py fig hostless_metrics --tier des --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.des_associations} --random {inputs.des_random_associations} --output {output}
+      command: python src/des_run.py fig hostless_metrics --tier des --dp02-hostless-metrics {inputs.dp02_hostless_metrics} --associations {inputs.des_associations} --random {inputs.des_random_associations} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: des_band_consistency
     type: figure
     format: pdf
     description: dp2_band_consistency on DES from des_association_sweep (griz) - host changes versus the headline band per light model and for DLR, SBW-DLR categories per band, hostless fractions, and SBW host agreement between the light models.
     inputs: [des_associations, des_association_sweep]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/des_run.py dp2fig band_consistency --associations {inputs.des_associations} --sweep {inputs.des_association_sweep} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/des_run.py dp2fig band_consistency --associations {inputs.des_associations} --sweep {inputs.des_association_sweep} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: des_disagreement_cases
     type: table
     format: csv
@@ -1394,7 +1411,7 @@ outputs:
       p_sbw_max, flb_best, flb_max, sep_sbw, dlr_objectId, p_sbw_dlr,
       d_dlr_min, d_dlr_sbw, sep_dlr, agree); the other settings are those of
       dp2_associations.
-    inputs: [dp2_sample, dp2_candidates]
+    inputs: [dp2_sample, dp2_candidates, dp02_lib_script]
     decisions: [search_radius, dlr_max, dlr_radius, extendedness_cut, exclude_suspect, candidate_quality]
     recipe:
       command: python src/dp02_sweep.py table --tier dp2 --sample {inputs.dp2_sample} --candidates {inputs.dp2_candidates} --search-radius {decisions.search_radius} --dlr-max {decisions.dlr_max} --dlr-radius {decisions.dlr_radius} --extendedness {decisions.extendedness_cut} --candidate-quality {decisions.candidate_quality} --exclude-suspect {decisions.exclude_suspect} --workers 16 --output {output}
@@ -1444,7 +1461,7 @@ outputs:
   - id: dp2_hostless_metrics
     type: metric
     format: json
-    description: dp02_hostless_metrics for DP2 (real transients kept, random positions rejected, Youden J optima, and dp02_optima_transfer at flb_best 0.01, 0.0215, 0.05 and d_DLR 2.7, 4); the *_sbw_correct entries are meaningless without truth.
+    description: dp02_hostless_metrics for DP2 (real transients kept, random positions rejected, Youden J optima, and dp02_optima_transfer at flb_best 0.01, 0.0215, 0.05 and d_DLR 2.7, 4); real_kept_and_true_in_set is null without truth.
     inputs: [dp2_associations, dp2_random_associations, dp02_hostless_metrics]
     decisions: []
     recipe:
@@ -1453,28 +1470,30 @@ outputs:
     type: metric
     format: json
     description: >-
-      SBW versus DLR on DP2 without truth. Categories per transient: same
-      host, different hosts, SBW hostless only (flb_best < sbw_hostless_cut),
-      DLR hostless only (no d_DLR <= dlr_max), both hostless; the P-band
-      matrix (rows: P_SBW of the DLR host > 0.5, in [t, 0.5], < t with t =
-      p_true_threshold, or SBW hostless; columns: DLR host is / is not the SBW
-      most probable host, and DLR hostless); the same for the random
+      SBW versus DLR on DP2 without truth. Categories per transient: both
+      hosted with the DLR host in SBW's credible set (P_SBW(DLR host) >= t,
+      t = p_true_threshold), both hosted with the DLR host excluded (P < t),
+      SBW hostless only (flb_best < sbw_hostless_cut), DLR hostless only (no
+      d_DLR <= dlr_max), both hostless ('same object' is not a category: SBW's
+      most probable host has no special meaning, 4 Nov 2026); the P-band
+      matrix (rows: P_SBW of the DLR host > 0.5, in [t, 0.5], < t, or SBW
+      hostless; columns: DLR hosted, and DLR hostless); the same for the random
       positions; per band (headline profile) and per profile (headline band)
       from the sweep; band_flip, the fraction whose SBW (and DLR) host differs
       from the headline band's; and the pairwise SBW-host agreement of the
       three light models.
-    inputs: [dp2_associations, dp2_association_sweep, dp2_random_associations]
+    inputs: [dp2_associations, dp2_association_sweep, dp2_random_associations, dp02_lib_script]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/dp2_fig.py disagreement_rate --associations {inputs.dp2_associations} --sweep {inputs.dp2_association_sweep} --random {inputs.dp2_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp2_agreement_vs_ddlr
     type: figure
     format: pdf
-    description: SBW most probable host = DLR host, mean P_SBW of the DLR host and the SBW hostless fraction versus d_DLR of the DLR host, versus d_DLR of the SBW host and versus P_SBW of the SBW host, with counts.
+    description: The DLR host in SBW's credible set (P_SBW(DLR host) >= p_true_threshold), mean P_SBW of the DLR host and the SBW hostless fraction versus d_DLR of the DLR host, versus its separation and versus flb_best, with counts.
     inputs: [dp2_associations]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp2_fig.py agreement_vs_ddlr --associations {inputs.dp2_associations} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp2_fig.py agreement_vs_ddlr --associations {inputs.dp2_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp2_band_consistency
     type: figure
     format: pdf
@@ -1486,9 +1505,9 @@ outputs:
       host agreement between the exponential fit, the free-n Sersic fit and
       the moment Gaussian per band.
     inputs: [dp2_associations, dp2_association_sweep]
-    decisions: [sbw_hostless_cut]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp2_fig.py band_consistency --associations {inputs.dp2_associations} --sweep {inputs.dp2_association_sweep} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/dp2_fig.py band_consistency --associations {inputs.dp2_associations} --sweep {inputs.dp2_association_sweep} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp2_agreement_matrix
     type: figure
     format: pdf
@@ -1496,13 +1515,12 @@ outputs:
       Figure form of the dp2_disagreement_rate P-band matrix in the layout of
       dp02_agreement_matrix: (a) rows P_SBW of the DLR host > 0.5 / in
       [p_true_threshold, 0.5] / below p_true_threshold, or SBW hostless under
-      sbw_hostless_cut, against the DLR host being SBW's most probable host /
-      another object / DLR hostless (that column holds SBW assigns a host /
-      SBW hostless, since the P bands need a DLR host); (b) SBW x DLR
-      hosted / hostless for the transients whose most probable SBW host has
-      P_SBW above p_true_threshold; (c) the same 2x2 on dp2_random_positions,
+      sbw_hostless_cut, against DLR assigns a host / DLR hostless (that
+      column holds SBW assigns a host / SBW hostless, since the P bands need
+      a DLR host); (b) SBW x DLR hosted / hostless on every transient; (c)
+      the same 2x2 on dp2_random_positions,
       where hostless is the correct answer.
-    inputs: [dp2_associations, dp2_random_associations]
+    inputs: [dp2_associations, dp2_random_associations, dp02_lib_script]
     decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/dp2_fig.py agreement_matrix --associations {inputs.dp2_associations} --random {inputs.dp2_random_associations} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
@@ -1612,13 +1630,16 @@ outputs:
       sbw_hostless_cut, DLR beyond dlr_max. One row per subset (all, and each
       image_survey) and method pair: n, same, different, a_only_hostless,
       b_only_hostless, both_hostless (counts and fractions) and
-      frac_same_given_both_hosted. src/dp2_cross_method.py agreement; the
-      association is recomputed with the DELIGHT object as host to get its
+      frac_same_given_both_hosted; for the SBW pairs 'same' means the other
+      method's host is in SBW's credible set (P_SBW >= p_true_threshold) and
+      'different' that SBW excludes it, for the single-pick pairs the same
+      object. src/dp2_cross_method.py agreement; the association is
+      recomputed with the DELIGHT (and DELIGHT-SEx) object as host to get its
       P_SBW and checked against dp2_ddf_associations.
-    inputs: [dp2_ddf_associations, dp2_ddf_candidates, dp2_delight_yjkang]
-    decisions: [reference_match, sbw_hostless_cut]
+    inputs: [dp2_ddf_associations, dp2_ddf_candidates, dp2_delight_yjkang, dp02_lib_script]
+    decisions: [reference_match, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp2_cross_method.py agreement --associations {inputs.dp2_ddf_associations} --candidates {inputs.dp2_ddf_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --workers 16 --output {output}
+      command: python src/dp2_cross_method.py agreement --associations {inputs.dp2_ddf_associations} --candidates {inputs.dp2_ddf_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --workers 16 --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp2_cross_method_matrix
     type: figure
     format: pdf
@@ -1626,9 +1647,10 @@ outputs:
       Fig 9 of the paper (the DELIGHT appendix): SBW, DLR and DELIGHT
       compared three ways on the cleaned deep-drilling sample, drawn
       from dp2_cross_method_metrics (subset all): for each pair of methods a
-      2x2 of hosted / hostless with the hosted-hosted cell split into same
-      host and different host, the same-host fraction given both hosted in
-      the title, and the P_SBW bands of the DELIGHT host (> 0.5, t..0.5, < t,
+      2x2 of hosted / hostless with the hosted-hosted cell split into agree
+      and disagree (SBW pairs: the other host in SBW's credible set; others:
+      the same object), the agreement given both hosted in the title, and
+      the P_SBW bands of the DELIGHT host (> 0.5, t..0.5, < t,
       SBW hostless) over the transients whose DELIGHT position matched a
       candidate.
     inputs: [dp2_cross_method_metrics]
@@ -1651,7 +1673,7 @@ outputs:
       matched a candidate, SBW hostless or P_SBW of that object > 0.5, in
       [t, 0.5], < t (t = p_true_threshold; 0 when the object-table cuts
       removed it, counted per true_host_status).
-    inputs: [dp2_ddf_associations, dp2_ddf_candidates, dp2_delight_yjkang]
+    inputs: [dp2_ddf_associations, dp2_ddf_candidates, dp2_delight_yjkang, dp02_lib_script]
     decisions: [reference_match, sbw_hostless_cut, p_true_threshold]
     recipe:
       command: python src/dp2_cross_method.py metrics --associations {inputs.dp2_ddf_associations} --candidates {inputs.dp2_ddf_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --kang-ls-id-shift 20 --workers 16 --output {output}
@@ -1695,12 +1717,14 @@ outputs:
       with the same quantities under the same names, read from the recovery
       and disagreement metric files: N detectable / host in the object table /
       host usable (the ladder), mean P_SBW(reference) with its standard error,
-      the four P bands (> 0.5, t..0.5, < t, SBW hostless), SBW argmax and DLR
-      agreement with the reference (Wilson 68%), DLR hostless fraction, SBW-DLR
-      agreement, random positions rejected by each method, the calibration
-      error, and the two fixed thresholds. DP2 has no reference: its
-      "reference" is the DLR host, so its agreement column is same-host given
-      DLR hosted and its calibration columns are empty.
+      the four P bands (> 0.5, t..0.5, < t, SBW hostless), SBW agreement with
+      the reference (P_SBW(reference) >= t: in the credible set) and DLR
+      agreement (Wilson 68%), DLR hostless fraction, SBW-DLR agreement (the
+      DLR host in SBW's credible set), random positions rejected by each
+      method, the calibration error, and the two fixed thresholds. DP2 has no
+      reference: its "reference" is the DLR host, so its SBW agreement is
+      P_SBW(DLR host) >= t given DLR hosted and its calibration columns are
+      empty.
     inputs: [dp02_recovery, ou24_recovery, des_recovery, dp2_disagreement_rate]
     decisions: []
     recipe:

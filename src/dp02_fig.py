@@ -17,7 +17,8 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from dp02_lib import (CAL_EDGES, COLORS, DLR_MAX, HOSTLESS_CUT, P_TRUE, RUNGS, RUNG_LABEL, calibration_curve, dlr_cols,
-                      dlr_hostless, has_truth, matrix_cells, p_true, prob_matrix_cells, prob_rows, random_cells, rung,
+                      dlr_hostless, dlr_in_sbw_set, has_truth, p_true, prob_matrix_cells, prob_rows, random_cells, rung,
+                      sbw_success,
                       rung_counts, rung_mask, sbw_hostless, wilson)
 
 TIER = {"dp02": "DC2", "ou24": "OU2024", "dp2": "DP2"}
@@ -52,15 +53,17 @@ def subtitle(df):
             f"({a.get('dlr_radius', '?')}) | quality {a.get('candidate_quality', '?')}{r} | N={len(df)}")
 
 
-def rung_stats(df, cut):
+def rung_stats(df, cut, t):
     hl = sbw_hostless(df, cut)
     pt = p_true(df)
+    ok = sbw_success(df, t)
     n = len(df)
     return {"n": n, "mean_p_sbw_true": float(pt.mean()) if n else np.nan,
             "mean_p_sbw_true_with_hostless_cut": float(np.where(hl, 0.0, pt).mean()) if n else np.nan,
-            "sbw_argmax_recovery": float(df.sbw_correct.mean()) if n else np.nan,
-            "sbw_recovery_with_hostless_cut": float((df.sbw_correct.to_numpy() & ~hl).mean()) if n else np.nan,
+            "sbw_recovery": float(ok.mean()) if n else np.nan,
+            "sbw_recovery_with_hostless_cut": float((ok & ~hl).mean()) if n else np.nan,
             "dlr_recovery": float(df.dlr_correct.mean()) if n else np.nan,
+            "agreement": float(dlr_in_sbw_set(df, t).mean()) if n else np.nan,
             "sbw_hostless_fraction": float(hl.mean()) if n else np.nan,
             "dlr_hostless_fraction": float(df.dlr_hostless.mean()) if n else np.nan}
 
@@ -68,15 +71,16 @@ def rung_stats(df, cut):
 def recovery(df, out, hostless_cut, rnd, p_threshold):
     cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
     ladder = rung_counts(df)
-    by_rung = {f"rung{r}": {"label": RUNG_LABEL[r], **rung_stats(rung(df, r), cut)} for r in RUNGS}
+    by_rung = {f"rung{r}": {"label": RUNG_LABEL[r], **rung_stats(rung(df, r), cut, t)} for r in RUNGS}
     df = at_rung(df)
     n = len(df)
     pt = p_true(df)
     bands = {k: float(v.mean()) for k, v in prob_rows(df, cut, t).items()}
     hl = sbw_hostless(df, cut)
-    kh = int((df.sbw_correct.to_numpy() & ~hl).sum())
+    ok, agr = sbw_success(df, t), dlr_in_sbw_set(df, t)
+    kh = int((ok & ~hl).sum())
     ph, lh, hh = wilson(kh, n)
-    ks, kd = int(df.sbw_correct.sum()), int(df.dlr_correct.sum())
+    ks, kd = int(ok.sum()), int(df.dlr_correct.sum())
     ps, ls, hs = wilson(ks, n); pd_, ld, hd = wilson(kd, n)
     _, ece, n_cal = calibration_curve(df, cut)
     res = {"n": n, "rung": 4, "rung_note": "headline numbers on rung 4 (true host usable by both methods); "
@@ -87,21 +91,26 @@ def recovery(df, out, hostless_cut, rnd, p_threshold):
            "mean_p_sbw_true_note": "expected recovery if each SN's host were drawn from the SBW probabilities "
                                    "(rung 4; in by_rung P = 0 where the true host is not a surviving candidate)",
            "p_true_threshold": t, "p_true_bands": bands,
-           "sbw_argmax_recovery": ps, "sbw_argmax_recovery_ci68": [ls, hs],
+           "sbw_recovery": ps, "sbw_recovery_ci68": [ls, hs],
+           "sbw_recovery_note": "P_SBW(true host) >= p_true_threshold: the true host is in SBW's credible set (the most "
+                                "probable host has no special meaning; before 4 Nov 2026 this was 'most probable = true')",
            "dlr_recovery": pd_, "dlr_recovery_ci68": [ld, hd],
-           "agreement": float(df.agree.mean()), "dlr_hostless_fraction": float(df.dlr_hostless.mean()),
+           "agreement": float(agr.mean()),
+           "agreement_note": "P_SBW(DLR host) >= p_true_threshold: the DLR host is in SBW's credible set (0 where DLR "
+                             "names none)",
+           "dlr_hostless_fraction": float(df.dlr_hostless.mean()),
            "sbw_no_host_fraction": float((df.sbw_objectId < 0).mean()),
            "true_host_in_candidates": float(df.true_in_cand.mean()),
            "median_p_sbw_true": float(np.nanmedian(df.p_sbw_true)),
            "expected_calibration_error": ece, "calibration_n_sne": n_cal,
            "expected_calibration_error_note": "candidate-level: sum over P bins of |true hosts - summed P| per SN, on SNes SBW keeps "
                                               "as hosted (flb_best >= cut) whose true host is a surviving candidate",
-           "disagree_sbw_right": float((~df.agree & df.sbw_correct).mean()),
-           "disagree_dlr_right": float((~df.agree & df.dlr_correct).mean()),
+           "disagree_sbw_right": float((~agr & ok).mean()),
+           "disagree_dlr_right": float((~agr & df.dlr_correct).mean()),
+           "disagree_note": "DLR host outside SBW's credible set, split by which method holds the true host",
            "sbw_hostless_cut": cut, "sbw_hostless_fraction": float(hl.mean()),
            "sbw_recovery_with_hostless_cut": ph, "sbw_recovery_with_hostless_cut_ci68": [lh, hh],
            "agreement_matrix": prob_matrix_cells(df, cut, t),
-           "argmax_agreement_matrix": matrix_cells(df, cut),
            "random_matrix": random_cells(rnd, cut),
            "settings": df.attrs}
     with open(out, "w") as f:
@@ -167,7 +176,7 @@ def agreement_matrix(df, out, hostless_cut, rnd, p_threshold, survivors_only=Tru
     ax.grid(False)
     pt = np.where(pr["sbw_hostless"], 0.0, p_true(df))
     ax.set_title(f"real SNe whose true host passed cat1 + cat2 (rung 4): N = {n:,} of {full:,} in the sample ({100 * n / full:.1f}%)\n"
-                 f"SBW most probable host = DLR host {100 * df.agree.mean():.2f}%", fontsize=8)
+                 f"DLR host in SBW's credible set ($P \\geq$ {t:g}) {100 * dlr_in_sbw_set(df, t).mean():.2f}%", fontsize=8)
     ax.set_xlabel(f"mean $P_{{\\mathrm{{SBW}}}}$(true) with the hostless cut {100 * pt.mean():.2f}%; "
                   f"DLR recovery {100 * df.dlr_correct.mean():.2f}%", fontsize=8)
     # random positions: no host exists, so hostless is the correct answer
@@ -212,16 +221,17 @@ def binned_mean(x, y, edges):
     return 0.5 * (edges[1:] + edges[:-1]), m, se
 
 
-def agreement_vs_ddlr(df, out):
+def agreement_vs_ddlr(df, out, p_threshold):
+    t = P_TRUE[p_threshold]
     df = at_rung(df)
     fig, axes = plt.subplots(2, 2, figsize=(7.5, 4.8), height_ratios=[3, 1], sharex="col")
-    for j, (col, lab) in enumerate([("d_dlr_sbw", "$d_{DLR}$ of the SBW most probable host"), ("d_dlr_min", "smallest $d_{DLR}$ (DLR host)")]):
+    for j, (col, lab) in enumerate([("d_dlr_true", "$d_{DLR}$ of the true host"), ("d_dlr_min", "smallest $d_{DLR}$ (DLR host)")]):
         x = df[col].to_numpy(dtype=float)
         edges = np.linspace(0, 6, 25)
-        c, p, lo, hi, n = binned_fraction(x, df.agree.to_numpy(), edges)
+        c, p, lo, hi, n = binned_fraction(x, dlr_in_sbw_set(df, t), edges)
         ax = axes[0, j]
         ax.fill_between(c, lo, hi, color=COLORS["agree"], alpha=0.2, step=None)
-        ax.plot(c, p, color=COLORS["agree"], label="SBW most probable host = DLR host")
+        ax.plot(c, p, color=COLORS["agree"], label=f"DLR host in SBW's credible set ($P \\geq$ {t:g})")
         c2, p2, _ = binned_mean(x, p_true(df), edges)
         ax.plot(c2, p2, color=COLORS["sbw"], label="mean $P_{\\mathrm{SBW}}$(true host)")
         c3, p3, lo3, hi3, _ = binned_fraction(x, df.dlr_correct.to_numpy(), edges)
@@ -244,7 +254,8 @@ XSPEC = {
 }
 
 
-def recovery_vs(df, out, xkey):
+def recovery_vs(df, out, xkey, p_threshold):
+    t = P_TRUE[p_threshold]
     df = at_rung(df)
     col, lab, edges, logx = XSPEC[xkey]
     x = df[col].to_numpy(dtype=float)
@@ -254,13 +265,13 @@ def recovery_vs(df, out, xkey):
     c, m, se = binned_mean(x, p_true(df), edges)
     ax.fill_between(c, m - se, m + se, color=COLORS["sbw"], alpha=0.15)
     ax.plot(c, m, color=COLORS["sbw"], label="mean $P_{\\mathrm{SBW}}$(true host)")
-    c, p, lo, hi, n = binned_fraction(x, df.sbw_correct.to_numpy(), edges)
-    ax.plot(c, p, color=COLORS["sbw"], ls="--", lw=1, label="SBW most probable host = true host")
+    c, p, lo, hi, n = binned_fraction(x, sbw_success(df, t), edges)
+    ax.plot(c, p, color=COLORS["sbw"], ls="--", lw=1, label=f"$P_{{\\mathrm{{SBW}}}}$(true host) $\\geq$ {t:g} (in the credible set)")
     c, p, lo, hi, n = binned_fraction(x, df.dlr_correct.to_numpy(), edges)
     ax.fill_between(c, lo, hi, color=COLORS["dlr"], alpha=0.15)
     ax.plot(c, p, color=COLORS["dlr"], label="DLR host = true host")
-    c, p, lo, hi, n = binned_fraction(x, df.agree.to_numpy(), edges)
-    ax.plot(c, p, color=COLORS["agree"], ls=":", lw=1, label="SBW most probable host = DLR host")
+    c, p, lo, hi, n = binned_fraction(x, dlr_in_sbw_set(df, t), edges)
+    ax.plot(c, p, color=COLORS["agree"], ls=":", lw=1, label=f"DLR host in SBW's credible set ($P \\geq$ {t:g})")
     ax.set_ylim(0, 1.02); ax.set_ylabel("fraction"); ax.legend(fontsize=7, loc="lower left")
     ah.bar(c, n, width=np.diff(edges), color=COLORS["ref"], alpha=0.5)
     ah.set_yscale("log"); ah.set_ylabel("SNe"); ah.set_xlabel(lab)
@@ -270,7 +281,8 @@ def recovery_vs(df, out, xkey):
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
-def p_true_host(df, out):
+def p_true_host(df, out, p_threshold):
+    t = P_TRUE[p_threshold]
     n2 = len(df)
     df = at_rung(df)
     p = df.p_sbw_true.to_numpy(dtype=float)
@@ -278,11 +290,13 @@ def p_true_host(df, out):
     lp = np.log10(np.clip(p, 1e-12, 1))
     edges = np.linspace(-12, 0, 49)
     fig, ax = plt.subplots(figsize=(4.8, 3.4))
-    ax.hist(lp[ok & df.sbw_correct.to_numpy()], bins=edges, color=COLORS["sbw"], alpha=0.7, label="true host ranked first")
-    ax.hist(lp[ok & ~df.sbw_correct.to_numpy()], bins=edges, color=COLORS["dlr"], alpha=0.7, label="true host not first")
+    ax.hist(lp[ok & (p >= t)], bins=edges, color=COLORS["sbw"], alpha=0.7, label=f"$P \\geq$ {t:g}: true host in the credible set")
+    ax.hist(lp[ok & (p < t)], bins=edges, color=COLORS["dlr"], alpha=0.7, label=f"$P$ < {t:g}: true host excluded")
+    ax.axvline(np.log10(t), color=COLORS["ref"], ls=":", lw=1)
     ax.set_yscale("log"); ax.set_xlabel("$\\log_{10} P_{\\mathrm{SBW}}$(true host)"); ax.set_ylabel("SNe")
     nz = int((np.isfinite(p) & (p <= 0)).sum())
-    ax.text(0.02, 0.95, f"P = 0: {nz:,}\nrung 4: {len(df):,} of {n2:,} sample SNe", transform=ax.transAxes, va="top", fontsize=7)
+    ax.text(0.02, 0.95, f"P = 0: {nz:,}; P < {t:g}: {int((np.nan_to_num(p) < t).sum()):,}\nrung 4: {len(df):,} of {n2:,} sample SNe",
+            transform=ax.transAxes, va="top", fontsize=7)
     ax.legend(fontsize=7, loc="upper left", bbox_to_anchor=(0.0, 0.8))
     fig.suptitle("Probability SBW gives the true host\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
@@ -374,17 +388,18 @@ def roc_curves(df, rnd):
     return out
 
 
-def hostless_metrics(df, rnd, out):
+def hostless_metrics(df, rnd, out, p_threshold=None):
     n2 = len(df)
     df = at_rung(df)
     own_optima(df, rnd)
+    ok = sbw_success(df, P_TRUE[p_threshold]) if p_threshold and has_truth(df) else None
 
     def point(rule, t):
         kept = ~RULES[rule](df, t); rej = RULES[rule](rnd, t)
         pk, lk, hk = wilson(int(kept.sum()), len(df)); pr, lr, hr = wilson(int(rej.sum()), len(rnd))
         on_gal = (~rej) & (rnd.p_sbw_max.to_numpy(dtype=float) > 0.5)
         return {"threshold": t, "real_kept": pk, "real_kept_ci68": [lk, hk],
-                "real_kept_and_sbw_correct": float((kept & df.sbw_correct.to_numpy()).mean()),
+                "real_kept_and_true_in_set": float((kept & ok).mean()) if ok is not None else None,
                 "random_rejected": pr, "random_rejected_ci68": [lr, hr],
                 "random_kept_with_p_sbw_gt_0p5": float(on_gal.mean())}
     p = rnd.p_sbw_max.to_numpy(dtype=float)
@@ -416,7 +431,7 @@ def band(ax, x, w, color, ls="-", label=None):
     ax.plot(x, w[:, 0], color=color, ls=ls, label=label)
 
 
-def hostless_indicator(df, rnd, out, hostless_cut, dlr_max):
+def hostless_indicator(df, rnd, out, hostless_cut, dlr_max, p_threshold=None):
     df = at_rung(df)
     own_optima(df, rnd)
     cut, dmax = HOSTLESS_CUT[hostless_cut], DLR_MAX[dlr_max]
@@ -426,9 +441,10 @@ def hostless_indicator(df, rnd, out, hostless_cut, dlr_max):
     edges = np.geomspace(1e-4, 1, 41)
     lf = lambda d: np.clip(d.flb_best.to_numpy(dtype=float), edges[0] * 1.0001, 1)
     real_ok = df.sbw_objectId.to_numpy() >= 0
-    if (df.host_objectId.to_numpy() >= 0).any():
-        real = [(real_ok & df.sbw_correct.to_numpy(), df, "real SN, most probable host = true", COLORS["sbw"], {"alpha": 0.6}),
-                (real_ok & ~df.sbw_correct.to_numpy(), df, "real SN, most probable host wrong", COLORS["dlr"], {"alpha": 0.6})]
+    if (df.host_objectId.to_numpy() >= 0).any() and p_threshold:
+        t, ok = P_TRUE[p_threshold], sbw_success(df, P_TRUE[p_threshold])
+        real = [(real_ok & ok, df, f"real SN, true host in the credible set (P $\\geq$ {t:g})", COLORS["sbw"], {"alpha": 0.6}),
+                (real_ok & ~ok, df, f"real SN, true host excluded (P < {t:g})", COLORS["dlr"], {"alpha": 0.6})]
     else:   # no truth (DP2)
         real = [(real_ok, df, "real transient", COLORS["sbw"], {"alpha": 0.6})]
     for sel, d, lab, col, kw in real + [(rnd.sbw_objectId.to_numpy() >= 0, rnd, "random position", COLORS["agree"], {"histtype": "step", "lw": 1.5})]:
@@ -607,15 +623,15 @@ def main(argv=None):
     elif a.kind == "agreement_matrix":
         agreement_matrix(df, a.output, a.hostless_cut, load(a.random), a.p_threshold, survivors_only=a.survivors_only)
     elif a.kind == "agreement_vs_ddlr":
-        agreement_vs_ddlr(df, a.output)
+        agreement_vs_ddlr(df, a.output, a.p_threshold)
     elif a.kind == "recovery_vs":
-        recovery_vs(df, a.output, a.x)
+        recovery_vs(df, a.output, a.x, a.p_threshold)
     elif a.kind == "p_true_host":
-        p_true_host(df, a.output)
+        p_true_host(df, a.output, a.p_threshold)
     elif a.kind == "hostless_indicator":
-        hostless_indicator(df, load(a.random), a.output, a.hostless_cut, a.dlr_max)
+        hostless_indicator(df, load(a.random), a.output, a.hostless_cut, a.dlr_max, a.p_threshold)
     elif a.kind == "hostless_metrics":
-        hostless_metrics(df, load(a.random), a.output)
+        hostless_metrics(df, load(a.random), a.output, a.p_threshold)
     elif a.kind == "credible_set":
         credible_set(df, a.output)
     elif a.kind == "credible_set_metrics":

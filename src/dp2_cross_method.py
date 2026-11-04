@@ -150,8 +150,13 @@ def build(assoc_path, cand_path, index, rule, cut, workers, ls_id_shift=20):
         df["d_dlr_delight"] = re.d_dlr_true.to_numpy()
         df["delight_status"] = np.where(df.delight_objectId.to_numpy() < 0, "no_candidate",
                                         re.true_host_status.to_numpy())
+        smp = df[["sn_id", "sn_ra", "sn_dec"]].assign(host_objectId=df.sex_objectId.to_numpy())
+        rx = associate_all(smp, cand, band=band, profile=profile, search_radius=attrs["search_radius"],
+                           dlr_max=attrs["dlr_max"], dlr_radius=attrs["dlr_radius"], extendedness=attrs["extendedness"],
+                           quality=attrs["candidate_quality"], workers=workers).set_index("sn_id").loc[sn]
+        df["p_sbw_sex"] = rx.p_sbw_true.to_numpy()
     else:
-        df["p_sbw_delight"], df["d_dlr_delight"], df["delight_status"] = np.nan, np.nan, ""
+        df["p_sbw_delight"], df["d_dlr_delight"], df["delight_status"], df["p_sbw_sex"] = np.nan, np.nan, "", np.nan
     df["sbw_host"] = np.where(sbw_hostless(df, cut), -1, df.sbw_objectId.to_numpy())
     df["dlr_host"] = df.dlr_objectId.to_numpy()
     df["delight_host"], df["sex_host"] = df.delight_objectId.to_numpy(), df.sex_objectId.to_numpy()
@@ -159,10 +164,17 @@ def build(assoc_path, cand_path, index, rule, cut, workers, ls_id_shift=20):
     return df
 
 
-def pair_cells(df, a, b):
+def pair_cells(df, a, b, t):
+    """Hosted / hostless cells for a pair of methods. Where both assign a host and method a is SBW, 'same' means the
+    other method's host is in SBW's credible set (P_SBW >= t) and 'different' that SBW excludes it; for two
+    single-pick methods 'same' is the same object."""
     ha, hb = df[f"{a}_host"].to_numpy(), df[f"{b}_host"].to_numpy()
     na, nb = ha < 0, hb < 0
-    return {"same": ~na & ~nb & (ha == hb), "different": ~na & ~nb & (ha != hb), "a_only_hostless": na & ~nb,
+    if a == "sbw":
+        same = np.nan_to_num(df[f"p_sbw_{b}"].to_numpy(float), nan=0.0) >= t
+    else:
+        same = ha == hb
+    return {"same": ~na & ~nb & same, "different": ~na & ~nb & ~same, "a_only_hostless": na & ~nb,
             "b_only_hostless": ~na & nb, "both_hostless": na & nb}
 
 
@@ -172,11 +184,11 @@ def subsets(df):
         yield s, g
 
 
-def agreement(df, out):
+def agreement(df, out, t):
     rows = []
     for name, g in subsets(df):
         for a, b in PAIRS:
-            c = pair_cells(g, a, b)
+            c = pair_cells(g, a, b, t)
             r = {"subset": name, "method_a": LABEL[a], "method_b": LABEL[b], "n": len(g)}
             r.update({k: int(v.sum()) for k, v in c.items()})
             r.update({f"frac_{k}": (float(v.mean()) if len(g) else np.nan) for k, v in c.items()})
@@ -214,9 +226,10 @@ def metrics(df, out, t):
         n = len(g)
         r = {"n": n, "hostless": {LABEL[m]: w((g[f"{m}_host"] < 0).sum(), n) for m in METHODS}, "pairs": {}}
         for a, b in PAIRS:
-            c = pair_cells(g, a, b)
+            c = pair_cells(g, a, b, t)
             r["pairs"][f"{LABEL[a]}|{LABEL[b]}"] = {k: w(v.sum(), n) for k, v in c.items()} | {
-                "same_given_both_hosted": w(c["same"].sum(), (c["same"] | c["different"]).sum())}
+                "same_given_both_hosted": w(c["same"].sum(), (c["same"] | c["different"]).sum()),
+                "same_definition": f"P_SBW({LABEL[b]} host) >= {t:g}" if a == "sbw" else "same object"}
         r["p_sbw_of_delight_host"] = p_bands(g, t)
         r["delight_beyond_search_radius"] = w((g.delight_sn_sep > radius).sum(), n)
         r["sex_beyond_search_radius"] = w((g.sex_sn_sep > radius).sum(), n)
@@ -295,7 +308,7 @@ def main(argv=None):
     ap.add_argument("--delight", required=True, help="index csv (path, size, mtime, sha256) of Kang's two tables")
     ap.add_argument("--reference-match", required=True, choices=sorted(MATCH))
     ap.add_argument("--hostless-cut", required=True, choices=sorted(HOSTLESS_CUT))
-    ap.add_argument("--p-threshold", choices=sorted(P_TRUE), default="p005")
+    ap.add_argument("--p-threshold", choices=sorted(P_TRUE), help="agreement and metrics: SBW agrees when P_SBW(other host) >= t")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--kang-ls-id-shift", type=int, default=20,
                     help="bit position of the brick id in Kang's legacy_ls_id (the Kang cross-check on Legacy candidates)")
@@ -304,8 +317,10 @@ def main(argv=None):
     df = build(a.associations, a.candidates, a.delight, a.reference_match, HOSTLESS_CUT[a.hostless_cut], a.workers,
                a.kang_ls_id_shift)
     print(f"{len(df)} transients with DELIGHT predictions", file=sys.stderr)
+    if a.mode in ("agreement", "metrics") and not a.p_threshold:
+        raise SystemExit("--p-threshold is required for agreement and metrics")
     if a.mode == "agreement":
-        agreement(df, a.output)
+        agreement(df, a.output, P_TRUE[a.p_threshold])
     elif a.mode == "metrics":
         metrics(df, a.output, P_TRUE[a.p_threshold])
     else:

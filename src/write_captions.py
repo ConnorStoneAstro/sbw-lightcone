@@ -96,9 +96,10 @@ def fig1():
                   ("baseline", "dp02_miss_accounting", "json"), ("baseline", "ou24_miss_accounting", "json")],
                  "Every detectable SN of the simulation (the sample); this is the only figure that shows the whole sample, "
                  "so the reader sees the catalogue's losses and the method's losses side by side.",
-                 "One stacked bar per method. From the bottom: hosted with the true host (green); hosted with a wrong host "
-                 "although the true host was available (red: the method's real misses; for SBW the most probable host is "
-                 "wrong, and the json counts how many of those still hold the true host at P >= 0.05); hosted with a wrong "
+                 "One stacked bar per method. From the bottom: hosted with the true host recovered (green; SBW: the true "
+                 "host is in the credible set, P_SBW(true) >= 0.05, since SBW's most probable host has no special meaning; "
+                 "DLR: the assigned host is the true host); hosted with the true host available but not recovered (red: the "
+                 "method's real misses; SBW gives the true host P < 0.05, DLR assigns another object); hosted with a wrong "
                  "host because the true host was not in the object table (dark red: a catalogue effect, wrong by "
                  "construction); rejected although the true host was available (light blue: the hostless cut fired); "
                  "rejected with the true host not in the object table (grey). Beside the bar each fraction of the sample "
@@ -123,10 +124,9 @@ def fig1():
         for m in ("sbw", "dlr"):
             r = pl[m]
             lines.append(f"- {m.upper()}: hosted {r['n_hosted']:,} ({pct(r['frac_hosted'])}), rejected {r['n_rejected']:,}; "
-                         f"true host {pct(r['true_host']['frac'])} of sample; wrong host, true host available {r['wrong_host_miss']['n']:,} "
+                         f"true host recovered {pct(r['true_host']['frac'])} of sample; true host available, not recovered {r['wrong_host_miss']['n']:,} "
                          f"({pct(r['wrong_host_miss']['frac'])} of sample, {pct(r['wrong_host_miss']['of_hosted'])} of hosted"
-                         + (f", of which {r['wrong_host_miss'].get('true_host_p_ge_t')} still hold the true host at P >= 0.05" if m == "sbw" else "")
-                         + f"); wrong host, true host not in table {r['wrong_host_not_in_table']['n']:,} ({pct(r['wrong_host_not_in_table']['of_hosted'])} of hosted; "
+                         f"); wrong host, true host not in table {r['wrong_host_not_in_table']['n']:,} ({pct(r['wrong_host_not_in_table']['of_hosted'])} of hosted; "
                          f"absent {r['wrong_host_not_in_table']['absent']}, cut {r['wrong_host_not_in_table']['cut']}); rejected with true host available "
                          f"{r['rejected_true_host_present']['n']:,} ({pct(r['rejected_true_host_present']['frac'])}); rejected, true host not in table "
                          f"{r['rejected_true_host_not_in_table']['n']:,}; contamination {pct(r['contamination']['of_hosted'])} {ci(r['contamination']['ci68'])} of hosted")
@@ -178,8 +178,8 @@ def fig3():
         m, r = j["agreement_matrix"], j["random_matrix"]
         n = m["n"]
         cells = ", ".join(f"{k} {v:,} ({pct(v / n)})" for k, v in m.items() if "/" in k)
-        lines.append(f"- {name}: N = {n:,}; {cells}; SBW argmax = true {pct(j['sbw_argmax_recovery'])} {ci(j['sbw_argmax_recovery_ci68'])}, "
-                     f"DLR = true {pct(j['dlr_recovery'])} {ci(j['dlr_recovery_ci68'])}, SBW most probable = DLR {pct(j['agreement'])}; "
+        lines.append(f"- {name}: N = {n:,}; {cells}; P_SBW(true) >= 0.05 {pct(j['sbw_recovery'])} {ci(j['sbw_recovery_ci68'])}, "
+                     f"DLR = true {pct(j['dlr_recovery'])} {ci(j['dlr_recovery_ci68'])}, DLR host in SBW's credible set {pct(j['agreement'])}; "
                      f"random positions N = {r['n']:,}: SBW rejects {pct(r['sbw_rejected'])}, DLR rejects {pct(r['dlr_rejected'])}")
     return lines
 
@@ -260,7 +260,7 @@ def fig6():
     a, h2, st = j["agreement_with_published"], j["hostgal2"], j["published_host_status"]
     lines.append(f"- settings: {settings_line(j)}")
     lines.append(f"- ladder: {j['ladder']}; rung 4 N = {j['n']:,}")
-    lines.append(f"- SBW most probable = published {pct(a['sbw_argmax']['frac'])} {ci(a['sbw_argmax']['ci68'])}; hosted and = published {pct(a['sbw_argmax_hosted']['frac'])}; "
+    lines.append(f"- P_SBW(published) >= 0.05 {pct(a['sbw']['frac'])} {ci(a['sbw']['ci68'])}; hosted and >= 0.05 {pct(a['sbw_hosted']['frac'])}; "
                  f"DLR = published {pct(a['dlr']['frac'])} {ci(a['dlr']['ci68'])}; mean P_SBW(published) {pct(a['mean_p_sbw_published'])}")
     lines.append(f"- published host status over the sample: {st}; matched in DR2 {pct(a['published_matched_in_dr2']['frac'])}")
     lines.append(f"- HOSTGAL2: present {h2['n_present']}, matched {h2['n_matched']}; of SBW picks that differ from the published host, HOSTGAL2 "
@@ -270,7 +270,7 @@ def fig6():
     lines.append(f"- calibration error {j['expected_calibration_error']:.4f} on {j['calibration_n_sne']:,} SNe")
     pb = j.get("per_band_profile", {})
     if "r/exponential" in pb:
-        lines.append(f"- per band/profile (same denominator as the headline): r/exponential SBW argmax {pct(pb['r/exponential']['sbw_argmax_agrees'])}, DLR {pct(pb['r/exponential']['dlr_agrees'])}")
+        lines.append(f"- per band/profile (same denominator as the headline): r/exponential P_SBW(published) >= 0.05 {pct(pb['r/exponential']['sbw_agrees'])}, DLR {pct(pb['r/exponential']['dlr_agrees'])}")
     return lines
 
 
@@ -279,19 +279,19 @@ def fig7():
                  [("baseline", "dp2_agreement_matrix", "pdf"), ("baseline", "dp2_disagreement_rate", "json")],
                  "The 690 rc_salt transients (SALT3-fit SNe Ia from the DP2 release candidate) with DP2 Object candidates "
                  "within 30 arcsec and MultiProFit light models; random positions ten per transient in the annulus.",
-                 "Rows: P_SBW of the DLR host > 0.5 / in [0.05, 0.5] / < 0.05, or SBW hostless; columns: the DLR host is SBW's "
-                 "most probable host / another object / DLR hostless. Without truth the question is whether the two methods "
-                 "name the same object when both assign one, and where their hostless calls differ (compact faint hosts "
-                 "whose moment ellipse is tiny).")
+                 "Rows: P_SBW of the DLR host > 0.5 / in [0.05, 0.5] / < 0.05, or SBW hostless; columns: DLR assigns a host / "
+                 "DLR hostless. Without truth the question is whether the DLR host is in SBW's credible set when both "
+                 "assign one (SBW's most probable host has no special meaning, so 'same object' is not the test), and where "
+                 "their hostless calls differ (compact faint hosts whose moment ellipse is tiny).")
     lines += ["## Numbers", ""]
     j = load_json("results/baseline/dp2_disagreement_rate.json")
     if not j:
         lines.append("- dp2_disagreement_rate not readable here"); return lines
     h, r = j["headline"], j["random_positions"]
     lines.append(f"- settings: {settings_line(j)}")
-    lines.append(f"- N {h['n']}: same host {pct(h['same_host'])}, different host {pct(h['different_host'])}, SBW hostless only {pct(h['sbw_hostless_only'])}, "
+    lines.append(f"- N {h['n']}: both hosted and DLR host in SBW's set {pct(h['dlr_in_set'])}, both hosted and DLR host excluded {pct(h['dlr_excluded'])}, SBW hostless only {pct(h['sbw_hostless_only'])}, "
                  f"DLR hostless only {pct(h['dlr_hostless_only'])}, both hostless {pct(h['both_hostless'])}; SBW hostless {pct(h['sbw_hostless'])}, DLR hostless {pct(h['dlr_hostless'])}; "
-                 f"same host given DLR hosted {pct(h['same_host'] / (1 - h['dlr_hostless']))}; mean P_SBW(DLR host) {pct(h['mean_p_sbw_of_dlr_host'])}; "
+                 f"DLR host in SBW's set given DLR hosted {pct(1 - h['frac_p_sbw_of_dlr_host_lt_t'])}; mean P_SBW(DLR host) {pct(h['mean_p_sbw_of_dlr_host'])}; "
                  f"P(DLR host) < 0.05 {pct(h['frac_p_sbw_of_dlr_host_lt_t'])}"
                  + (f"; P of the most probable host: median {h['p_sbw_max_median_hosted']:.3f}, > 0.9 for {pct(h['p_sbw_max_gt_0p9_hosted'])}" if "p_sbw_max_median_hosted" in h else ""))
     lines.append(f"- random positions N {r['n']:,}: SBW hostless {pct(r['sbw_hostless'])}, DLR hostless {pct(r['dlr_hostless'])}")
@@ -326,8 +326,9 @@ def fig9():
                  "The cleaned DDF ParSNIP sample (dp2_ddf_sample, 2,601 transients: the DDF transients with a DELIGHT host "
                  "from Y.-J. Kang, minus those on a pre-existing Legacy point source that is a Gaia star or a WISE AGN); "
                  "DELIGHT's host is matched to a DP2 Object within 1 arcsec (reference_match = pos_1arcsec).",
-                 "For each pair of methods a 2x2 of hosted / hostless with the hosted-hosted cell split into same host / "
-                 "different host; the title gives same host given both hosted. The last panel is the P_SBW band of the "
+                 "For each pair of methods a 2x2 of hosted / hostless with the hosted-hosted cell split into agree / "
+                 "disagree; for the SBW pairs agree means the other method's host is in SBW's credible set (P_SBW >= 0.05), "
+                 "for the single-pick pairs the same object; the title gives agreement given both hosted. The last panel is the P_SBW band of the "
                  "DELIGHT host over the transients whose DELIGHT position matched a candidate. DELIGHT has no hostless "
                  "notion of its own: it marks the point source under the transient where SBW drops it as a point source, "
                  "which is the main split. The DDF chain (dp2_ddf_sample, dp2_ddf_candidates, dp2_ddf_associations) is a "
@@ -358,9 +359,11 @@ def table2():
     lines = head("Table 2. Summary of every tier", [("baseline", "summary_table", "csv")],
                  "One row per tier on its headline denominator (rung 4 where a reference exists; the 690 rc_salt transients on DP2).",
                  "Columns: N detectable / host in the object table / host usable; mean P_SBW(reference) with standard error; "
-                 "the four P bands; SBW argmax and DLR agreement with the reference (Wilson 68 %); DLR hostless; SBW-DLR "
-                 "agreement; random positions rejected by each method; calibration error; the two fixed thresholds. DP2's "
-                 "reference is the DLR host, so its agreement is same-host given DLR hosted and its calibration columns are empty.")
+                 "the four P bands; SBW agreement with the reference (P_SBW(reference) >= 0.05, the reference host in the "
+                 "credible set) and DLR agreement (Wilson 68 %); DLR hostless; SBW-DLR agreement (the DLR host in SBW's "
+                 "credible set); random positions rejected by each method; calibration error; the two fixed thresholds. DP2's "
+                 "reference is the DLR host, so its SBW agreement is P_SBW(DLR host) >= 0.05 given DLR hosted and its "
+                 "calibration columns are empty.")
     lines += ["## Rows", ""]
     p = ROOT / "results/baseline/summary_table.csv"
     if readable(str(p.relative_to(ROOT))):
@@ -400,12 +403,12 @@ def outline_numbers():
     row("0.05 <= P <= 0.5", "p_t_to_0p5")
     row("P < 0.05 (reference excluded)", "p_lt_t")
     row("SBW hostless", "sbw_hostless")
-    row("SBW most probable = reference", "sbw_argmax_agreement")
-    row("  Wilson 68 %", "sbw_argmax_agreement_ci68")
+    row("P_SBW(reference) >= 0.05 (in the credible set)", "sbw_agreement")
+    row("  Wilson 68 %", "sbw_agreement_ci68")
     row("DLR = reference", "dlr_agreement")
     row("  Wilson 68 %", "dlr_agreement_ci68")
     row("DLR hostless", "dlr_hostless")
-    row("SBW and DLR same host", "sbw_dlr_agreement")
+    row("DLR host in SBW's credible set", "sbw_dlr_agreement")
     row("random positions rejected, SBW", "random_rejected_sbw")
     row("random positions rejected, DLR", "random_rejected_dlr")
     row("N random positions", "n_random")
@@ -458,7 +461,7 @@ def outline_numbers():
     if j:
         a, h2 = j["agreement_with_published"], j["hostgal2"]
         L += ["", "**DES-SN5YR** (Fig 6; `results/baseline/des_recovery.json`)", "",
-              f"- rung 4 N {j['n']:,} of {int(rows['des']['n_detectable']):,}; SBW most probable = published {pct(a['sbw_argmax']['frac'])} {ci(a['sbw_argmax']['ci68'])}; "
+              f"- rung 4 N {j['n']:,} of {int(rows['des']['n_detectable']):,}; P_SBW(published) >= 0.05 {pct(a['sbw']['frac'])} {ci(a['sbw']['ci68'])}; "
               f"DLR = published {pct(a['dlr']['frac'])} {ci(a['dlr']['ci68'])}; mean P_SBW(published) {pct(a['mean_p_sbw_published'])}; "
               f"of SBW picks that differ from the published host, HOSTGAL2 is the pick for {pct(h2['of_sbw_ne_published_hosted_is_host2']['frac'])} "
               f"(DLR {pct(h2['of_dlr_ne_published_hosted_is_host2']['frac'])}); published host status: {j['published_host_status']}"]
@@ -466,9 +469,9 @@ def outline_numbers():
     if j:
         h, r = j["headline"], j["random_positions"]
         L += ["", "**DP2 rc_salt** (Fig 7; `results/baseline/dp2_disagreement_rate.json`)", "",
-              f"- N {h['n']}: same host {pct(h['same_host'])}, different host {pct(h['different_host'])}, SBW hostless only {pct(h['sbw_hostless_only'])}, "
-              f"DLR hostless only {pct(h['dlr_hostless_only'])}, both hostless {pct(h['both_hostless'])}; same host given DLR hosted "
-              f"{pct(h['same_host'] / (1 - h['dlr_hostless']))}; mean P_SBW(DLR host) {pct(h['mean_p_sbw_of_dlr_host'])}; random positions "
+              f"- N {h['n']}: both hosted and DLR host in SBW's set {pct(h['dlr_in_set'])}, both hosted and DLR host excluded {pct(h['dlr_excluded'])}, SBW hostless only {pct(h['sbw_hostless_only'])}, "
+              f"DLR hostless only {pct(h['dlr_hostless_only'])}, both hostless {pct(h['both_hostless'])}; DLR host in SBW's set given DLR hosted "
+              f"{pct(1 - h['frac_p_sbw_of_dlr_host_lt_t'])}; mean P_SBW(DLR host) {pct(h['mean_p_sbw_of_dlr_host'])}; random positions "
               f"N {r['n']:,}: SBW hostless {pct(r['sbw_hostless'])}, DLR hostless {pct(r['dlr_hostless'])}"]
     rows_e = []
     for tier, name in (("dp02", "DC2 / DP0.2"), ("ou24", "OpenUniverse2024")):

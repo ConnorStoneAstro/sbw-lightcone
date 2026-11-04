@@ -24,33 +24,35 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from dp02_fig import binned_fraction, binned_mean, load, subtitle
-from dp02_lib import COLORS, HOSTLESS_CUT, RUNG_LABEL, p_true, rung, rung_mask, sbw_hostless, wilson
+from dp02_lib import COLORS, HOSTLESS_CUT, P_TRUE, RUNG_LABEL, dlr_in_sbw_set, p_true, rung, rung_mask, sbw_hostless, sbw_success, wilson
 
 MAG_EDGES = [10, 20, 22, 23, 24, 25, 26, 27, 35]
 FINE = np.arange(16, 29.01, 0.5)
 
 
-def stats(d, cut):
+def stats(d, cut, t):
     n = len(d)
     hl = sbw_hostless(d, cut)
-    ps, ls, hs = wilson(int(d.sbw_correct.sum()), n)
+    ok, agr = sbw_success(d, t), dlr_in_sbw_set(d, t)
+    ps, ls, hs = wilson(int(ok.sum()), n)
     pd_, ld, hd = wilson(int(d.dlr_correct.sum()), n)
     pt = p_true(d)
     return {"n": n, "mean_p_sbw_true": float(pt.mean()) if n else np.nan,
             "mean_p_sbw_true_with_hostless_cut": float(np.where(hl, 0.0, pt).mean()) if n else np.nan,
             "sbw_recovery": ps, "sbw_recovery_ci68": [ls, hs], "dlr_recovery": pd_, "dlr_recovery_ci68": [ld, hd],
-            "sbw_recovery_with_hostless_cut": float((d.sbw_correct.to_numpy() & ~hl).mean()) if n else np.nan,
+            "sbw_recovery_with_hostless_cut": float((ok & ~hl).mean()) if n else np.nan,
             "sbw_hostless_fraction": float(hl.mean()) if n else np.nan,
             "dlr_hostless_fraction": float(d.dlr_hostless.mean()) if n else np.nan,
-            "agreement": float(d.agree.mean()) if n else np.nan,
+            "agreement": float(agr.mean()) if n else np.nan,
             "true_host_in_candidates": float(d.true_in_cand.mean()) if n else np.nan,
-            "dlr_right_sbw_wrong": int((d.dlr_correct & ~d.sbw_correct).sum()),
-            "sbw_right_dlr_wrong_or_none": int((d.sbw_correct & ~d.dlr_correct).sum())}
+            "dlr_right_sbw_excludes": int((d.dlr_correct.to_numpy() & ~ok).sum()),
+            "sbw_in_set_dlr_wrong_or_none": int((ok & ~d.dlr_correct.to_numpy()).sum()),
+            "definitions": "sbw_recovery: P_SBW(true) >= t (true host in the credible set); agreement: P_SBW(DLR host) >= t"}
 
 
-def by_host_mag(df, cut, out):
+def by_host_mag(df, cut, t, out):
     import pandas as pd
-    res = {"bins_r": MAG_EDGES, "sbw_hostless_cut": cut,
+    res = {"bins_r": MAG_EDGES, "sbw_hostless_cut": cut, "p_true_threshold": t,
            "rung_note": "rung4 = true host usable by both methods (the method's performance); rung2 = the whole sample, "
                         "an absent or cut true host counting as a miss (the catalogue's selection function)"}
     for r in (4, 2):
@@ -58,8 +60,8 @@ def by_host_mag(df, cut, out):
         res[f"rung{r}"] = {"label": RUNG_LABEL[r]}
         for name, d in [("all_z", dr), ("z_lt_1", dr[dr.sn_redshift < 1])]:
             b = pd.cut(d.host_mag_r, MAG_EDGES)
-            res[f"rung{r}"][name] = {"all": stats(d, cut), "host_r_lt_24": stats(d[d.host_mag_r < 24], cut),
-                                     "bins": {str(k): stats(g, cut) for k, g in d.groupby(b, observed=False)}}
+            res[f"rung{r}"][name] = {"all": stats(d, cut, t), "host_r_lt_24": stats(d[d.host_mag_r < 24], cut, t),
+                                     "bins": {str(k): stats(g, cut, t) for k, g in d.groupby(b, observed=False)}}
     res["settings"] = df.attrs
     with open(out, "w") as f:
         json.dump(res, f, indent=2, default=float)
@@ -123,11 +125,12 @@ def main(argv=None):
     ap.add_argument("--associations", required=True, help="ou24_associations")
     ap.add_argument("--dp02-associations")
     ap.add_argument("--hostless-cut", choices=sorted(HOSTLESS_CUT))
+    ap.add_argument("--p-threshold", choices=sorted(P_TRUE))
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     df = load(a.associations)
     if a.kind == "by_host_mag":
-        by_host_mag(df, HOSTLESS_CUT[a.hostless_cut], a.output)
+        by_host_mag(df, HOSTLESS_CUT[a.hostless_cut], P_TRUE[a.p_threshold], a.output)
     else:
         dp02_comparison(df, load(a.dp02_associations), a.output)
 

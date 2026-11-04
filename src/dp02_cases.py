@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from dp02_lib import P_TRUE, p_true
+from dp02_lib import P_TRUE, p_dlr, p_true
 
 N_PER_CLASS = 12
 SEED = 20261027
@@ -30,7 +30,7 @@ def main(argv=None):
     classes = {"truth_matchers_disagree": mt != nn,
                "sbw_excludes_true_host": (st == "kept") & (pt < thr),
                "dlr_wrong_or_hostless": (t >= 0) & (d != t),
-               "sbw_most_probable_ne_dlr": (t >= 0) & (s != d),
+               "dlr_host_excluded_by_sbw": (d >= 0) & (p_dlr(df) < thr),   # DLR names a host SBW gives P < t
                "true_host_cut_by_object_table": np.isin(st, ["point_source", "unusable", "quality"]),
                "true_host_not_in_catalogue": (t < 0) & (s >= 0)}   # SBW assigned a host the truth has no object for
     rng = np.random.default_rng(SEED)

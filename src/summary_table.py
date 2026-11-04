@@ -25,7 +25,7 @@ def truth_row(tier, reference, r):
             "mean_p_sbw_reference": r.get("mean_p_sbw_true"), "mean_p_sbw_reference_se": r.get("mean_p_sbw_true_se"),
             "p_gt_0p5": bands.get("p_gt_0p5"), "p_t_to_0p5": bands.get("p_t_to_0p5"), "p_lt_t": bands.get("p_lt_t"),
             "sbw_hostless": bands.get("sbw_hostless"),
-            "sbw_argmax_agreement": r.get("sbw_argmax_recovery"), "sbw_argmax_agreement_ci68": r.get("sbw_argmax_recovery_ci68"),
+            "sbw_agreement": r.get("sbw_recovery"), "sbw_agreement_ci68": r.get("sbw_recovery_ci68"),
             "dlr_agreement": r.get("dlr_recovery"), "dlr_agreement_ci68": r.get("dlr_recovery_ci68"),
             "dlr_hostless": r.get("dlr_hostless_fraction"), "sbw_dlr_agreement": r.get("agreement"),
             "random_rejected_sbw": rm.get("sbw_rejected"), "random_rejected_dlr": rm.get("dlr_rejected"),
@@ -39,16 +39,17 @@ def dp2_row(r):
     m = r.get("p_band_matrix", {})
     n = h["n"]
     hosted_dlr = 1 - h["dlr_hostless"]
+    in_set = 1 - h["frac_p_sbw_of_dlr_host_lt_t"]   # DLR host in SBW's credible set, given DLR hosted
     return {"tier": "dp2", "reference": "DLR host (no truth)",
             "n_detectable": n, "n_host_in_table": None, "n_host_usable": None,
             "mean_p_sbw_reference": h.get("mean_p_sbw_of_dlr_host"), "mean_p_sbw_reference_se": None,
-            "p_gt_0p5": (m.get("p_dlr_gt_0p5/dlr_eq_sbw", 0) + m.get("p_dlr_gt_0p5/dlr_ne_sbw", 0)) / n if m else None,
-            "p_t_to_0p5": (m.get("p_dlr_t_to_0p5/dlr_eq_sbw", 0) + m.get("p_dlr_t_to_0p5/dlr_ne_sbw", 0)) / n if m else None,
-            "p_lt_t": (m.get("p_dlr_lt_t/dlr_eq_sbw", 0) + m.get("p_dlr_lt_t/dlr_ne_sbw", 0)) / n if m else None,
+            "p_gt_0p5": m.get("p_dlr_gt_0p5/dlr_hosted", 0) / n if m else None,
+            "p_t_to_0p5": m.get("p_dlr_t_to_0p5/dlr_hosted", 0) / n if m else None,
+            "p_lt_t": m.get("p_dlr_lt_t/dlr_hosted", 0) / n if m else None,
             "sbw_hostless": h["sbw_hostless"],
-            "sbw_argmax_agreement": h["same_host"] / hosted_dlr if hosted_dlr else None, "sbw_argmax_agreement_ci68": None,
+            "sbw_agreement": in_set, "sbw_agreement_ci68": None,
             "dlr_agreement": None, "dlr_agreement_ci68": None,
-            "dlr_hostless": h["dlr_hostless"], "sbw_dlr_agreement": h["same_host"],
+            "dlr_hostless": h["dlr_hostless"], "sbw_dlr_agreement": in_set * hosted_dlr,
             "random_rejected_sbw": rnd["sbw_hostless"], "random_rejected_dlr": rnd["dlr_hostless"],
             "n_random": rnd["n"], "calibration_error": None, "calibration_n": None,
             "p_true_threshold": pick(r, "settings", "p_threshold"), "sbw_hostless_cut": pick(r, "settings", "sbw_hostless_cut")}

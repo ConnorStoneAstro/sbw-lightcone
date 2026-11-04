@@ -16,18 +16,19 @@ import numpy as np
 import pyarrow.parquet as pq
 
 from dp02_fig import TIER, binned_fraction, load, subtitle
-from dp02_lib import BULGE_DOMINATED_BT, COLORS, HOSTLESS_CUT, host_offsets, rung, sbw_hostless
+from dp02_lib import BULGE_DOMINATED_BT, COLORS, HOSTLESS_CUT, P_TRUE, host_offsets, rung, sbw_hostless, sbw_success
 
 EDGES = np.geomspace(0.03, 100, 29)
 XLAB = {"bulge": "offset / bulge $R_e$", "disk": "offset / disk $R_e$",
         "own": "offset / $R_e$ of dominant component"}
 
 
-def failure_flags(df, cut):
-    s, d, t = df.sbw_objectId.to_numpy(), df.dlr_objectId.to_numpy(), df.host_objectId.to_numpy()
-    return {"SBW most probable host wrong": (COLORS["sbw"], "-", s != t),
-            "DLR host wrong or none": (COLORS["dlr"], "-", d != t),
-            "both wrong, same object": ("#222222", "-", (s == d) & (s >= 0) & (s != t)),
+def failure_flags(df, cut, t):
+    d, h = df.dlr_objectId.to_numpy(), df.host_objectId.to_numpy()
+    ok = sbw_success(df, t)
+    return {f"SBW excludes the true host (P < {t:g})": (COLORS["sbw"], "-", ~ok),
+            "DLR host wrong or none": (COLORS["dlr"], "-", d != h),
+            "both: DLR wrong or none and SBW excludes": ("#222222", "-", (d != h) & ~ok),
             f"SBW hostless (flb < {cut:g})": (COLORS["sbw"], ":", sbw_hostless(df, cut))}
 
 
@@ -37,9 +38,10 @@ def main(argv=None):
     ap.add_argument("--shapes", help="dp02_host_truth_shapes; omit when the associations carry the offsets")
     ap.add_argument("--tier", choices=sorted(TIER), default="dp02")
     ap.add_argument("--hostless-cut", required=True, choices=sorted(HOSTLESS_CUT))
+    ap.add_argument("--p-threshold", required=True, choices=sorted(P_TRUE))
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
-    cut = HOSTLESS_CUT[a.hostless_cut]
+    cut, t = HOSTLESS_CUT[a.hostless_cut], P_TRUE[a.p_threshold]
     df = rung(load(a.associations), 4)   # method failures, not catalogue ones
     if a.shapes:
         attrs = df.attrs
@@ -52,7 +54,7 @@ def main(argv=None):
         off = {"bulge": df.offset_re_bulge.to_numpy(float), "disk": df.offset_re_disk.to_numpy(float),
                "own": df.offset_re.to_numpy(float), "bulge_dominated": df.bulge_dominated.to_numpy(bool)}
         shapes = f"{TIER[a.tier]} skyCatalog shapes"
-    flags = failure_flags(df, cut)
+    flags = failure_flags(df, cut, t)
     bd = off["bulge_dominated"]
     classes = [(f"B/T$_i$ > {BULGE_DOMINATED_BT:g}", bd), (f"B/T$_i$ $\\leq$ {BULGE_DOMINATED_BT:g}", ~bd)]
 

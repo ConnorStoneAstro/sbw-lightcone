@@ -18,35 +18,36 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from dp02_fig import DP02_OPTIMA, binned_fraction, binned_mean, load, set_optima, subtitle
-from dp02_lib import BANDS, COLORS, HOSTLESS_CUT, P_TRUE, PROFILES, sbw_hostless
+from dp02_lib import BANDS, COLORS, HOSTLESS_CUT, P_TRUE, PROFILES, dlr_in_sbw_set, p_dlr, sbw_hostless
 
 PROFILE_SHORT = {"exponential": "exponential fit", "sersic": "free-n Sersic fit", "moments": "moment Gaussian"}
-CATS = ("same_host", "different_host", "sbw_hostless_only", "dlr_hostless_only", "both_hostless")
-CAT_LABEL = {"same_host": "same host", "different_host": "different hosts", "sbw_hostless_only": "SBW: no host only",
-             "dlr_hostless_only": "DLR: no host only", "both_hostless": "both: no host"}
-CAT_COLOR = {"same_host": COLORS["agree"], "different_host": "#7b4ea3", "sbw_hostless_only": COLORS["sbw"],
+CATS = ("dlr_in_set", "dlr_excluded", "sbw_hostless_only", "dlr_hostless_only", "both_hostless")
+CAT_LABEL = {"dlr_in_set": "both hosted, DLR host in SBW's credible set", "dlr_excluded": "both hosted, DLR host excluded by SBW",
+             "sbw_hostless_only": "SBW: no host only", "dlr_hostless_only": "DLR: no host only", "both_hostless": "both: no host"}
+CAT_COLOR = {"dlr_in_set": COLORS["agree"], "dlr_excluded": "#7b4ea3", "sbw_hostless_only": COLORS["sbw"],
              "dlr_hostless_only": COLORS["dlr"], "both_hostless": "#bbbbbb"}
 
 
-def categories(df, cut):
-    """SBW (hostless at flb_best < cut) versus DLR (hostless beyond dlr_max) outcome per transient."""
+def categories(df, cut, t):
+    """SBW (hostless at flb_best < cut) versus DLR (hostless beyond dlr_max) outcome per transient; where both
+    assign a host, whether the DLR host is in SBW's credible set (P_SBW(DLR host) >= t). SBW's most probable host
+    has no special meaning, so 'same host' is not a category (4 Nov 2026)."""
     sh = sbw_hostless(df, cut)
     dh = df["dlr_objectId"].to_numpy() < 0
-    same = df["sbw_objectId"].to_numpy() == df["dlr_objectId"].to_numpy()
-    return {"same_host": ~sh & ~dh & same, "different_host": ~sh & ~dh & ~same,
+    ins = dlr_in_sbw_set(df, t)
+    return {"dlr_in_set": ~sh & ~dh & ins, "dlr_excluded": ~sh & ~dh & ~ins,
             "sbw_hostless_only": sh & ~dh, "dlr_hostless_only": ~sh & dh, "both_hostless": sh & dh}
 
 
 def p_band_cells(df, cut, t):
-    """Rows: P_SBW of the DLR host (> 0.5 / t..0.5 / < t) or SBW hostless; columns: DLR host is / is not SBW's
-    most probable host, or DLR has none (rows then just SBW host / SBW hostless)."""
+    """Rows: P_SBW of the DLR host (> 0.5 / t..0.5 / < t) or SBW hostless; columns: DLR assigns a host or has
+    none (the P-band rows then collapse to SBW host / SBW hostless)."""
     sh = sbw_hostless(df, cut)
     dh = df["dlr_objectId"].to_numpy() < 0
-    same = df["sbw_objectId"].to_numpy() == df["dlr_objectId"].to_numpy()
-    p = np.nan_to_num(df["p_sbw_dlr"].to_numpy(dtype=float), nan=0.0)
+    p = p_dlr(df)
     rows = {"p_dlr_gt_0p5": ~sh & (p > 0.5), "p_dlr_t_to_0p5": ~sh & (p >= t) & (p <= 0.5),
             "p_dlr_lt_t": ~sh & (p < t), "sbw_hostless": sh}
-    cols = {"dlr_eq_sbw": ~dh & same, "dlr_ne_sbw": ~dh & ~same}
+    cols = {"dlr_hosted": ~dh}
     out = {f"{r}/{c}": int((rm & cm).sum()) for r, rm in rows.items() for c, cm in cols.items()}
     out["sbw_host/dlr_hostless"] = int((~sh & dh).sum())
     out["sbw_hostless/dlr_hostless"] = int((sh & dh).sum())
@@ -56,12 +57,12 @@ def p_band_cells(df, cut, t):
 
 def summary(df, cut, t):
     n = len(df)
-    c = {k: float(v.mean()) for k, v in categories(df, cut).items()}
+    c = {k: float(v.mean()) for k, v in categories(df, cut, t).items()}
     p = df["p_sbw_dlr"].to_numpy(dtype=float)
     hosted = df["dlr_objectId"].to_numpy() >= 0
     return {"n": n, **c,
-            "disagree_any": c["different_host"] + c["sbw_hostless_only"] + c["dlr_hostless_only"],
-            "argmax_disagree": float((df.sbw_objectId.to_numpy() != df.dlr_objectId.to_numpy()).mean()),
+            "disagree_any": c["dlr_excluded"] + c["sbw_hostless_only"] + c["dlr_hostless_only"],
+            "disagree_note": "DLR host excluded by SBW (P < t) where both assign a host, or exactly one method hostless",
             "sbw_hostless": float(sbw_hostless(df, cut).mean()), "dlr_hostless": float((~hosted).mean()),
             "mean_p_sbw_of_dlr_host": float(np.nanmean(p[hosted])) if hosted.any() else np.nan,
             "p_sbw_max_median_hosted": float(np.nanmedian(df["p_sbw_max"].to_numpy(dtype=float)[~sbw_hostless(df, cut)])) if (~sbw_hostless(df, cut)).any() else np.nan,
@@ -125,37 +126,40 @@ def profile_agreement(sweep, band, cut):
     return out
 
 
-def agreement_vs_ddlr(df, out, hostless_cut):
-    cut = HOSTLESS_CUT[hostless_cut]
-    agree = df.agree.to_numpy()
+def agreement_vs_ddlr(df, out, hostless_cut, p_threshold):
+    cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
+    agree = dlr_in_sbw_set(df, t)
     fig, axes = plt.subplots(2, 3, figsize=(11, 4.8), height_ratios=[3, 1], sharex="col")
     for j, (col, lab, edges, logx) in enumerate([
             ("d_dlr_min", "$d_{DLR}$ of the DLR host (smallest $d_{DLR}$)", np.linspace(0, 8, 17), False),
-            ("d_dlr_sbw", "$d_{DLR}$ of the SBW most probable host", np.linspace(0, 8, 17), False),
-            ("p_sbw_max", "$P_{\\mathrm{SBW}}$ of the most probable host", np.array([0, .3, .5, .6, .7, .8, .9, .95, .99, 1.0001]), False)]):
+            ("sep_dlr", "separation of the DLR host [arcsec]", np.linspace(0, 20, 21), False),
+            ("flb_best", "SBW hostless statistic flb_best", np.geomspace(1e-3, 1, 13), True)]):
         x = df[col].to_numpy(dtype=float)
         ax = axes[0, j]
         c, p, lo, hi, n = binned_fraction(x, agree, edges)
         ax.fill_between(c, lo, hi, color=COLORS["agree"], alpha=0.2)
-        ax.plot(c, p, "o-", ms=3, color=COLORS["agree"], label="SBW most probable host = DLR host")
+        ax.plot(c, p, "o-", ms=3, color=COLORS["agree"], label=f"DLR host in SBW's credible set ($P \\geq$ {t:g})")
         c2, m2, _ = binned_mean(x, np.nan_to_num(df.p_sbw_dlr.to_numpy(dtype=float), nan=0.0), edges)
         ax.plot(c2, m2, "s-", ms=3, color=COLORS["dlr"], label="mean $P_{\\mathrm{SBW}}$ of the DLR host (0 if none)")
         c3, p3, _, _, _ = binned_fraction(x, sbw_hostless(df, cut), edges)
         ax.plot(c3, p3, "^-", ms=3, color=COLORS["sbw"], label=f"SBW: no host (flb < {cut:g})")
         ax.set_ylim(0, 1.02); ax.set_ylabel("fraction")
-        if j < 2:
+        if j == 0:
             ax.axvline(float(df.attrs.get("dlr_max", "d4")[1:]), color=COLORS["ref"], ls=":", lw=1)
+        if j == 2:
+            ax.axvline(cut, color=COLORS["ref"], ls=":", lw=1)
+            ax.set_xscale("log"); axes[1, j].set_xscale("log")
         if j == 0:
             ax.legend(fontsize=7, loc="lower left")
         axes[1, j].bar(c, n, width=np.diff(edges), color=COLORS["ref"], alpha=0.5)
         axes[1, j].set_xlabel(lab); axes[1, j].set_ylabel("transients")
-    fig.suptitle(f"DP2: SBW-DLR agreement versus $d_{{DLR}}$ and $P_{{\\mathrm{{SBW}}}}$ (no truth; overall agreement "
+    fig.suptitle(f"DP2: SBW-DLR agreement versus $d_{{DLR}}$, separation and flb_best (no truth; DLR host in SBW's set "
                  f"{100 * agree.mean():.1f}%)\n" + subtitle(df), fontsize=8)
     fig.tight_layout(); fig.savefig(out); plt.close(fig)
 
 
-def band_consistency(df, sweep, out, hostless_cut):
-    cut = HOSTLESS_CUT[hostless_cut]
+def band_consistency(df, sweep, out, hostless_cut, p_threshold):
+    cut, t = HOSTLESS_CUT[hostless_cut], P_TRUE[p_threshold]
     prof, ref = df.attrs.get("profile"), df.attrs.get("band")
     x = np.arange(len(BANDS))
     fig, axes = plt.subplots(2, 2, figsize=(9.6, 7.0))
@@ -170,7 +174,7 @@ def band_consistency(df, sweep, out, hostless_cut):
     # (b) categories per band, headline profile
     bottom = np.zeros(len(BANDS))
     for k in CATS:
-        v = np.array([categories(sweep[(sweep.band == b) & (sweep.profile == prof)], cut)[k].mean() for b in BANDS])
+        v = np.array([categories(sweep[(sweep.band == b) & (sweep.profile == prof)], cut, t)[k].mean() for b in BANDS])
         ab.bar(x, v, bottom=bottom, color=CAT_COLOR[k], label=CAT_LABEL[k]); bottom += v
     ab.set_xticks(x, BANDS); ab.set_ylim(0, 1); ab.set_ylabel("fraction of transients")
     ab.legend(fontsize=7, loc="lower right"); ab.set_title(f"(b) SBW vs DLR per band ({PROFILE_SHORT[prof]})", fontsize=9, loc="left")
@@ -239,17 +243,16 @@ def agreement_matrix(df, rnd, out, hostless_cut, p_threshold):
     sh = sbw_hostless(df, cut)
     d = df["dlr_objectId"].to_numpy()
     dh = d < 0
-    same = df["sbw_objectId"].to_numpy() == d
-    p = np.nan_to_num(df["p_sbw_dlr"].to_numpy(dtype=float), nan=0.0)
+    p = p_dlr(df)
     rows = [("$P_{\\mathrm{SBW}}$(DLR host) > 0.5", ~sh & ~dh & (p > 0.5)),
             (f"$P_{{\\mathrm{{SBW}}}}$(DLR host)\nin [{t:g}, 0.5]", ~sh & ~dh & (p >= t) & (p <= 0.5)),
-            (f"$P_{{\\mathrm{{SBW}}}}$(DLR host) < {t:g}", ~sh & ~dh & (p < t)),
+            (f"$P_{{\\mathrm{{SBW}}}}$(DLR host) < {t:g}\n(excluded)", ~sh & ~dh & (p < t)),
             (f"SBW: no host\n(flb < {cut:g})", sh)]
-    cols = [("DLR host = SBW most\nprobable host", ~dh & same), ("DLR host = another\nobject", ~dh & ~same), ("DLR: no host", dh)]
+    cols = [("DLR assigns a host", ~dh), ("DLR: no host", dh)]
     M = np.array([[int((r & c).sum()) for _, c in cols] for _, r in rows], dtype=float)
-    M[:3, 2] = np.nan                       # P bands undefined without a DLR host
+    M[:3, 1] = np.nan                       # P bands undefined without a DLR host
     n_sbw_hosted_dlr_hostless = int((~sh & dh).sum())
-    fig, (ax, ab, ar) = plt.subplots(1, 3, figsize=(13.2, 4.8), width_ratios=[3, 1.9, 1.9])
+    fig, (ax, ab, ar) = plt.subplots(1, 3, figsize=(12.0, 4.8), width_ratios=[2.4, 1.9, 1.9])
     ax.imshow(np.nan_to_num(M) / n, cmap="Blues", vmin=0, vmax=1, aspect="auto")
     for i in range(len(rows)):
         for j in range(len(cols)):
@@ -257,21 +260,20 @@ def agreement_matrix(df, rnd, out, hostless_cut, p_threshold):
                 continue
             ax.text(j, i, f"{int(M[i, j]):,}\n{100 * M[i, j] / n:.2f}%", ha="center", va="center", fontsize=8,
                     color="white" if M[i, j] / n > 0.5 else "black")
-    ax.add_patch(plt.Rectangle((1.5, -0.5), 1, 3, facecolor="#eeeeee", edgecolor="none", zorder=0))
-    ax.text(2, 1, f"SBW assigns a host\n{n_sbw_hosted_dlr_hostless:,}\n{100 * n_sbw_hosted_dlr_hostless / n:.2f}%",
+    ax.add_patch(plt.Rectangle((0.5, -0.5), 1, 3, facecolor="#eeeeee", edgecolor="none", zorder=0))
+    ax.text(1, 1, f"SBW assigns a host\n{n_sbw_hosted_dlr_hostless:,}\n{100 * n_sbw_hosted_dlr_hostless / n:.2f}%",
             ha="center", va="center", fontsize=8)
-    ax.set_xticks(range(3), [c for c, _ in cols]); ax.set_yticks(range(len(rows)), [r for r, _ in rows])
+    ax.set_xticks(range(2), [c for c, _ in cols]); ax.set_yticks(range(len(rows)), [r for r, _ in rows])
     ax.grid(False); ax.tick_params(labelsize=7)
-    ax.set_title(f"(a) DP2 transients (N = {n:,}; SBW most probable host = DLR host {100 * (same & ~sh & ~dh).mean():.2f}%)",
+    ax.set_title(f"(a) DP2 transients (N = {n:,}; DLR host in SBW's credible set {100 * (~sh & ~dh & (p >= t)).mean():.2f}%)",
                  fontsize=8, loc="left")
     hosted = ~dh
     ax.set_xlabel(f"mean $P_{{\\mathrm{{SBW}}}}$(DLR host) where DLR names one {100 * np.nanmean(p[hosted]):.2f}%; "
                   f"hostless: SBW {100 * sh.mean():.2f}%, DLR {100 * dh.mean():.2f}%", fontsize=8)
-    # (b) hosted / hostless 2x2 where SBW's most probable host has P > t
-    conf = df["p_sbw_max"].to_numpy(dtype=float) > t
-    nb = int(conf.sum())
-    brows = [("SBW: no host", sh[conf]), ("SBW assigns host", ~sh[conf])]
-    bcols = [("DLR: no host", dh[conf]), ("DLR assigns host", ~dh[conf])]
+    # (b) hosted / hostless 2x2 on every transient
+    nb = n
+    brows = [("SBW: no host", sh), ("SBW assigns host", ~sh)]
+    bcols = [("DLR: no host", dh), ("DLR assigns host", ~dh)]
     B = np.array([[int((r & c).sum()) for _, c in bcols] for _, r in brows])
     ab.imshow(B / max(nb, 1), cmap="Blues", vmin=0, vmax=1, aspect="auto")
     for i in range(2):
@@ -280,7 +282,7 @@ def agreement_matrix(df, rnd, out, hostless_cut, p_threshold):
                     color="white" if B[i, j] / max(nb, 1) > 0.5 else "black")
     ab.set_xticks(range(2), [c for c, _ in bcols]); ab.set_yticks(range(2), [r for r, _ in brows]); ab.grid(False)
     ab.tick_params(labelsize=7)
-    ab.set_title(f"(b) transients with max $P_{{\\mathrm{{SBW}}}}$ > {t:g} (N = {nb:,} of {n:,})", fontsize=8, loc="left")
+    ab.set_title(f"(b) hosted / hostless, all transients (N = {nb:,})", fontsize=8, loc="left")
     # (c) random positions
     hr = sbw_hostless(rnd, cut); dr = rnd["dlr_objectId"].to_numpy() < 0
     nr = len(rnd)
@@ -316,9 +318,9 @@ def main(argv=None):
     if a.kind == "disagreement_rate":
         disagreement_rate(df, read_sweep(a.sweep), load(a.random), a.output, a.hostless_cut, a.p_threshold)
     elif a.kind == "agreement_vs_ddlr":
-        agreement_vs_ddlr(df, a.output, a.hostless_cut)
+        agreement_vs_ddlr(df, a.output, a.hostless_cut, a.p_threshold)
     elif a.kind == "band_consistency":
-        band_consistency(df, read_sweep(a.sweep), a.output, a.hostless_cut)
+        band_consistency(df, read_sweep(a.sweep), a.output, a.hostless_cut, a.p_threshold)
     elif a.kind == "agreement_matrix":
         agreement_matrix(df, load(a.random), a.output, a.hostless_cut, a.p_threshold)
     elif a.kind == "p_top_host":

@@ -103,10 +103,11 @@ def compute(a):
             "detectable": "the sample: hosted transients with a host row, detectable under transient_peak_mag, within the offset cut",
             "hosted": "the method assigned a host (SBW: an SBW host with flb_best >= cut; DLR: a candidate with d_DLR <= dlr_max)",
             "rejected": "hostless call (the complement)",
-            "true_host": "hosted and the assigned host (SBW: most probable) is the true host",
+            "true_host": "hosted and the true host is recovered (SBW: P_SBW(true) >= p_true_threshold, the true host is "
+                         "in the credible set; DLR: the assigned host is the true host)",
             "wrong_host_miss": "hosted, the true host was available to the method (in the object table, kept by the cuts, "
-                               "with a DLR ellipse for DLR) and another object was assigned; SBW: true_host_p_ge_t counts "
-                               "those where the true host still has P_SBW >= p_true_threshold",
+                               "with a DLR ellipse for DLR) and not recovered (SBW: P_SBW(true) < p_true_threshold; DLR: "
+                               "another object was assigned)",
             "wrong_host_not_in_table": "hosted but the true host was never a candidate (absent from the object table or "
                                        "removed by the object-table cuts), so the assigned host is wrong by construction",
             "rejected_true_host_present": "hostless call although the true host was available (the hostless cut fired)",
@@ -132,8 +133,9 @@ def compute(a):
 
 STACK = [("true_host", "#4d9221"), ("wrong_host_miss", "#d6604d"), ("wrong_host_not_in_table", "#67001f"),
          ("rejected_true_host_present", "#92c5de"), ("rejected_true_host_not_in_table", "#bababa")]
-SHORT = {"true_host": "hosted, true host", "wrong_host_miss": "hosted, wrong host (true host was available)",
-         "wrong_host_not_in_table": "hosted, wrong host (true host not in object table)",
+SHORT = {"true_host": "hosted, true host recovered",
+         "wrong_host_miss": "hosted, true host available but not recovered",
+         "wrong_host_not_in_table": "hosted, true host not in object table (wrong by construction)",
          "rejected_true_host_present": "rejected (true host was available)",
          "rejected_true_host_not_in_table": "rejected (true host not in object table)"}
 
@@ -145,6 +147,7 @@ def figure(a):
     res = json.load(open(a.accounting))
     pl = res["placement"]
     n = pl["n_detectable"]
+    t = res["p_true_threshold"]
     fig, ax = plt.subplots(figsize=(7.4, 4.6))
     lo = max(0.0, np.floor((min(pl[m]["true_host"]["frac"] for m in ("sbw", "dlr")) - 0.03) * 20) / 20)
     gap = 1.6 if a.legend == "outside" else 1.0   # room for the labels before the next bar
@@ -166,7 +169,8 @@ def figure(a):
     if a.legend == "outside":
         ax.set_xlim(-0.5, gap + 1.4)
         ax.legend(fontsize=6.5, loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False)
-        ax.text(1.0, 0.55, "contam. = wrong hosts of either cause\nover the hosted SNe", transform=ax.transAxes, fontsize=6.5, va="top")
+        ax.text(1.0, 0.55, f"recovered: SBW $P$(true host) $\\geq$ {t:g}\n(in the credible set); DLR host = true host\n\n"
+                           "contam. = not recovered, either cause,\nover the hosted SNe", transform=ax.transAxes, fontsize=6.5, va="top")
     else:
         ax.set_xlim(-0.5, 3.1)
         ax.legend(fontsize=6.5, loc="center right")

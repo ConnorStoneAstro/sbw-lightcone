@@ -92,7 +92,7 @@ def placement(df, cut, t):
     for m in ("sbw", "dlr"):
         if m == "sbw":
             hosted = ~sbw_hostless(df, cut)
-            correct = df["sbw_correct"].to_numpy(bool)
+            correct = sbw_success(df, t)   # the true host is in SBW's credible set, not 'most probable = true'
             avail = st == "kept"
         else:
             hosted = df["dlr_objectId"].to_numpy() >= 0
@@ -115,10 +115,6 @@ def placement(df, cut, t):
                 r[k]["of_hosted"] = float(ph); r[k]["of_hosted_ci68"] = [float(lh), float(hh)]
             if k.endswith("not_in_table"):
                 r[k]["absent"] = int((mk & (st == "absent")).sum()); r[k]["cut"] = int((mk & (st != "absent")).sum())
-        if m == "sbw":   # of the real misses, how often the true host is still in the credible set
-            pt = p_true(df)
-            mm = masks["wrong_host_miss"]
-            r["wrong_host_miss"]["true_host_p_ge_t"] = int((mm & (pt >= t)).sum())
         kw = r["wrong_host_miss"]["n"] + r["wrong_host_not_in_table"]["n"]
         pc, lc, hc = wilson(kw, nh) if nh else (np.nan,) * 3
         r["contamination"] = {"n": kw, "of_hosted": float(pc), "ci68": [float(lc), float(hc)],
@@ -400,6 +396,8 @@ def associate_all(sample: pd.DataFrame, cand: pd.DataFrame, *, band, profile, se
             rows.extend(part)
     out = pd.DataFrame(rows)
     out = sample.merge(out, on="sn_id", how="left")
+    # sbw_correct and agree compare SBW's most probable host, which has no special meaning in SBW; they are kept
+    # as diagnostics only. Every success or agreement metric uses sbw_success / dlr_in_sbw_set (4 Nov 2026).
     out["sbw_correct"] = (out["sbw_objectId"] >= 0) & (out["sbw_objectId"] == out["host_objectId"])
     out["dlr_correct"] = (out["dlr_objectId"] >= 0) & (out["dlr_objectId"] == out["host_objectId"])
     out["dlr_hostless"] = out["dlr_objectId"] < 0
@@ -444,8 +442,9 @@ def dlr_hostless(df, t):
 
 
 def matrix_cells(df, cut, truth_col="host_objectId"):
-    """3x3 SBW (true / wrong / hostless at flb < cut) x DLR (true / wrong / hostless) counts against
-    ``truth_col``, plus how many of the both-wrong SNe have SBW and DLR on the same object."""
+    """3x3 SBW (most probable host true / wrong / hostless at flb < cut) x DLR (true / wrong / hostless) counts
+    against ``truth_col``. Diagnostic only (dp02_truth_match_comparison, where P_SBW of the alternative matcher's
+    host is not computed); the method's success criterion is sbw_success."""
     t = df[truth_col].to_numpy()
     s, d = df["sbw_objectId"].to_numpy(), df["dlr_objectId"].to_numpy()
     hl = sbw_hostless(df, cut)
@@ -460,6 +459,24 @@ def matrix_cells(df, cut, truth_col="host_objectId"):
 def p_true(df):
     """P_SBW of the true host, 0 where it is not among the surviving candidates."""
     return np.nan_to_num(df["p_sbw_true"].to_numpy(dtype=float), nan=0.0)
+
+
+def sbw_success(df, t):
+    """SBW keeps the true (reference) host in its credible set: P_SBW(true) >= t. SBW returns probabilities,
+    and its most probable host has no special meaning, so this is the method's success criterion everywhere
+    (4 Nov 2026; before, several metrics scored 'most probable host = true host')."""
+    return p_true(df) >= t
+
+
+def p_dlr(df):
+    """P_SBW of the DLR host, 0 where DLR names none."""
+    return np.nan_to_num(df["p_sbw_dlr"].to_numpy(dtype=float), nan=0.0)
+
+
+def dlr_in_sbw_set(df, t):
+    """The DLR host is in SBW's credible set (P_SBW(DLR host) >= t): the method-agreement analogue of
+    sbw_success, replacing 'SBW most probable host = DLR host'."""
+    return p_dlr(df) >= t
 
 
 def prob_rows(df, cut, t):
