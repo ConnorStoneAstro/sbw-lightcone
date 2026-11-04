@@ -2,26 +2,28 @@
   "schema_version": 1,
   "output_id": "des_agreement_vs_ddlr",
   "universe_id": "baseline",
-  "recipe": "python src/des_run.py fig agreement_vs_ddlr --tier des --associations results/baseline/des_associations.parquet --output results/baseline/des_agreement_vs_ddlr.pdf",
-  "definition_version": "sha256:9a6fa5dbfe50f7a8b3327cf0c55b4374a30031d574a76db70909a2a22a7ea1b4",
+  "recipe": "python src/des_run.py fig agreement_vs_ddlr --tier des --associations results/baseline/des_associations.parquet --p-threshold p005 --output results/baseline/des_agreement_vs_ddlr.pdf",
+  "definition_version": "sha256:d75b9381ede25aa19b44be9dc1d42857615ccb266d3688ed6aa5a0428d5a30c5",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:1302be94711c5972630b6a6f12b8aff94eb08e9f17f8bfde7eedbdd5c482e935",
-  "decisions": {},
+  "data_version": "sha256:f652ecd2e4aac85185a4c3f16b21e2bfd5261f48335305ddc59f9bed302cb303",
+  "decisions": {
+    "p_true_threshold": "p005"
+  },
   "input_versions": {
     "des_associations": "sha256:2c44ceb2fa70ad3b2e594cee3f4936271fd311ae649a477658e5a5485d921f64"
   },
-  "git_sha": "5dbb6cfcbfa004e2b9ed23930308bb29ccf5b95d",
-  "git_remote": "git@github.com:ConnorStoneAstro/sbw-lightcone.git",
+  "git_sha": "38033a0da73f686719ca3982bdc66664d9f21cd9",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
-    "mechanism": "landlock",
-    "fs": "declared",
+    "mechanism": "none",
+    "fs": "open",
     "network": "allowed",
-    "landlock_abi": 4,
-    "exec_allowlist_version": 1
+    "landlock_abi": null,
+    "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T02:21:59.899+00:00",
-  "finished_at": "2026-11-03T02:22:21.651+00:00",
+  "started_at": "2026-11-04T20:21:41.838+00:00",
+  "finished_at": "2026-11-04T20:22:04.933+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
