@@ -2,16 +2,18 @@
   "schema_version": 1,
   "output_id": "dp02_hostless_metrics",
   "universe_id": "ext_none",
-  "recipe": "python src/dp02_fig.py hostless_metrics --tier dp02 --dp02-hostless-metrics own --associations results/ext_none/dp02_associations.parquet --random results/ext_none/dp02_random_associations.parquet --output results/ext_none/dp02_hostless_metrics.json",
-  "definition_version": "sha256:fa29ba020b5f7a4604d8b631385cc9ebf63fcbb7f590ee8cd6eff83482fbb3e9",
+  "recipe": "python src/dp02_fig.py hostless_metrics --tier dp02 --dp02-hostless-metrics own --associations results/ext_none/dp02_associations.parquet --random results/ext_none/dp02_random_associations.parquet --p-threshold p005 --output results/ext_none/dp02_hostless_metrics.json",
+  "definition_version": "sha256:943669fe640a2a7bf7e1a56a61d422e289810f87cd45a42f60ed7976d8ce8aec",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:8c67694600c0be0bb87f3e2d91cf6b17b0e2b4265b7439032add6d451d63625b",
-  "decisions": {},
+  "data_version": "sha256:f3b934b10b754aa6939e198aa5abfb9c7f2b1d3c7ecda41499298dde078f668e",
+  "decisions": {
+    "p_true_threshold": "p005"
+  },
   "input_versions": {
     "dp02_associations": "sha256:cc7ecdc1920089bffab51bea88e085a9150894b90c8694e5e35c91f1325f686b",
     "dp02_random_associations": "sha256:c4997d6ca29353824beedaceb513ce3082d6d1ff23d29430e97f3d8f8a563414"
   },
-  "git_sha": "b6ee15a3dffe452834f4f60a8d7cf9fb60ee33ac",
+  "git_sha": "38033a0da73f686719ca3982bdc66664d9f21cd9",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -21,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T10:15:53.387+00:00",
-  "finished_at": "2026-11-03T10:19:15.348+00:00",
+  "started_at": "2026-11-04T20:06:20.140+00:00",
+  "finished_at": "2026-11-04T20:06:44.181+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
