@@ -2,17 +2,19 @@
   "schema_version": 1,
   "output_id": "des_hostless_metrics",
   "universe_id": "baseline",
-  "recipe": "python src/des_run.py fig hostless_metrics --tier des --dp02-hostless-metrics results/baseline/dp02_hostless_metrics.json --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --output results/baseline/des_hostless_metrics.json",
-  "definition_version": "sha256:d39859890f813061efe0228892e41e6a6be30a1cbb79939e64e47364d1b9dfd7",
+  "recipe": "python src/des_run.py fig hostless_metrics --tier des --dp02-hostless-metrics results/baseline/dp02_hostless_metrics.json --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --p-threshold p005 --output results/baseline/des_hostless_metrics.json",
+  "definition_version": "sha256:cd312d2b1fd34b4addf62346a6176d0ecf31234efa188ec31d8b08f8703c6d6d",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:54a227cfd6a4212cbc65f78dbfd7d4766f4f8627d0ef8eb30bd40cd93d19bb1c",
-  "decisions": {},
+  "data_version": "sha256:24bc66dca9334bf5cad6db4311bd2bb56a1d18255a4375d601d1cc5dbd789a29",
+  "decisions": {
+    "p_true_threshold": "p005"
+  },
   "input_versions": {
     "des_associations": "sha256:2c44ceb2fa70ad3b2e594cee3f4936271fd311ae649a477658e5a5485d921f64",
     "des_random_associations": "sha256:409e26565638a1fa54ca5fc1e5f9304088cf4746b7b2da22ea15156e5a6c0749",
-    "dp02_hostless_metrics": "sha256:3da95c7232249cdaedb00a56864e46eeace30bb3871cd03efa2b21ff66813603"
+    "dp02_hostless_metrics": "sha256:c687ac92b60947d5963417b9df21c07ce587eac3b0810a374460403b87a0d263"
   },
-  "git_sha": "21dafd633936ca231c73dd6041daf92b07fb121f",
+  "git_sha": "38033a0da73f686719ca3982bdc66664d9f21cd9",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -22,8 +24,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T05:46:54.316+00:00",
-  "finished_at": "2026-11-03T05:47:26.749+00:00",
+  "started_at": "2026-11-04T20:06:44.319+00:00",
+  "finished_at": "2026-11-04T20:07:02.954+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
