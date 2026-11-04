@@ -965,3 +965,13 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   baseline DP2 chain stale (dp2_sample's recipe string changed), remade
   on remake8 with the DDF chain and the cross-tier outputs. The outline's
   numbers block gained an ext_none-versus-baseline placement table.
+- **SBW success is the credible set, never the most probable host (4 Nov
+  2026).** `sbw_success(df, t)` = P_SBW(true host) >= p_true_threshold and
+  `dlr_in_sbw_set(df, t)` = P_SBW(DLR host) >= t in `src/dp02_lib.py` are
+  the only success and agreement criteria; `sbw_correct` and `agree` in the
+  association tables are diagnostics and must not feed a reported number.
+  Display uses of the top candidate (gallery marker, flb_best, band-flip
+  stability, p_top_host) are deliberate. `src/dp02_lib.py` is a declared
+  input (`dp02_lib_script`) of the recovery, miss-accounting, matrix,
+  sweep-table, disagreement-rate and cross-method outputs, so a library
+  edit remakes them; figures that need t carry `p_true_threshold`.

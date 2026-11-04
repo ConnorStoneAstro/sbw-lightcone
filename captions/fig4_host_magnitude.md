@@ -2,8 +2,8 @@
 
 ## Outputs
 - `results/baseline/ou24_dp02_comparison.pdf` (content on this machine); made at commit `b5df709b` with `python src/ou24_host_mag.py dp02_comparison --associations results/baseline/ou24_associations.parquet --dp02-associations results/baseline/dp02_associations.parquet --output results/baseline/ou24_dp02_comparison.pdf`
-- `results/baseline/ou24_recovery_by_host_mag.json` (content on this machine); made at commit `b5df709b` with `python src/ou24_host_mag.py by_host_mag --associations results/baseline/ou24_associations.parquet --hostless-cut flb01 --output results/baseline/ou24_recovery_by_host_mag.json`
-  - decisions in the recipe: sbw_hostless_cut = flb01
+- `results/baseline/ou24_recovery_by_host_mag.json` (content on this machine); made at commit `38033a0d` with `python src/ou24_host_mag.py by_host_mag --associations results/baseline/ou24_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/ou24_recovery_by_host_mag.json`
+  - decisions in the recipe: sbw_hostless_cut = flb01, p_true_threshold = p005
 
 ## Sample
 

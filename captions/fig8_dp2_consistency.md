@@ -1,9 +1,9 @@
 # Fig 8. Band and light-model consistency of the SBW host on real data (DP2)
 
 ## Outputs
-- `results/baseline/dp2_band_consistency.pdf` (content on this machine); made at commit `b5df709b` with `python src/dp2_fig.py band_consistency --associations results/baseline/dp2_associations.parquet --sweep results/baseline/dp2_association_sweep.parquet --hostless-cut flb01 --output results/baseline/dp2_band_consistency.pdf`
-  - decisions in the recipe: sbw_hostless_cut = flb01
-- `results/baseline/dp2_disagreement_rate.json` (content on this machine); made at commit `b5df709b` with `python src/dp2_fig.py disagreement_rate --associations results/baseline/dp2_associations.parquet --sweep results/baseline/dp2_association_sweep.parquet --random results/baseline/dp2_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/dp2_disagreement_rate.json`
+- `results/baseline/dp2_band_consistency.pdf` (annex pointer here; content on the machine that made it); made at commit `38033a0d` with `python src/dp2_fig.py band_consistency --associations results/baseline/dp2_associations.parquet --sweep results/baseline/dp2_association_sweep.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/dp2_band_consistency.pdf`
+  - decisions in the recipe: sbw_hostless_cut = flb01, p_true_threshold = p005
+- `results/baseline/dp2_disagreement_rate.json` (content on this machine); made at commit `38033a0d` with `python src/dp2_fig.py disagreement_rate --associations results/baseline/dp2_associations.parquet --sweep results/baseline/dp2_association_sweep.parquet --random results/baseline/dp2_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/dp2_disagreement_rate.json`
   - decisions in the recipe: sbw_hostless_cut = flb01, p_true_threshold = p005
 
 ## Sample

@@ -148,9 +148,9 @@ def figure(a):
     pl = res["placement"]
     n = pl["n_detectable"]
     t = res["p_true_threshold"]
-    fig, ax = plt.subplots(figsize=(7.4, 4.6))
+    fig, ax = plt.subplots(figsize=(9.2, 4.6))
     lo = max(0.0, np.floor((min(pl[m]["true_host"]["frac"] for m in ("sbw", "dlr")) - 0.03) * 20) / 20)
-    gap = 1.6 if a.legend == "outside" else 1.0   # room for the labels before the next bar
+    gap = 1.9 if a.legend == "outside" else 1.0   # room for the labels before the next bar
     xs = [0.0, gap]
     for i, m in enumerate(("sbw", "dlr")):
         bottom = 0.0
@@ -167,10 +167,10 @@ def figure(a):
                            for m in ("sbw", "dlr")], fontsize=7.5)
     ax.set_ylim(lo, 1.0); ax.set_ylabel(f"fraction of detectable SNe (N = {n:,})")
     if a.legend == "outside":
-        ax.set_xlim(-0.5, gap + 1.4)
+        ax.set_xlim(-0.5, gap + 2.0)
         ax.legend(fontsize=6.5, loc="upper left", bbox_to_anchor=(1.0, 1.0), frameon=False)
-        ax.text(1.0, 0.55, f"recovered: SBW $P$(true host) $\\geq$ {t:g}\n(in the credible set); DLR host = true host\n\n"
-                           "contam. = not recovered, either cause,\nover the hosted SNe", transform=ax.transAxes, fontsize=6.5, va="top")
+        ax.text(1.02, 0.66, f"recovered: SBW $P$(true host) $\\geq$ {t:g}\n(in the credible set); DLR host = true host\n\n"
+                            "contam. = not recovered, either cause,\nover the hosted SNe", transform=ax.transAxes, fontsize=6.5, va="top")
     else:
         ax.set_xlim(-0.5, 3.1)
         ax.legend(fontsize=6.5, loc="center right")

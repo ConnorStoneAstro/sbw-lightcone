@@ -34,8 +34,8 @@ def main(argv=None):
         a_only, b_only, both = c["a_only_hostless"]["k"], c["b_only_hostless"]["k"], c["both_hostless"]["k"]
         M = np.array([[same + diff, b_only], [a_only, both]], float)   # rows: A hosted / hostless; cols: B hosted / hostless
         ax.imshow(M / n, cmap="Blues", vmin=0, vmax=1, aspect="auto")
-        agree = "in SBW set" if A == "SBW" else "same host"
-        txt = [[f"{agree} {same:,} ({100 * same / n:.1f}%)\n{'excluded' if A == 'SBW' else 'different'} {diff:,} ({100 * diff / n:.1f}%)", f"{b_only:,}\n{100 * b_only / n:.1f}%"],
+        agree, dis = ("in SBW set", "excluded") if A == "SBW" else ("same host", "different")
+        txt = [[f"{agree}\n{same:,} ({100 * same / n:.1f}%)\n{dis}\n{diff:,} ({100 * diff / n:.1f}%)", f"{b_only:,}\n{100 * b_only / n:.1f}%"],
                [f"{a_only:,}\n{100 * a_only / n:.1f}%", f"{both:,}\n{100 * both / n:.1f}%"]]
         for i in range(2):
             for j in range(2):
@@ -43,7 +43,7 @@ def main(argv=None):
         ax.set_xticks([0, 1], [f"{B} hosted", f"{B} hostless"]); ax.set_yticks([0, 1], [f"{A} hosted", f"{A} hostless"])
         ax.grid(False)
         given = same / (same + diff) if same + diff else np.nan
-        ax.set_title(f"{A} vs {B}: {'in SBW credible set' if A == 'SBW' else 'same host'} given both hosted {100 * given:.1f}%", fontsize=8)
+        ax.set_title(f"{A} vs {B}\n{'in SBW credible set' if A == 'SBW' else 'same host'} given both hosted: {100 * given:.1f}%", fontsize=8)
     ax = axes[3]
     p = sub["p_sbw_of_delight_host"]
     keys = [k for k in ("gt_0p5", "t_to_0p5", "lt_t", "sbw_hostless", "not_a_candidate") if k in p]

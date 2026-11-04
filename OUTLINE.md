@@ -82,13 +82,22 @@ the hosted sample is. The paper uses four words and one subset:
 - The pipeline then calls each detectable transient **rejected** (hostless
   call: SBW flb_best < 0.01 or no SBW host; DLR no candidate with d_DLR
   <= 4) or **hosted** (a host assigned).
-- A hosted transient holds the **true host**, a **wrong host because the
-  true host was not in the object table** (absent from the catalogue, or
-  removed by the extendedness or usable-measurement cuts: a catalogue
-  effect, wrong by construction), or a **wrong host although the true host
-  was available** (a real miss; for SBW the json also counts how many of
-  those still hold the true host at P >= 0.05). A rejected transient
+- A hosted transient holds the **true host** (recovered), a **wrong host
+  because the true host was not in the object table** (absent from the
+  catalogue, or removed by the extendedness or usable-measurement cuts: a
+  catalogue effect, wrong by construction), or has the **true host
+  available but not recovered** (a real miss). A rejected transient
   splits the same way by whether the true host was available.
+- **SBW recovers the true host** when P_SBW(true host) >= 0.05
+  (`p_true_threshold`): the true host is in the credible set. SBW returns
+  probabilities and its most probable host has no special meaning, so no
+  number in the paper scores "most probable host = true host" (4 Nov
+  2026; before, Fig 1's red segment, the recovery metrics, the
+  recovery-vs-X curves, the sweeps and the DES agreement did). DLR
+  recovers the true host when its single pick is the true host. The
+  SBW-DLR **agreement** is likewise "the DLR host is in SBW's credible
+  set" (P_SBW(DLR host) >= 0.05), on every tier including DP2 and the
+  DELIGHT appendix.
 - **Contamination** = wrong hosts of either cause over the hosted
   transients. This is the number the reader wants.
 - **True host usable** (rung 4 in the code): the detectable transients
@@ -281,8 +290,8 @@ universe unless stated.
 - One paragraph, and **Table 2** = `results/baseline/summary_table.csv`
   (caption `captions/table2_summary.md`): per tier N detectable / host in
   the object table / host usable, mean P_SBW(reference), the four P bands,
-  argmax and DLR agreement, hostless fractions, random positions
-  rejected, calibration error.
+  SBW (P_SBW(reference) >= 0.05) and DLR agreement, hostless fractions,
+  random positions rejected, calibration error.
 
 Appendix A: the DELIGHT comparison (Section 7 above). Appendix B: the
 DC2 PA mirror and offset diagnostic. Appendix C: SExtractor conventions
@@ -313,12 +322,12 @@ rewrites it (between the markers) after every materialization.
 | 0.05 <= P <= 0.5 | 1.04 % | 0.21 % | 0.38 % | 0.14 % |
 | P < 0.05 (reference excluded) | 0.96 % | 0.15 % | 0.00 % | 0.29 % |
 | SBW hostless | 2.02 % | 3.72 % | 0.31 % | 14.06 % |
-| SBW most probable = reference | 97.92 % | 98.79 % | 99.56 % | 98.64 % |
-|   Wilson 68 % | [97.84, 98.00] | [98.70, 98.87] | [99.36, 99.70] |  |
+| P_SBW(reference) >= 0.05 (in the credible set) | 99.01 % | 99.05 % | 99.94 % | 99.15 % |
+|   Wilson 68 % | [98.95, 99.06] | [98.97, 99.12] | [99.84, 99.98] |  |
 | DLR = reference | 92.36 % | 97.04 % | 99.37 % |  |
 |   Wilson 68 % | [92.21, 92.51] | [96.90, 97.17] | [99.14, 99.54] |  |
 | DLR hostless | 3.35 % | 2.18 % | 0.44 % | 14.93 % |
-| SBW and DLR same host | 94.12 % | 96.46 % | 99.44 % | 83.91 % |
+| DLR host in SBW's credible set | 95.48 % | 96.74 % | 99.56 % | 84.35 % |
 | random positions rejected, SBW | 85.62 % | 91.91 % | 75.77 % | 83.80 % |
 | random positions rejected, DLR | 85.18 % | 91.62 % | 87.90 % | 83.75 % |
 | N random positions | 319,550 | 190,580 | 16,230 | 6,900 |
@@ -334,10 +343,10 @@ rewrites it (between the markers) after every materialization.
 | the sample (N) | 31,955 | 31,955 | 19,058 | 19,058 |
 | true host not in the object table | 1,313 (4.11 %) | 1,313 (4.11 %) | 3,207 (16.83 %) | 3,207 (16.83 %) |
 | hosted | 30,422 (95.20 %) | 29,994 (93.86 %) | 16,110 (84.53 %) | 16,341 (85.74 %) |
-|   with the true host | 92.05 % | 88.57 % | 79.78 % | 80.71 % |
-|   wrong host, true host available (real miss) | 609 (2.00 % of hosted) | 1,314 (4.38 % of hosted) | 57 (0.35 % of hosted) | 123 (0.75 % of hosted) |
+|   with the true host | 93.04 % | 88.57 % | 79.96 % | 80.71 % |
+|   wrong host, true host available (real miss) | 293 (0.96 % of hosted) | 1,314 (4.38 % of hosted) | 23 (0.14 % of hosted) | 123 (0.75 % of hosted) |
 |   wrong host, true host not in table | 399 (1.31 % of hosted) | 378 (1.26 % of hosted) | 849 (5.27 % of hosted) | 836 (5.12 % of hosted) |
-|   contamination (wrong hosts of hosted) | 3.31 % [3.21, 3.42] | 5.64 % [5.51, 5.78] | 5.62 % [5.45, 5.81] | 5.87 % [5.69, 6.06] |
+|   contamination (wrong hosts of hosted) | 2.27 % [2.19, 2.36] | 5.64 % [5.51, 5.78] | 5.41 % [5.24, 5.59] | 5.87 % [5.69, 6.06] |
 | rejected | 1,533 | 1,961 | 2,948 | 2,717 |
 |   true host available | 619 (1.94 %) | 1,026 (3.21 %) | 590 (3.10 %) | 346 (1.82 %) |
 |   true host not in table | 914 | 935 | 2,358 | 2,371 |
@@ -351,27 +360,27 @@ rewrites it (between the markers) after every materialization.
 
 **DES-SN5YR** (Fig 6; `results/baseline/des_recovery.json`)
 
-- rung 4 N 1,594 of 1,623; SBW most probable = published 99.56 % [99.36, 99.70]; DLR = published 99.37 % [99.14, 99.54]; mean P_SBW(published) 99.04 %; of SBW picks that differ from the published host, HOSTGAL2 is the pick for 85.71 % (DLR 66.67 %); published host status: {'absent': 14, 'point_source': 15, 'unusable': 0, 'quality': 0, 'kept': 1594}
+- rung 4 N 1,594 of 1,623; P_SBW(published) >= 0.05 99.94 % [99.84, 99.98]; DLR = published 99.37 % [99.14, 99.54]; mean P_SBW(published) 99.04 %; of SBW picks that differ from the published host, HOSTGAL2 is the pick for 85.71 % (DLR 66.67 %); published host status: {'absent': 14, 'point_source': 15, 'unusable': 0, 'quality': 0, 'kept': 1594}
 
 **DP2 rc_salt** (Fig 7; `results/baseline/dp2_disagreement_rate.json`)
 
-- N 690: same host 83.91 %, different host 0.43 %, SBW hostless only 0.72 %, DLR hostless only 1.59 %, both hostless 13.33 %; same host given DLR hosted 98.64 %; mean P_SBW(DLR host) 98.70 %; random positions N 6,900: SBW hostless 83.80 %, DLR hostless 83.75 %
+- N 690: both hosted and DLR host in SBW's set 84.06 %, both hosted and DLR host excluded 0.29 %, SBW hostless only 0.72 %, DLR hostless only 1.59 %, both hostless 13.33 %; DLR host in SBW's set given DLR hosted 99.15 %; mean P_SBW(DLR host) 98.70 %; random positions N 6,900: SBW hostless 83.80 %, DLR hostless 83.75 %
 
 **Without the extendedness cut** (universe `ext_none`; `results/ext_none/{dp02,ou24}_miss_accounting.json`; each cell is baseline / ext_none; the last column is the count of true hosts not in the object table)
 
 | tier, method | hosted | true host (of sample) | real miss (of hosted) | wrong host, not in table (of hosted) | contamination | true host not in table |
 |---|---|---|---|---|---|---|
-| DC2 / DP0.2 SBW | 95.20 % / 95.35 % | 92.05 % / 92.12 % | 2.00 % / 2.07 % | 1.31 % / 1.32 % | 3.31 % / 3.39 % | 1,313 / 1,247 |
+| DC2 / DP0.2 SBW | 95.20 % / 95.35 % | 93.04 % / 93.12 % | 0.96 % / 1.01 % | 1.31 % / 1.32 % | 2.27 % / 2.33 % | 1,313 / 1,247 |
 | DC2 / DP0.2 DLR | 93.86 % / 94.20 % | 88.57 % / 88.68 % | 4.38 % / 4.59 % | 1.26 % / 1.27 % | 5.64 % / 5.86 % | 1,313 / 1,247 |
-| OpenUniverse2024 SBW | 84.53 % / 88.26 % | 79.78 % / 83.23 % | 0.35 % / 0.53 % | 5.27 % / 5.17 % | 5.62 % / 5.70 % | 3,207 / 2,238 |
+| OpenUniverse2024 SBW | 84.53 % / 88.26 % | 79.96 % / 83.49 % | 0.14 % / 0.24 % | 5.27 % / 5.17 % | 5.41 % / 5.40 % | 3,207 / 2,238 |
 | OpenUniverse2024 DLR | 85.74 % / 91.25 % | 80.71 % / 85.57 % | 0.75 % / 1.05 % | 5.12 % / 5.18 % | 5.87 % / 6.22 % | 3,207 / 2,238 |
 
 **DP2 DDF with DELIGHT** (Fig 9, appendix; `results/baseline/dp2_cross_method_metrics.json`)
 
 - N 2,601; hostless: SBW 23.26 %, DLR 27.99 %, DELIGHT 16.69 %, DELIGHT-SEx 3.31 %
-- SBW|DLR: same 1,812 (69.67 %), different 24, same given both hosted 98.69 %; A-only hostless 37, B-only hostless 160, both hostless 568
-- SBW|DELIGHT: same 1,419 (54.56 %), different 282, same given both hosted 83.42 %; A-only hostless 466, B-only hostless 295, both hostless 139
-- SBW|DELIGHT-SEx: same 1,590 (61.13 %), different 350, same given both hosted 81.96 %; A-only hostless 575, B-only hostless 56, both hostless 30
+- SBW|DLR: same 1,829 (70.32 %), different 7, same given both hosted 99.62 %; A-only hostless 37, B-only hostless 160, both hostless 568
+- SBW|DELIGHT: same 1,427 (54.86 %), different 274, same given both hosted 83.89 %; A-only hostless 466, B-only hostless 295, both hostless 139
+- SBW|DELIGHT-SEx: same 1,599 (61.48 %), different 341, same given both hosted 82.42 %; A-only hostless 575, B-only hostless 56, both hostless 30
 - DLR|DELIGHT: same 1,411 (54.25 %), different 188, same given both hosted 88.24 %; A-only hostless 568, B-only hostless 274, both hostless 160
 - DLR|DELIGHT-SEx: same 1,584 (60.90 %), different 239, same given both hosted 86.89 %; A-only hostless 692, B-only hostless 50, both hostless 36
 - DELIGHT|DELIGHT-SEx: same 2,102 (80.82 %), different 42, same given both hosted 98.04 %; A-only hostless 371, B-only hostless 23, both hostless 63
@@ -395,7 +404,7 @@ rewrites it (between the markers) after every materialization.
 - 4.4 Random-position designs differ by tier: fixed 2 Nov, ten per
   transient in the 45 to 90 arcsec annulus on every tier.
 - 4.5 Two headline metrics: fixed by `summary_table` (mean P first, the
-  P bands, argmax agreement) and the captions' vocabulary.
+  P bands, the credible-set agreement) and the captions' vocabulary.
 - 4.6 DP2 samples and universes: fixed 4 Nov 2026, rc_salt is the tier's
   sample and the cleaned DDF set is a fixed second chain in baseline for
   the DELIGHT appendix; `dp2_sample` and `dp2_candidate_catalogue` are no
@@ -439,6 +448,28 @@ rewrites it (between the markers) after every materialization.
   is a complete set of decision values, so every one of them carried a
   full DP0.2 chain as a dependency of its other tiers; two universes keep
   the remakes inside one allocation.
+- 4.19 SBW scored by its most probable host (found 4 Nov 2026, fixed the
+  same day): Fig 1's "wrong host, true host available" segment, the
+  recovery metrics (`sbw_argmax_recovery`), the recovery-vs-X and
+  band-dependence curves, the OU2024 host-magnitude bins, the profile
+  table, the offset diagnostic, the DES agreement with the published
+  host and the DP2 and DELIGHT "same host" cells all compared SBW's most
+  probable host with the reference, while the ladder, the P-band matrix
+  and the text used the credible set. Every one now uses P_SBW(reference
+  host) >= 0.05 (`sbw_success` in `src/dp02_lib.py`), and SBW-DLR
+  agreement is P_SBW(DLR host) >= 0.05 (`dlr_in_sbw_set`); the argmax
+  3x3 and the `true_host_p_ge_t` side count are gone. On the old
+  baseline numbers about half of the SBW real misses had the true host
+  at P >= 0.05 (316 of 609 on DP0.2, 34 of 57 on OU2024), so the SBW
+  contamination in Fig 1 roughly halves. `src/dp02_lib.py` is a declared
+  input of the outputs whose numbers follow its definitions. Still on the
+  most probable host, by design: the hostless statistic flb_best (the
+  `sbw_hostless_cut` decision; flb_max is the alternative), the gallery
+  marker and ellipse, the band-flip stability diagnostic (does the top
+  candidate change with band), the DP2 `p_top_host` distribution of the
+  top probability, `dp02_truth_match_comparison` (the alternative
+  matcher's host has no P_SBW), and the DES HOSTGAL2 block (is the top
+  pick the second published host).
 
 ## 6. Still open
 

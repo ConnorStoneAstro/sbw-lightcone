@@ -1,9 +1,9 @@
 # Fig 6. DES-SN5YR: SBW and DLR against the published host
 
 ## Outputs
-- `results/baseline/des_agreement_matrix.pdf` (content on this machine); made at commit `5dbb6cfc` with `python src/des_run.py fig agreement_matrix --tier des --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/des_agreement_matrix.pdf`
+- `results/baseline/des_agreement_matrix.pdf` (annex pointer here; content on the machine that made it); made at commit `38033a0d` with `python src/des_run.py fig agreement_matrix --tier des --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/des_agreement_matrix.pdf`
   - decisions in the recipe: sbw_hostless_cut = flb01, p_true_threshold = p005
-- `results/baseline/des_recovery.json` (content on this machine); made at commit `5dbb6cfc` with `python src/des_run.py recovery --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --sample results/baseline/des_sample.parquet --sweep results/baseline/des_association_sweep.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/des_recovery.json`
+- `results/baseline/des_recovery.json` (content on this machine); made at commit `38033a0d` with `python src/des_run.py recovery --associations results/baseline/des_associations.parquet --random results/baseline/des_random_associations.parquet --sample results/baseline/des_sample.parquet --sweep results/baseline/des_association_sweep.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/des_recovery.json`
   - decisions in the recipe: sbw_hostless_cut = flb01, p_true_threshold = p005
 
 ## Sample
@@ -22,9 +22,9 @@ Fixed operating points, never retuned: SBW hostless when flb_best < 0.01 (or no 
 
 - settings: profile = exponential, band = r, search_radius = r30, dlr_max = d4, dlr_radius = moments, extendedness = ext05, candidate_quality = none, reference_match = pos_1arcsec
 - ladder: {'rung2': 1623, 'rung3': 1609, 'rung4': 1594}; rung 4 N = 1,594
-- SBW most probable = published 99.56 % [99.36, 99.70]; hosted and = published 99.31 %; DLR = published 99.37 % [99.14, 99.54]; mean P_SBW(published) 99.04 %
+- P_SBW(published) >= 0.05 99.94 % [99.84, 99.98]; hosted and >= 0.05 99.69 %; DLR = published 99.37 % [99.14, 99.54]; mean P_SBW(published) 99.04 %
 - published host status over the sample: {'absent': 14, 'point_source': 15, 'unusable': 0, 'quality': 0, 'kept': 1594}; matched in DR2 100.00 %
 - HOSTGAL2: present 697, matched 577; of SBW picks that differ from the published host, HOSTGAL2 85.71 %; DLR 66.67 %
 - matrix cells: p_gt_0p5/dlr_true 1,582, p_gt_0p5/dlr_wrong 0, p_gt_0p5/dlr_hostless 1, p_t_to_0p5/dlr_true 2, p_t_to_0p5/dlr_wrong 3, p_t_to_0p5/dlr_hostless 1, p_lt_t/dlr_true 0, p_lt_t/dlr_wrong 0, p_lt_t/dlr_hostless 0, sbw_hostless/dlr_true 0, sbw_hostless/dlr_wrong 0, sbw_hostless/dlr_hostless 5; random N 16,230, SBW rejects 75.77 %, DLR 87.90 %
 - calibration error 0.0124 on 1,589 SNe
-- per band/profile (same denominator as the headline): r/exponential SBW argmax 99.56 %, DLR 99.37 %
+- per band/profile (same denominator as the headline): r/exponential P_SBW(published) >= 0.05 99.94 %, DLR 99.37 %
