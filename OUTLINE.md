@@ -23,8 +23,13 @@ simulation transfer" are.
 ## 1. The configuration (settled)
 
 The paper universe is `baseline`, which is exactly the spec defaults
-(`universes/baseline.yaml`; since 30 Oct 2026). Every other universe is
-baseline plus one change and appears only as a stated robustness check.
+(`universes/baseline.yaml`; since 30 Oct 2026). One other universe is
+live, `ext_none` (baseline without the extendedness cut, DP0.2 and
+OU2024 tiers), and it appears as a note in the text, not a figure. The
+ten universes trimmed on 4 Nov 2026 (`physical`, `dlr_moments`, `sep10`,
+`truth_nearest`, `des_faithful`, the five `dp2_ddf*`) keep their results
+in git history up to commit a9b1c38; their one-line verdicts are in the
+table below and in Section 5 (4.18).
 
 | decision | paper value | one-line reason |
 |---|---|---|
@@ -32,17 +37,17 @@ baseline plus one change and appears only as a stated robustness check.
 | `band` | r | band dependence is an output |
 | `search_radius` | r30 | d_DLR <= 4 already bounds DLR; r15 (DES-faithful) dropped from the story |
 | `dlr_max` | d4 | the literature's nominal value; d5 never materialized |
-| `dlr_radius` | moments | every published DLR uses a moment or Kron ellipse; with `half_light` the DLR ellipse is SBW's own, so the comparison is only informative with an independent DLR (appendix universe `physical` = half-light) |
-| `extendedness_cut` | ext05 | the single largest catalogue effect in three tiers; shown as "true host not in the object table" everywhere and once as `ext_none` (OU2024) |
+| `dlr_radius` | moments | every published DLR uses a moment or Kron ellipse; with `half_light` the DLR ellipse is SBW's own, so the comparison is only informative with an independent DLR (the half-light variant, ex-universe `physical`: DP0.2 ~2 points more, OU2024 ~4 points less; one sentence) |
+| `extendedness_cut` | ext05 | the single largest catalogue effect in three tiers; shown as "true host not in the object table" everywhere and as the `ext_none` universe (DP0.2 and OU2024; a note in the text) |
 | `sbw_hostless_cut` | flb01 | fixed on DP0.2, never retuned; the ROC figure carries every tier's own optimum |
 | `candidate_quality` | none | `basic` changes nothing, `strict` removes 10 % of true hosts; one sentence |
 | `p_true_threshold` | p005 | the credible-set knee sits at 0.02 to 0.05 on both simulations |
 | `exclude_suspect` | keep | never varied; not a paper decision |
-| `truth_match` | matches_truth | `truth_nearest` differs for 75 of 306k; one sentence |
+| `truth_match` | matches_truth | the nearest-object match (ex-universe `truth_nearest`) leaves the method numbers unchanged to the third decimal (mean P_SBW(true) 97.62 vs 97.63 %, argmax 97.91 vs 97.92 %, DLR 92.31 vs 92.36 %) and only moves the ladder: 857 instead of 1,149 host-unmatched SNe, so "true host not in the object table" 1,034 instead of 1,313 and contamination 2.46 / 4.84 % instead of 3.31 / 5.64 % (SBW / DLR); one sentence in the Fig 1 discussion |
 | `transient_peak_mag` | r24 | (new 31 Oct 2026) only transients an analyst would have: true peak r < 24, DC2 also peaking inside the five imaged years; the dropped fraction is the selection function, a number from the sample ladder, never a bar |
-| `dp02_sample_cuts` | physical | SNe beyond 3 half-light radii of the host along its truth ellipse dropped; the only cut with a physical justification (DC2's untruncated n = 4 wings); host-unmatched SNe stay in the sample (31 Oct 2026) |
-| `dp2_sample` | rc_salt (headline); parsnip_ddf_clean for DELIGHT only | rc_salt is the credible-SN sample; the DDF ParSNIP set is the only one DELIGHT covers and must be cleaned of stars and AGN first |
-| `dp2_candidate_catalogue` | dp2_object | Legacy candidates are one robustness paragraph (hosted fraction drops ~15 points from depth) |
+| `dp02_sample_cuts` | physical | SNe beyond 3 half-light radii of the host along its truth ellipse dropped; the only cut with a physical justification (DC2's untruncated n = 4 wings); host-unmatched SNe stay in the sample (31 Oct 2026); the clean3 and clean10 angular cuts (ex-universes `dlr_moments`, `sep10`) are history |
+| (fixed, no decision) DP2 sample | rc_salt (690 SALT3 candidates) | the credible-SN sample is the real-data tier; the cleaned DDF ParSNIP set (2,601) is a second fixed chain in baseline (`dp2_ddf_sample`, `dp2_ddf_candidates`, `dp2_ddf_associations`) made for the DELIGHT appendix only, since DELIGHT covers nothing else (4 Nov 2026; before, `dp2_sample` was a decision and each DDF variant a universe) |
+| (fixed, no decision) DP2 candidate catalogue | DP2 Object table | the Legacy DR10 Tractor alternative and its universes were dropped (4 Nov 2026) |
 | `reference_match` | pos_1arcsec | DES 99.1 % matched; DELIGHT 83 % at 1", 96 % at 3" (one sentence) |
 
 Removed: the DELIGHT training-set tier (the Förster set is not public);
@@ -130,7 +135,7 @@ universe unless stated.
   source cut, the always-applied "no usable radius or flux" drop, DC2 bdE1
   bug so shapes come from PSF-subtracted HSM moments, Tractor and
   SExtractor angle conventions (checked on cutouts: `des_angle_check`,
-  `dp2_legacy_angle_check`, text only).
+  text only).
 - The vocabulary of Section 2 above, and recovery vs agreement; "SBW most
   probable host", never "SBW host = true".
 - Thresholds fixed here and never retuned.
@@ -150,10 +155,10 @@ universe unless stated.
 - 3.3 DES-SN5YR: 1,623 Dovekie SNe Ia, DES DR2 candidates, published host
   is itself a DLR assignment on deeper coadds (so agreement, and the DLR
   column is expected to be near 100 %).
-- 3.4 Rubin DP2: rc_salt 690 SALT3 candidates (headline); DDF ParSNIP
-  7,823 for the DELIGHT comparison, cleaned to 2,601 by removing Legacy
-  DR10 Gaia stars and WISE AGN under the transient (2,055 galaxy-only
-  variant in text).
+- 3.4 Rubin DP2: rc_salt 690 SALT3 candidates (the sample of the tier);
+  the DDF ParSNIP 7,823 for the DELIGHT appendix only, cleaned to 2,601
+  by removing Legacy DR10 Gaia stars and WISE AGN under the transient
+  (`results/baseline/dp2_ddf_sample.parquet`, accounting in its metadata).
 - 3.5 Random positions as the hostless control: ten per transient in the
   45 to 90 arcsec annulus, same cuts and scripts on every tier.
 
@@ -239,20 +244,24 @@ universe unless stated.
 - Text: `dp2_p_top_host` (numbers in `dp2_disagreement_rate.headline`),
   agreement vs d_DLR (collapses at d_DLR 4 by construction on every tier).
 
-### 7. Comparison with DELIGHT on the DP2 deep-drilling fields
+### 7. Appendix: comparison with DELIGHT on the DP2 deep-drilling fields
+- An appendix, not a main-text section (4 Nov 2026): the DDF ParSNIP set
+  is the only sample DELIGHT covers and it is not a SN sample.
 - Sample story in one paragraph: 7,823 ParSNIP transients, 74 % on a
   pre-existing Legacy point source, 79 % of those Gaia stars and 17 %
-  WISE AGN; cleaned sample 2,601.
+  WISE AGN; cleaned sample 2,601 (`dp2_ddf_sample`).
 - **Fig 9: three-way SBW / DLR / DELIGHT.**
-  `results/dp2_ddf_clean/dp2_cross_method_matrix.pdf`; numbers in
-  `results/dp2_ddf_clean/dp2_cross_method_metrics.json`; caption
+  `results/baseline/dp2_cross_method_matrix.pdf`; numbers in
+  `results/baseline/dp2_cross_method_metrics.json`; caption
   `captions/fig9_delight.md`. Message: given both hosted, SBW and DELIGHT
   agree on the host for most transients; the split is a compact source
   under the transient (DELIGHT marks it, SBW drops it as a point source)
-  versus a larger neighbour.
-- Text: galaxy-only variant (`dp2_ddf_galaxy`), Legacy candidates
-  (`dp2_ddf_clean_legacy`), P_SBW(DELIGHT object) bands, the
-  reference-match sensitivity.
+  versus a larger neighbour. Cutouts of each disagreement class in
+  `results/baseline/dp2_delight_gallery.pdf`.
+- Text: P_SBW(DELIGHT object) bands and the reference-match sensitivity
+  (both in the metrics json). The galaxy-only and Legacy-candidate
+  variants are gone with their universes; history has them (commit
+  a9b1c38) if a sentence is ever wanted.
 
 ### 8. Discussion
 - What P_SBW means operationally: the honest probability lets a user pick
@@ -275,11 +284,11 @@ universe unless stated.
   argmax and DLR agreement, hostless fractions, random positions
   rejected, calibration error.
 
-Appendix A: universes (`dlr_moments` = clean3 cut, `physical` =
-half-light DLR, `ext_none`, `truth_nearest`, `sep10`, Legacy candidates,
-galaxy-only DP2) as one table of headline numbers from their
-`*_recovery.json`. Appendix B: the DC2 PA mirror and offset diagnostic.
-Appendix C: Tractor and SExtractor conventions.
+Appendix A: the DELIGHT comparison (Section 7 above). Appendix B: the
+DC2 PA mirror and offset diagnostic. Appendix C: SExtractor conventions
+(DES DR2). There is no universe table: `ext_none` is a note in Sections
+3 and 4, and the trimmed universes are one-line verdicts in the
+configuration table of Section 1.
 
 ---
 
@@ -367,8 +376,7 @@ rewrites it (between the markers) after every materialization.
 ## 5. Inconsistencies found on 30 Oct 2026 and their status
 
 - 4.1 Headline universe not the default: fixed 30 Oct (baseline = spec
-  defaults; `physical` and `dlr_moments` keep their ids as the appendix
-  universes with the half-light DLR and the clean3 cut respectively).
+  defaults); `physical` and `dlr_moments` were dropped on 4 Nov (4.18).
 - 4.2 Two DLR definitions: fixed, moments everywhere; Legacy candidates
   have no moments and say so.
 - 4.3 Denominators differ between figures: fixed 31 Oct (every method
@@ -379,14 +387,16 @@ rewrites it (between the markers) after every materialization.
   transient in the 45 to 90 arcsec annulus on every tier.
 - 4.5 Two headline metrics: fixed by `summary_table` (mean P first, the
   P bands, argmax agreement) and the captions' vocabulary.
-- 4.6 DP2 samples and universes: the paper shows rc_salt (Sections 5, 6)
-  and dp2_ddf_clean (Section 7); the rest are sentences.
+- 4.6 DP2 samples and universes: fixed 4 Nov 2026, rc_salt is the tier's
+  sample and the cleaned DDF set is a fixed second chain in baseline for
+  the DELIGHT appendix; `dp2_sample` and `dp2_candidate_catalogue` are no
+  longer decisions.
 - 4.7 Thresholds tuned in the text: fixed operating points everywhere;
   the optima appear only on Fig 5 and in `*_hostless_metrics.json`.
-- 4.8 DES r15: dropped; `des_faithful` is an appendix universe.
+- 4.8 DES r15: dropped with the `des_faithful` universe (4 Nov 2026).
 - 4.9 Extendedness on real data: one paragraph covering OU2024, DES and
   DP2 (the "true host not in the object table" outcome of Fig 1 is the
-  same effect); `ext_none` on DP2 not materialized.
+  same effect); `ext_none` holds DP0.2 and OU2024 (4 Nov 2026), not DP2.
 - 4.10 Stale spec text: DELIGHT tier removed; `summary_table` has a
   recipe; the miss figure is one panel.
 - 4.11 DP0.2 optima hard-coded: fixed 2 Nov, every tier reads the DP0.2
@@ -409,16 +419,24 @@ rewrites it (between the markers) after every materialization.
   outputs. `src/dp02_miss.py` is a declared input of the two Fig 1
   outputs, so a layout edit to it makes them stale. The captions and
   the numbers block of Section 4 were regenerated from these files.
+- 4.18 Universes trimmed (4 Nov 2026): of twelve, `baseline` and
+  `ext_none` remain. `truth_nearest` changed nothing but the ladder (its
+  numbers are in the Section 1 table), `sep10` and `dlr_moments` were
+  the superseded angular cuts, `physical` the half-light DLR,
+  `des_faithful` the 15 arcsec DES radius, and the five `dp2_ddf*` were
+  sample and catalogue variants now covered by the fixed DDF chain in
+  baseline. Their results are in git history (commit a9b1c38); the
+  universe files and `results/<id>/` directories are deleted. A universe
+  is a complete set of decision values, so every one of them carried a
+  full DP0.2 chain as a dependency of its other tiers; two universes keep
+  the remakes inside one allocation.
 
 ## 6. Still open
 
 - `index.md` (the MyST report) has not been rewritten to the new
   framing.
-- `ext_none` on DP2 and a DP2 `ext_none` sentence are not materialized.
-- `physical/` and `dlr_moments/` `summary_table` and `hostless_roc_tiers`
-  are not materialized: they need a DES chain those universes never
-  held (DES is in `baseline` and `des_faithful` only); the appendix
-  quotes their `*_recovery.json` instead.
+- `ext_none` holds no DES or DP2 tier, so its `summary_table` and
+  `hostless_roc_tiers` are left unmade on purpose.
 - The `ou24_dp02_comparison` suptitle overlaps the panel titles
   (cosmetic).
 - The paper-figure styling (fonts, sizes, colours) is the diagnostic

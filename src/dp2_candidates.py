@@ -9,8 +9,6 @@ candidate columns of the matched rows only. Columns are those of src/dp2_lib.py 
 band model / cModel fluxes, HSM moments, extendedness, blendedness, cModel_flag, deblend and parent columns;
 deblend_parentNChild is written as parent_nChild like on DP0.2).
 
-With ``--catalogue legacy_dr10`` the candidates are Legacy Surveys DR10 Tractor sources from the sweep tiles
-of ``--legacy-sweeps`` instead, rewritten into the same columns (src/dp2_candidates_legacy.py).
 """
 from __future__ import annotations
 
@@ -58,9 +56,9 @@ def _match(job):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--positions", required=True, help="parquet with sn_id, sn_ra, sn_dec (dp2_sample or random positions)")
-    ap.add_argument("--catalogue", choices=["dp2_object", "legacy_dr10"], default="dp2_object")
+    ap.add_argument("--catalogue", choices=["dp2_object"], default="dp2_object",
+                    help="fixed; the Legacy DR10 alternative was dropped on 4 Nov 2026")
     ap.add_argument("--objects", required=True, help="dp2_object index csv of the HATS partition files")
-    ap.add_argument("--legacy-sweeps", help="legacy_dr10_sweeps index csv (with --catalogue legacy_dr10)")
     ap.add_argument("--search-radius", required=True, choices=sorted(RADIUS))
     ap.add_argument("--workers", type=int, default=int(os.environ.get("DP02_WORKERS", "16")))
     ap.add_argument("--record-decisions", action="store_true", help="write the active decisions into the parquet metadata")
@@ -69,11 +67,6 @@ def main(argv=None):
     t0 = time.time()
     sn = pd.read_parquet(a.positions, columns=["sn_id", "sn_ra", "sn_dec"]).reset_index(drop=True)
     radius = RADIUS[a.search_radius]
-    if a.catalogue == "legacy_dr10":
-        import dp2_candidates_legacy
-        write(dp2_candidates_legacy.build(sn, a.legacy_sweeps, radius, a.workers), a.output, len(sn), radius, t0,
-              {"dp2_candidate_catalogue": a.catalogue} if a.record_decisions else None)
-        return
     root = D.hats_root(a.objects)
     boxes = D.partition_boxes(root)
     listed = set(pd.read_csv(a.objects)["path"])

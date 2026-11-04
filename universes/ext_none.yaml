@@ -15,6 +15,4 @@ decisions:
   truth_match: matches_truth
   transient_peak_mag: r24
   dp02_sample_cuts: physical
-  dp2_sample: rc_salt
-  dp2_candidate_catalogue: dp2_object
   reference_match: pos_1arcsec

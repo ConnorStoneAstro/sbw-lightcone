@@ -322,17 +322,19 @@ def fig8():
 
 def fig9():
     lines = head("Fig 9. SBW, DLR and DELIGHT on the DP2 deep-drilling transients",
-                 [("dp2_ddf_clean", "dp2_cross_method_matrix", "pdf"), ("dp2_ddf_clean", "dp2_cross_method_metrics", "json")],
-                 "The cleaned DDF ParSNIP sample (dp2_sample = parsnip_ddf_clean: the DDF transients with a DELIGHT host "
+                 [("baseline", "dp2_cross_method_matrix", "pdf"), ("baseline", "dp2_cross_method_metrics", "json"), ("baseline", "dp2_ddf_sample", "parquet")],
+                 "The cleaned DDF ParSNIP sample (dp2_ddf_sample, 2,601 transients: the DDF transients with a DELIGHT host "
                  "from Y.-J. Kang, minus those on a pre-existing Legacy point source that is a Gaia star or a WISE AGN); "
                  "DELIGHT's host is matched to a DP2 Object within 1 arcsec (reference_match = pos_1arcsec).",
                  "For each pair of methods a 2x2 of hosted / hostless with the hosted-hosted cell split into same host / "
                  "different host; the title gives same host given both hosted. The last panel is the P_SBW band of the "
                  "DELIGHT host over the transients whose DELIGHT position matched a candidate. DELIGHT has no hostless "
                  "notion of its own: it marks the point source under the transient where SBW drops it as a point source, "
-                 "which is the main split. This universe differs from baseline only in dp2_sample.")
+                 "which is the main split. The DDF chain (dp2_ddf_sample, dp2_ddf_candidates, dp2_ddf_associations) is a "
+                 "fixed part of baseline (4 Nov 2026) made under the same decisions as the rc_salt chain; it serves this "
+                 "appendix figure only, since three quarters of the uncleaned DDF set sit on a star or AGN.")
     lines += ["## Numbers", ""]
-    j = load_json("results/dp2_ddf_clean/dp2_cross_method_metrics.json")
+    j = load_json("results/baseline/dp2_cross_method_metrics.json")
     if not j:
         lines.append("- dp2_cross_method_metrics not readable here"); return lines
     a = j["subsets"]["all"]
@@ -468,9 +470,9 @@ def outline_numbers():
               f"DLR hostless only {pct(h['dlr_hostless_only'])}, both hostless {pct(h['both_hostless'])}; same host given DLR hosted "
               f"{pct(h['same_host'] / (1 - h['dlr_hostless']))}; mean P_SBW(DLR host) {pct(h['mean_p_sbw_of_dlr_host'])}; random positions "
               f"N {r['n']:,}: SBW hostless {pct(r['sbw_hostless'])}, DLR hostless {pct(r['dlr_hostless'])}"]
-    j = load_json("results/dp2_ddf_clean/dp2_cross_method_metrics.json")
+    j = load_json("results/baseline/dp2_cross_method_metrics.json")
     if j:
-        L += ["", "**DP2 DDF with DELIGHT** (Fig 9; `results/dp2_ddf_clean/dp2_cross_method_metrics.json`)", ""]
+        L += ["", "**DP2 DDF with DELIGHT** (Fig 9, appendix; `results/baseline/dp2_cross_method_metrics.json`)", ""]
         f9 = fig9()
         L += f9[f9.index("## Numbers") + 2:]
     return L
