@@ -2,17 +2,18 @@
   "schema_version": 1,
   "output_id": "ou24_offset_diagnostic",
   "universe_id": "ext_none",
-  "recipe": "python src/dp02_offsets.py --tier ou24 --associations results/ext_none/ou24_associations.parquet --hostless-cut flb01 --output results/ext_none/ou24_offset_diagnostic.pdf",
-  "definition_version": "sha256:e104a706d1c37aa419d8f1da1e782e4ffc4905b3dbdf9185c75548dd11918a0b",
+  "recipe": "python src/dp02_offsets.py --tier ou24 --associations results/ext_none/ou24_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/ext_none/ou24_offset_diagnostic.pdf",
+  "definition_version": "sha256:b140fbdb87735bec9677b6a075f705641f3b24585a8907d96c9f80fd38f35e3e",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:065283fe1eaba6f33aad9dd599ba007e8701bb2efce2a73c1d25dba5db7aeff7",
+  "data_version": "sha256:d6cec91cbca6ce42eebb6e055e32fb284b82efe6eedf66b7a743eff58e6bc366",
   "decisions": {
-    "sbw_hostless_cut": "flb01"
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
   },
   "input_versions": {
     "ou24_associations": "sha256:111e1ab25ccc7c2453e518770f32b9dc170daa80f0f0e707a7e440b5d3eb90ee"
   },
-  "git_sha": "b6ee15a3dffe452834f4f60a8d7cf9fb60ee33ac",
+  "git_sha": "38033a0da73f686719ca3982bdc66664d9f21cd9",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -22,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T10:15:06.978+00:00",
-  "finished_at": "2026-11-03T10:15:54.525+00:00",
+  "started_at": "2026-11-04T20:06:20.141+00:00",
+  "finished_at": "2026-11-04T20:06:45.710+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
