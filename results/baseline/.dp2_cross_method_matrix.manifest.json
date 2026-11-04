@@ -5,12 +5,13 @@
   "recipe": "python src/cross_method_matrix.py --metrics results/baseline/dp2_cross_method_metrics.json --subset all --output results/baseline/dp2_cross_method_matrix.pdf",
   "definition_version": "sha256:4b213641321b162e358ad783f8479d632d9ce6b3ccfe55e319922e081bf60acf",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:bc470830b8c28b684e6396d3ec8d3a50117aca8148750db5cf54f8aef918573e",
+  "data_version": "sha256:f4562cdc655fc768892ca8ae9668afa9335230baea384a9415df95f76510d927",
   "decisions": {},
   "input_versions": {
-    "dp2_cross_method_metrics": "sha256:ca2b3d83faf18124b945bd59a227c03ed4f5e57dddf9efa5f3632e846c2be649"
+    "dp2_cross_method_metrics": "sha256:ca2b3d83faf18124b945bd59a227c03ed4f5e57dddf9efa5f3632e846c2be649",
+    "cross_method_matrix_script": "sha256:845cd1720f7cbc752dfd4d4ee9e92a449b64550be5d9d6581efa82e573ea77ed"
   },
-  "git_sha": "38033a0da73f686719ca3982bdc66664d9f21cd9",
+  "git_sha": "87f3a9b7cb85eaea48273da616683a2e47d358e4",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +21,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-04T20:22:48.357+00:00",
-  "finished_at": "2026-11-04T20:23:09.716+00:00",
+  "started_at": "2026-11-04T21:20:55.949+00:00",
+  "finished_at": "2026-11-04T21:21:18.780+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
