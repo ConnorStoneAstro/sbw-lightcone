@@ -61,6 +61,12 @@ inputs:
       follow its definitions (success = P_SBW(true) >= p_true_threshold,
       agreement = P_SBW(DLR host) >= p_true_threshold, the placement
       accounting), so an edit there remakes them (4 Nov 2026).
+  - id: cross_method_matrix_script
+    type: data
+    source: src/cross_method_matrix.py
+    description: >-
+      The script that draws Fig 9, declared as an input of dp2_cross_method_matrix
+      so a layout edit remakes it (4 Nov 2026).
   - id: dp02_miss_script
     type: data
     source: src/dp02_miss.py
@@ -1653,7 +1659,7 @@ outputs:
       the P_SBW bands of the DELIGHT host (> 0.5, t..0.5, < t,
       SBW hostless) over the transients whose DELIGHT position matched a
       candidate.
-    inputs: [dp2_cross_method_metrics]
+    inputs: [dp2_cross_method_metrics, cross_method_matrix_script]
     decisions: []
     recipe:
       command: python src/cross_method_matrix.py --metrics {inputs.dp2_cross_method_metrics} --subset all --output {output}
