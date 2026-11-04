@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_band_dependence",
+  "universe_id": "ext_none",
+  "recipe": "python src/dp02_sweep.py band_dependence --sample results/ext_none/dp02_sample.parquet --candidates results/ext_none/dp02_candidates.parquet --profile exponential --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness none --candidate-quality none --output results/ext_none/dp02_band_dependence.pdf",
+  "definition_version": "sha256:debf0ab9dbd13e0af5642d1976dd39e50a6e6b40f8bc7d34e86880db59289a76",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:2c19cb55d8691975e3192ad04a775a799d3e2d48444c4985fb445548efb97ba3",
+  "decisions": {
+    "sbw_profile": "exponential",
+    "search_radius": "r30",
+    "dlr_max": "d4",
+    "dlr_radius": "moments",
+    "extendedness_cut": "none",
+    "candidate_quality": "none"
+  },
+  "input_versions": {
+    "dp02_sample": "sha256:9218cceddb29697d71a23dd68b386cba5ff5f1f3e2f2f97c9b0457a7bf39f578",
+    "dp02_candidates": "sha256:ff54db1e6424ec960b1dcc195b71b9c7d14ecf02f17e93068bc6e9caa122d9f1"
+  },
+  "git_sha": "51552d940d13be72129315717d32cc204a4d1710",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-11-04T16:48:00.351+00:00",
+  "finished_at": "2026-11-04T16:52:26.074+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
