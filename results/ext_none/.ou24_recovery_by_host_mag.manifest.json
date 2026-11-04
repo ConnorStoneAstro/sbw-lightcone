@@ -2,17 +2,18 @@
   "schema_version": 1,
   "output_id": "ou24_recovery_by_host_mag",
   "universe_id": "ext_none",
-  "recipe": "python src/ou24_host_mag.py by_host_mag --associations results/ext_none/ou24_associations.parquet --hostless-cut flb01 --output results/ext_none/ou24_recovery_by_host_mag.json",
-  "definition_version": "sha256:80344cddfc4fbb6d6fa155ffa9f4bdb4914f317c9e3774d2890222059cc00800",
+  "recipe": "python src/ou24_host_mag.py by_host_mag --associations results/ext_none/ou24_associations.parquet --hostless-cut flb01 --p-threshold p005 --output results/ext_none/ou24_recovery_by_host_mag.json",
+  "definition_version": "sha256:6bbc87ec5b948af491dc74eec147af274f69120901e89236635155ed5351af45",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:6181383e5f76068eeb076f892a7ddec3f81c86b5612c50186bad4938d4f34d05",
+  "data_version": "sha256:74bec55b91501304eb223719d0249c4acf6c6419b185d4f3ba3d52243f36a661",
   "decisions": {
-    "sbw_hostless_cut": "flb01"
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
   },
   "input_versions": {
     "ou24_associations": "sha256:111e1ab25ccc7c2453e518770f32b9dc170daa80f0f0e707a7e440b5d3eb90ee"
   },
-  "git_sha": "e9f2cd4129f302a126bfbcb466aca270e7f02375",
+  "git_sha": "38033a0da73f686719ca3982bdc66664d9f21cd9",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -22,8 +23,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T08:51:35.564+00:00",
-  "finished_at": "2026-11-03T08:55:07.076+00:00",
+  "started_at": "2026-11-04T20:08:41.038+00:00",
+  "finished_at": "2026-11-04T20:09:01.199+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
