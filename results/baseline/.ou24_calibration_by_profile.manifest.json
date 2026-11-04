@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "ou24_calibration_by_profile",
   "universe_id": "baseline",
-  "recipe": "python src/dp02_sweep.py profile --sample results/baseline/ou24_sample.parquet --candidates results/baseline/ou24_candidates.parquet --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --candidate-quality none --hostless-cut flb01 --output results/baseline/ou24_calibration_by_profile.pdf",
-  "definition_version": "sha256:9e7de577a5499329448f9a19e57aa3174b6212b7ffe63ea7ad71bdef6100dedd",
+  "recipe": "python src/dp02_sweep.py profile --sample results/baseline/ou24_sample.parquet --candidates results/baseline/ou24_candidates.parquet --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness ext05 --candidate-quality none --hostless-cut flb01 --p-threshold p005 --output results/baseline/ou24_calibration_by_profile.pdf",
+  "definition_version": "sha256:64da2ec2fa54b16b60e3047470ab96a3455419f9075606cfbe1a17f7634a86d5",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:3787da5e3c8e3df2ebcca3b2d931bce52b47030e0bf48d5f5ca9c098f9f004f4",
+  "data_version": "sha256:5007a0981f16c59ee2613eb57ac24c0fb888d94a431d93caaf67edcccb2351ba",
   "decisions": {
     "band": "r",
     "search_radius": "r30",
@@ -13,13 +13,14 @@
     "dlr_radius": "moments",
     "extendedness_cut": "ext05",
     "candidate_quality": "none",
-    "sbw_hostless_cut": "flb01"
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
   },
   "input_versions": {
     "ou24_sample": "sha256:e40f0552d6965a6a040e50c90522659f3dfe8a90b386591970606276c17b3ffd",
     "ou24_candidates": "sha256:b1e4a4704fa9bed1acafe0f9b1fc8370160dd7884af1005b5c01f67dabfb0425"
   },
-  "git_sha": "b5df709b9ba989e82a646c25fe3becaeed3614f3",
+  "git_sha": "38033a0da73f686719ca3982bdc66664d9f21cd9",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -29,8 +30,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T02:52:42.638+00:00",
-  "finished_at": "2026-11-03T02:54:20.502+00:00",
+  "started_at": "2026-11-04T20:28:50.613+00:00",
+  "finished_at": "2026-11-04T20:30:13.182+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
