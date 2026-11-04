@@ -2,15 +2,17 @@
   "schema_version": 1,
   "output_id": "ou24_recovery_vs_host_mag",
   "universe_id": "ext_none",
-  "recipe": "python src/dp02_fig.py recovery_vs --tier ou24 --x host_mag --associations results/ext_none/ou24_associations.parquet --output results/ext_none/ou24_recovery_vs_host_mag.pdf",
-  "definition_version": "sha256:ab2542468ca404a5e6298c713dfe5cd9ddaf298d7e0659e79c22782079c01754",
+  "recipe": "python src/dp02_fig.py recovery_vs --tier ou24 --x host_mag --associations results/ext_none/ou24_associations.parquet --p-threshold p005 --output results/ext_none/ou24_recovery_vs_host_mag.pdf",
+  "definition_version": "sha256:1e52dc7a0767ee43eb326d2e599ecc6cd46185dc13937f9619f35eb495fb5777",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:1c77910a704d3001e54378e5f60d238e75bba030a23ec9d7e898d72afaa8b1bd",
-  "decisions": {},
+  "data_version": "sha256:d13c6a85155e2711330949d90758ab89f3aed29bd41ee1dd4572a5e399ae7b68",
+  "decisions": {
+    "p_true_threshold": "p005"
+  },
   "input_versions": {
     "ou24_associations": "sha256:111e1ab25ccc7c2453e518770f32b9dc170daa80f0f0e707a7e440b5d3eb90ee"
   },
-  "git_sha": "e9f2cd4129f302a126bfbcb466aca270e7f02375",
+  "git_sha": "38033a0da73f686719ca3982bdc66664d9f21cd9",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -20,8 +22,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T08:51:35.793+00:00",
-  "finished_at": "2026-11-03T08:55:09.402+00:00",
+  "started_at": "2026-11-04T20:08:41.063+00:00",
+  "finished_at": "2026-11-04T20:09:02.672+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
