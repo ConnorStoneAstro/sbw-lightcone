@@ -357,7 +357,16 @@ rewrites it (between the markers) after every materialization.
 
 - N 690: same host 83.91 %, different host 0.43 %, SBW hostless only 0.72 %, DLR hostless only 1.59 %, both hostless 13.33 %; same host given DLR hosted 98.64 %; mean P_SBW(DLR host) 98.70 %; random positions N 6,900: SBW hostless 83.80 %, DLR hostless 83.75 %
 
-**DP2 DDF with DELIGHT** (Fig 9; `results/dp2_ddf_clean/dp2_cross_method_metrics.json`)
+**Without the extendedness cut** (universe `ext_none`; `results/ext_none/{dp02,ou24}_miss_accounting.json`; each cell is baseline / ext_none; the last column is the count of true hosts not in the object table)
+
+| tier, method | hosted | true host (of sample) | real miss (of hosted) | wrong host, not in table (of hosted) | contamination | true host not in table |
+|---|---|---|---|---|---|---|
+| DC2 / DP0.2 SBW | 95.20 % / 95.35 % | 92.05 % / 92.12 % | 2.00 % / 2.07 % | 1.31 % / 1.32 % | 3.31 % / 3.39 % | 1,313 / 1,247 |
+| DC2 / DP0.2 DLR | 93.86 % / 94.20 % | 88.57 % / 88.68 % | 4.38 % / 4.59 % | 1.26 % / 1.27 % | 5.64 % / 5.86 % | 1,313 / 1,247 |
+| OpenUniverse2024 SBW | 84.53 % / 88.26 % | 79.78 % / 83.23 % | 0.35 % / 0.53 % | 5.27 % / 5.17 % | 5.62 % / 5.70 % | 3,207 / 2,238 |
+| OpenUniverse2024 DLR | 85.74 % / 91.25 % | 80.71 % / 85.57 % | 0.75 % / 1.05 % | 5.12 % / 5.18 % | 5.87 % / 6.22 % | 3,207 / 2,238 |
+
+**DP2 DDF with DELIGHT** (Fig 9, appendix; `results/baseline/dp2_cross_method_metrics.json`)
 
 - N 2,601; hostless: SBW 23.26 %, DLR 27.99 %, DELIGHT 16.69 %, DELIGHT-SEx 3.31 %
 - SBW|DLR: same 1,812 (69.67 %), different 24, same given both hosted 98.69 %; A-only hostless 37, B-only hostless 160, both hostless 568

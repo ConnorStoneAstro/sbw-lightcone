@@ -940,3 +940,28 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   an order of magnitude above the fixed 0.01): the DR2 SExtractor models
   put more light at 45-90 arcsec than the Rubin ones; worth a sentence in
   the hostless section, not a retune.
+- **Universes trimmed to two; DDF chain folded into baseline (4 Nov
+  2026, commit 51552d9).** A universe is a complete set of decision
+  values, not a dataset, and every universe carries a full DP0.2 chain as
+  a dependency of its other tiers (`--dp02-hostless-metrics`,
+  `dp2_p_top_host`), so twelve of them were the whole cost of every
+  remake. Connor reviewed each one's difference from baseline and kept
+  `baseline` and `ext_none` (now DP0.2 + OU2024; its DP0.2 outputs were
+  made on remake8). Dropped with their `results/<id>/` and universe files:
+  `physical` (half-light DLR), `dlr_moments` (clean3), `sep10` (clean10),
+  `truth_nearest` (method numbers identical to baseline to the third
+  decimal; only the ladder moves: 857 vs 1,149 host-unmatched, so
+  contamination 2.46 / 4.84 % vs 3.31 / 5.64 %), `des_faithful` (r15), and
+  the five `dp2_ddf*`. History has them at a9b1c38. `dp2_sample` and
+  `dp2_candidate_catalogue` are no longer decisions: rc_salt (690 SALT3
+  candidates) is the DP2 tier's fixed sample, the cleaned DDF ParSNIP set
+  (2,601) is a second fixed chain in baseline (`dp2_ddf_sample`,
+  `dp2_ddf_candidates`, `dp2_ddf_associations`) read only by the DELIGHT
+  outputs (`dp2_cross_method_*`, `dp2_delight_*`), which are now baseline
+  outputs for the DELIGHT appendix. The Legacy DR10 candidate catalogue,
+  `dp2_legacy_angle_check`, `src/dp2_candidates_legacy.py` and
+  `src/legacy_angle_check.py` are gone; `legacy_dr10_sweeps` stays as the
+  input of the star / AGN flags. Fixing the two recipes made the whole
+  baseline DP2 chain stale (dp2_sample's recipe string changed), remade
+  on remake8 with the DDF chain and the cross-tier outputs. The outline's
+  numbers block gained an ext_none-versus-baseline placement table.

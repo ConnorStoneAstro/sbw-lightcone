@@ -470,6 +470,24 @@ def outline_numbers():
               f"DLR hostless only {pct(h['dlr_hostless_only'])}, both hostless {pct(h['both_hostless'])}; same host given DLR hosted "
               f"{pct(h['same_host'] / (1 - h['dlr_hostless']))}; mean P_SBW(DLR host) {pct(h['mean_p_sbw_of_dlr_host'])}; random positions "
               f"N {r['n']:,}: SBW hostless {pct(r['sbw_hostless'])}, DLR hostless {pct(r['dlr_hostless'])}"]
+    rows_e = []
+    for tier, name in (("dp02", "DC2 / DP0.2"), ("ou24", "OpenUniverse2024")):
+        b = load_json(f"results/baseline/{tier}_miss_accounting.json"); e = load_json(f"results/ext_none/{tier}_miss_accounting.json")
+        if not b or not e or "placement" not in e:
+            continue
+        for m in ("sbw", "dlr"):
+            pb, pe = b["placement"], e["placement"]
+            rows_e.append(f"| {name} {m.upper()} | {pct(pb[m]['frac_hosted'])} / {pct(pe[m]['frac_hosted'])} | "
+                          f"{pct(pb[m]['true_host']['frac'])} / {pct(pe[m]['true_host']['frac'])} | "
+                          f"{pct(pb[m]['wrong_host_miss']['of_hosted'])} / {pct(pe[m]['wrong_host_miss']['of_hosted'])} | "
+                          f"{pct(pb[m]['wrong_host_not_in_table']['of_hosted'])} / {pct(pe[m]['wrong_host_not_in_table']['of_hosted'])} | "
+                          f"{pct(pb[m]['contamination']['of_hosted'])} / {pct(pe[m]['contamination']['of_hosted'])} | "
+                          f"{pb['n_true_host_not_in_table']:,} / {pe['n_true_host_not_in_table']:,} |")
+    if rows_e:
+        L += ["", "**Without the extendedness cut** (universe `ext_none`; `results/ext_none/{dp02,ou24}_miss_accounting.json`; "
+              "each cell is baseline / ext_none; the last column is the count of true hosts not in the object table)", "",
+              "| tier, method | hosted | true host (of sample) | real miss (of hosted) | wrong host, not in table (of hosted) | contamination | true host not in table |",
+              "|---|---|---|---|---|---|---|"] + rows_e
     j = load_json("results/baseline/dp2_cross_method_metrics.json")
     if j:
         L += ["", "**DP2 DDF with DELIGHT** (Fig 9, appendix; `results/baseline/dp2_cross_method_metrics.json`)", ""]
