@@ -2,10 +2,10 @@
   "schema_version": 1,
   "output_id": "ou24_profile_sweep",
   "universe_id": "ext_none",
-  "recipe": "python src/dp02_sweep.py profile_table --sample results/ext_none/ou24_sample.parquet --candidates results/ext_none/ou24_candidates.parquet --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness none --candidate-quality none --hostless-cut flb01 --output results/ext_none/ou24_profile_sweep.csv",
-  "definition_version": "sha256:900e398874163c6c3dfea8ad972da8e1eaa2e1203ceacc75b8a3b23749f0404f",
+  "recipe": "python src/dp02_sweep.py profile_table --sample results/ext_none/ou24_sample.parquet --candidates results/ext_none/ou24_candidates.parquet --band r --search-radius r30 --dlr-max d4 --dlr-radius moments --extendedness none --candidate-quality none --hostless-cut flb01 --p-threshold p005 --output results/ext_none/ou24_profile_sweep.csv",
+  "definition_version": "sha256:0a7cac9c4fb04732680423d06c21ae85b6d3c20781e673521abf8c3a7af15956",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:06c212572944fc819dc6fb357d7d5c4c5f0f4ff8cbb11d7a2445156140ec9545",
+  "data_version": "sha256:6c5768d41a0a80b5c5bfa874142c5af609b7e33dce4164edbf65c72eec849bb1",
   "decisions": {
     "band": "r",
     "search_radius": "r30",
@@ -13,13 +13,14 @@
     "dlr_radius": "moments",
     "extendedness_cut": "none",
     "candidate_quality": "none",
-    "sbw_hostless_cut": "flb01"
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
   },
   "input_versions": {
     "ou24_sample": "sha256:e40f0552d6965a6a040e50c90522659f3dfe8a90b386591970606276c17b3ffd",
     "ou24_candidates": "sha256:21ff2f3748a262604fb39858c0a12361e3cc8cb93713266d32677a52b678ab24"
   },
-  "git_sha": "e9f2cd4129f302a126bfbcb466aca270e7f02375",
+  "git_sha": "38033a0da73f686719ca3982bdc66664d9f21cd9",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -29,8 +30,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T08:57:21.731+00:00",
-  "finished_at": "2026-11-03T08:58:55.956+00:00",
+  "started_at": "2026-11-04T20:10:46.122+00:00",
+  "finished_at": "2026-11-04T20:12:02.925+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
