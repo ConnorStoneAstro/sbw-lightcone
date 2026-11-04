@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "output_id": "dp02_disagreement_gallery",
+  "universe_id": "ext_none",
+  "recipe": "bash -c 'T=$TMPDIR; [ -n \"$T\" ] || T=/tmp; python src/dp02_gallery.py results/ext_none/dp02_disagreement_cases.csv --output results/ext_none/dp02_disagreement_gallery.pdf --band r --size 30 --ncol 4 --per-page 12 --token-file /global/cfs/cdirs/m1727/cstone/.rsp_image_tap_token --cache-dir \"$T/dp02_cutouts\"'",
+  "definition_version": "sha256:eed5b072e036d7726122f714066de7d83811d6933dcd52c43df65e62acc87bcf",
+  "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
+  "data_version": "sha256:279b2bacd0d9b25673a92fe4ac6599113fa9ae297711427c0b62c13eaadfde9c",
+  "decisions": {
+    "band": "r"
+  },
+  "input_versions": {
+    "dp02_disagreement_cases": "sha256:841539b8969ba419060ffaede77916966099b67b2c3f345a4f82e90644578a84",
+    "rsp_token": "sha256:d6aedc2ab8e8dc19ed5d0f1e3b7543ff5db26f78ac2895ff1b1b7ccf9eceb3c6"
+  },
+  "git_sha": "51552d940d13be72129315717d32cc204a4d1710",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
+  "lc_version": "0.5.0",
+  "hermeticity": {
+    "mechanism": "none",
+    "fs": "open",
+    "network": "allowed",
+    "landlock_abi": null,
+    "exec_allowlist_version": null
+  },
+  "started_at": "2026-11-04T16:27:56.162+00:00",
+  "finished_at": "2026-11-04T16:30:33.220+00:00",
+  "uv_version": "0.13.5",
+  "image": null
+}
