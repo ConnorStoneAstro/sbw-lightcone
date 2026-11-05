@@ -683,7 +683,7 @@ outputs:
     inputs: [dp02_disagreement_cases, rsp_token, dp02_gallery_script]
     decisions: [band]
     recipe:
-      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp02_disagreement_cases} --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp02_cutouts"'
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp02_disagreement_cases} --workers 2 --min-interval 2 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp02_cutouts"'
   - id: dp02_miss_accounting
     type: metric
     format: json
@@ -1593,7 +1593,7 @@ outputs:
     inputs: [dp2_disagreement_cases, rsp_token, dp02_gallery_script]
     decisions: [band]
     recipe:
-      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_disagreement_cases} --tier dp2 --ellipse-scale 4 --workers 4 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_disagreement_cases} --tier dp2 --ellipse-scale 4 --workers 2 --min-interval 2 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
   # ---- Tier 4b: the DDF ParSNIP chain for the DELIGHT comparison (appendix) ----
   - id: dp2_ddf_sample
     type: table
@@ -1727,7 +1727,7 @@ outputs:
     inputs: [dp2_delight_cases, rsp_token, dp02_gallery_script]
     decisions: [band]
     recipe:
-      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_delight_cases} --tier dp2 --ellipse-scale 4 --workers 2 --min-interval 1.5 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
+      command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_delight_cases} --tier dp2 --ellipse-scale 4 --workers 2 --min-interval 2 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
   # ---- Cross-tier summary ----
   - id: summary_table
     type: table

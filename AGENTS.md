@@ -983,3 +983,7 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   draws them faded (`SET_ALPHA`) with their P and is a declared input
   (`dp02_gallery_script`) of the four galleries; the three cases recipes
   that lacked it now take `--p-threshold`.
+  The RSP cutout service rate-limits (HTTP 429) when several galleries fetch
+  at once: remake12 lost 51 panels that way. The Rubin galleries now run at
+  `--workers 2 --min-interval 2`, and they must be materialized one target
+  per `lc materialize` call, never together.
