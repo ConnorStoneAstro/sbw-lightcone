@@ -27,6 +27,9 @@ Input columns: ``case_id``, ``sn_ra``, ``sn_dec``, optional ``label``, and any
 number of ``<name>_ra`` / ``<name>_dec`` marker pairs (blank = not drawn).
 A marker with ``<name>_a``, ``<name>_b`` and ``<name>_phi`` columns (semi-axes in arcsec, angle in degrees
 counter-clockwise from +x = West toward North) also gets that ellipse drawn about its position.
+An optional ``sbw_set`` column lists the other members of SBW's credible set, ``"ra,dec,p[,a,b,phi];..."``
+(``dp02_lib.sbw_credible_sets``); they are drawn in the SBW style with transparency, each with its P, and
+``sbw_set_t`` (the threshold) names the set in the legend.
 With ``--tier dp2`` the patch table is ``ivoa.ObsCore`` rows of ``obs_collection = 'LSST.DP2'`` and subtype
 ``lsst.deep_coadd``.
 With ``--imaging legacy`` the cutouts are Legacy Surveys DR10 images from the legacysurvey.org viewer
@@ -78,6 +81,7 @@ SOURCES = {"rubin": ("rubin",), "legacy": ("legacy",), "both": ("rubin", "legacy
 SOURCE_TITLE = {"rubin": TITLE, "legacy": "Legacy DR10"}
 
 SBW_COLOR, DLR_COLOR, GREY = "#2a6fdb", "#e07b39", "#555555"
+SET_ALPHA = 0.4   # the credible set's other members, drawn in the SBW style with this alpha
 SN_COLOR = "#d62728"
 # name -> (marker, colour, size, legend label).  Open markers of different
 # sizes, so coincident picks stay visible as concentric symbols.
@@ -347,6 +351,13 @@ def marker_style(name: str, i_extra: int):
     return m, c, 13, name
 
 
+def parse_set(value) -> list[tuple[float, ...]]:
+    """``"ra,dec,p[,a,b,phi];..."`` -> list of tuples (blank / NaN -> empty)."""
+    if not isinstance(value, str) or not value.strip():
+        return []
+    return [tuple(float(v) for v in item.split(",")) for item in value.split(";") if item]
+
+
 def draw_panel(ax, case, image, error, names, styles, size, args, title=None):
     half = size / 2.0
     halo = [patheffects.withStroke(linewidth=2, foreground="black" if args.dark else "white")]
@@ -388,6 +399,19 @@ def draw_panel(ax, case, image, error, names, styles, size, args, title=None):
                     ha="center", va="center", zorder=4, path_effects=halo)
             continue
         ax.plot(x, y, m, ms=s, mfc="none", mec=c, mew=1.2, zorder=4)
+    # the other members of SBW's credible set: SBW style, faded, each with its P
+    m, c, s, _ = MARKER_STYLES["sbw"]
+    for item in parse_set(case.get("sbw_set")):
+        x, y = tangent_offsets(item[0], item[1], sn_ra, sn_dec)
+        if max(abs(x), abs(y)) > 0.95 * half:
+            continue
+        if len(item) >= 6:
+            k = 2 * args.ellipse_scale
+            ax.add_patch(Ellipse((x, y), k * item[3], k * item[4], angle=180.0 - item[5], fill=False, ec=c,
+                                 lw=1.0, alpha=SET_ALPHA, zorder=3))
+        ax.plot(x, y, m, ms=s, mfc="none", mec=c, mew=1.2, alpha=SET_ALPHA, zorder=4)
+        ax.text(x - 0.03 * size, y + 0.03 * size, f"{item[2]:.2f}", color=c, alpha=0.8, fontsize=5,
+                ha="right", va="bottom", zorder=4, path_effects=halo)
     ax.plot(0, 0, "x", ms=9, mew=1.8, color=SN_COLOR, zorder=5)
     ax.set_xlim(half, -half)  # east left
     ax.set_ylim(-half, half)  # north up
@@ -425,6 +449,11 @@ def render(cases: pd.DataFrame, images: dict, errors: dict, args):
     handles = [Line2D([], [], ls="none", marker="x", ms=7, mew=1.8, color=SN_COLOR, label="SN")]
     handles += [Line2D([], [], ls="none", marker=styles[n][0], ms=min(styles[n][2], 10), mfc="none",
                        mec=styles[n][1], mew=1.4, label=styles[n][3]) for n in present]
+    if "sbw_set" in cases.columns and cases["sbw_set"].notna().any():
+        t = cases["sbw_set_t"].dropna().iloc[0] if "sbw_set_t" in cases.columns else None
+        m, c, s, _ = MARKER_STYLES["sbw"]
+        handles.append(Line2D([], [], ls="none", marker=m, ms=min(s, 10), mfc="none", mec=c, mew=1.4, alpha=SET_ALPHA,
+                              label="SBW credible set" + (f" (P $\\geq$ {t:g}), other members" if t else ", other members")))
 
     sources = SOURCES[getattr(args, "imaging", "rubin")]   # des_gallery.py passes no --imaging
     per_page = args.per_page or len(cases)

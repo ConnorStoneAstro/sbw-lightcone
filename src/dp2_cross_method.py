@@ -261,8 +261,9 @@ def metrics(df, out, t):
         json.dump(res, f, indent=1)
 
 
-def cases(df, cand_path, out):
+def cases(df, cand_path, out, t):
     from dp2_cases import ellipses
+    from dp02_lib import sbw_credible_sets
     sh, dh = df.sbw_host.to_numpy() < 0, df.dlr_host.to_numpy() < 0
     gh, xh = df.delight_host.to_numpy() < 0, df.sex_host.to_numpy() < 0
     s, d, g, x = (df[f"{m}_host"].to_numpy() for m in METHODS)
@@ -278,6 +279,9 @@ def cases(df, cand_path, out):
     band, profile, dlr_radius = df.attrs["band"], df.attrs["profile"], df.attrs["dlr_radius"]
     cand = L.load_candidates(cand_path, bands=band)
     cand = cand[cand.sn_id.isin(c.sn_id)].drop_duplicates(["sn_id", "objectId"]).reset_index(drop=True)
+    c["sbw_set"] = sbw_credible_sets(c.assign(host_objectId=c.get("host_objectId", -1)), cand, df.attrs, t,
+                                     with_ellipse=True)
+    c["sbw_set_t"] = t
     cand = pd.concat([cand[["sn_id", "objectId", "coord_ra", "coord_dec"]], ellipses(cand, band, profile, dlr_radius)],
                      axis=1).set_index(["sn_id", "objectId"])
     for name, col in [("sbw", "sbw_objectId"), ("dlr", "dlr_objectId")]:
@@ -293,7 +297,7 @@ def cases(df, cand_path, out):
                                                       c.p_sbw_delight, c.flb_best, c.delight_sn_sep)]
     cols = (["case_id", "class", "class_n", "sn_id", "sn_ra", "sn_dec", "image_survey", "label"]
             + [f"{n}_{k}" for n in ("sbw", "dlr") for k in ("ra", "dec", "a", "b", "phi")]
-            + ["delight_ra", "delight_dec", "sex_ra", "sex_dec", "p_sbw_max", "p_sbw_dlr", "p_sbw_delight",
+            + ["sbw_set", "sbw_set_t", "delight_ra", "delight_dec", "sex_ra", "sex_dec", "p_sbw_max", "p_sbw_dlr", "p_sbw_delight",
                "d_dlr_delight", "delight_status", "flb_best", "d_dlr_min", "delight_sn_sep", "sex_sn_sep",
                "delight_match_sep", "std_delight", "hostsize", "sbw_objectId", "dlr_objectId", "delight_objectId",
                "sex_objectId", "kang_dp2_objectId"])
@@ -308,7 +312,8 @@ def main(argv=None):
     ap.add_argument("--delight", required=True, help="index csv (path, size, mtime, sha256) of Kang's two tables")
     ap.add_argument("--reference-match", required=True, choices=sorted(MATCH))
     ap.add_argument("--hostless-cut", required=True, choices=sorted(HOSTLESS_CUT))
-    ap.add_argument("--p-threshold", choices=sorted(P_TRUE), help="agreement and metrics: SBW agrees when P_SBW(other host) >= t")
+    ap.add_argument("--p-threshold", required=True, choices=sorted(P_TRUE),
+                    help="SBW agrees when P_SBW(other host) >= t; cases: the credible set drawn in the gallery")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--kang-ls-id-shift", type=int, default=20,
                     help="bit position of the brick id in Kang's legacy_ls_id (the Kang cross-check on Legacy candidates)")
@@ -317,14 +322,12 @@ def main(argv=None):
     df = build(a.associations, a.candidates, a.delight, a.reference_match, HOSTLESS_CUT[a.hostless_cut], a.workers,
                a.kang_ls_id_shift)
     print(f"{len(df)} transients with DELIGHT predictions", file=sys.stderr)
-    if a.mode in ("agreement", "metrics") and not a.p_threshold:
-        raise SystemExit("--p-threshold is required for agreement and metrics")
     if a.mode == "agreement":
         agreement(df, a.output, P_TRUE[a.p_threshold])
     elif a.mode == "metrics":
         metrics(df, a.output, P_TRUE[a.p_threshold])
     else:
-        cases(df, a.candidates, a.output)
+        cases(df, a.candidates, a.output, P_TRUE[a.p_threshold])
 
 
 if __name__ == "__main__":

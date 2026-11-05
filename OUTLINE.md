@@ -470,6 +470,19 @@ rewrites it (between the markers) after every materialization.
   top probability, `dp02_truth_match_comparison` (the alternative
   matcher's host has no P_SBW), and the DES HOSTGAL2 block (is the top
   pick the second published host).
+- 4.20 Galleries show the credible set (5 Nov 2026). Every cases table
+  (`dp02_disagreement_cases`, `dp2_disagreement_cases`,
+  `des_disagreement_cases`, `dp2_delight_cases`) carries `sbw_set`: the
+  other members of SBW's credible set, every surviving candidate with
+  P_SBW >= 0.05 except the most probable one, re-derived with
+  `sbw_credible_sets` in `src/dp02_lib.py` from the same association
+  settings (`associate_one` now hands back its per-candidate arrays).
+  The galleries draw them in the SBW style at 40 % opacity, with their P
+  beside each marker and, on the DP2 and DES tiers, their half-light
+  ellipses; the most probable host keeps its solid marker, and the legend
+  names the set. `src/dp02_gallery.py` is a declared input
+  (`dp02_gallery_script`) of the four galleries, so a drawing change
+  remakes them.
 
 ## 6. Still open
 

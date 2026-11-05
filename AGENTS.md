@@ -975,3 +975,11 @@ Scoping was done on 2026-10-26 with Connor Stone. State of play:
   input (`dp02_lib_script`) of the recovery, miss-accounting, matrix,
   sweep-table, disagreement-rate and cross-method outputs, so a library
   edit remakes them; figures that need t carry `p_true_threshold`.
+- **Galleries draw the credible set (5 Nov 2026).** The four cases tables
+  carry `sbw_set` (`"ra,dec,p[,a,b,phi];..."`, the P >= p_true_threshold
+  candidates other than the most probable one) and `sbw_set_t`; they are
+  encoded by `sbw_credible_sets` in `src/dp02_lib.py`, which re-runs
+  `associate_one(..., details={})` for the drawn SNe. `src/dp02_gallery.py`
+  draws them faded (`SET_ALPHA`) with their P and is a declared input
+  (`dp02_gallery_script`) of the four galleries; the three cases recipes
+  that lacked it now take `--p-threshold`.

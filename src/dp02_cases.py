@@ -1,6 +1,6 @@
 """Random disagreement cases for the cutout gallery: for each class, a seeded draw of SNe with the
 positions of every marker (truth host position, both truth matchers' objects, the SBW most probable host and
-the DLR host)."""
+the DLR host) and, in sbw_set, the other members of SBW's credible set (P_SBW >= t) with their P."""
 from __future__ import annotations
 
 import argparse
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from dp02_lib import P_TRUE, p_dlr, p_true
+from dp02_lib import P_TRUE, load_candidates, p_dlr, p_true, sbw_credible_sets, table_attrs
 
 N_PER_CLASS = 12
 SEED = 20261027
@@ -50,6 +50,10 @@ def main(argv=None):
         pos = cand.reindex(key)
         c[f"{name}_ra"], c[f"{name}_dec"] = pos.coord_ra.to_numpy(), pos.coord_dec.to_numpy()
     c["truth_pos_ra"], c["truth_pos_dec"] = c.host_ra, c.host_dec
+    attrs = table_attrs(a.associations)
+    full = load_candidates(a.candidates, bands=[attrs["band"]], sn_ids=c.sn_id.unique())
+    c["sbw_set"] = sbw_credible_sets(c, full, attrs, thr)
+    c["sbw_set_t"] = thr
     c["case_id"] = [f"{k}_{i:02d}" for k, i in zip(c["class"], c.groupby("class").cumcount())]
     c["p_sbw_true"] = p_true(c)
     c["label"] = [f"{k} | SN {sid} | P(true) {pt_:.3f}, P(most prob.) {p:.2f} | {stt} | d_DLR {dd:.1f} | sep {sp:.1f}\""
@@ -57,7 +61,7 @@ def main(argv=None):
                                                          c.true_host_status, c.d_dlr_min, c.sep_truth_arcsec)]
     cols = ["case_id", "class", "class_n", "sn_id", "sn_ra", "sn_dec", "label",
             "truth_pos_ra", "truth_pos_dec", "truth_match_ra", "truth_match_dec",
-            "truth_nearest_ra", "truth_nearest_dec", "sbw_ra", "sbw_dec", "dlr_ra", "dlr_dec",
+            "truth_nearest_ra", "truth_nearest_dec", "sbw_ra", "sbw_dec", "dlr_ra", "dlr_dec", "sbw_set", "sbw_set_t",
             "p_sbw_max", "p_sbw_true", "true_host_status", "d_dlr_min", "sep_truth_arcsec",
             "host_objectId_mt", "host_objectId_nn", "sbw_objectId", "dlr_objectId"]
     c[cols].to_csv(a.output, index=False, float_format="%.7f")

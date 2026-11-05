@@ -184,9 +184,10 @@ def sample_mask(df):
     return m
 
 
-def load_candidates(path, bands=BANDS):
+def load_candidates(path, bands=BANDS, sn_ids=None):
     cols = GENERAL + [f"{b}_{c}" for b in bands for c in PER_BAND]
-    t = pq.read_table(path, columns=cols)
+    filters = [("sn_id", "in", list(sn_ids))] if sn_ids is not None else None
+    t = pq.read_table(path, columns=cols, filters=filters)
     df = t.to_pandas(ignore_metadata=True)
     return df.sort_values(["sn_id", "sep_arcsec"], kind="stable").reset_index(drop=True)
 
@@ -282,13 +283,14 @@ def quality_mask(c, band, level, n_sib):
 
 
 def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_max, dlr_radius, extendedness,
-                  quality="none"):
+                  quality="none", details=None):
     """Associate one SN against its candidate rows ``c`` (a DataFrame slice).
 
     The candidate list is cut in order: search radius, extendedness_cut (point sources), no usable radius or
     flux for the profile (always), candidate_quality; ``true_host_status`` records which step removed the
     true host (``absent`` when it is not a primary object within the search radius) and n_cut_* how many
-    candidates each step removed."""
+    candidates each step removed.  With ``details`` a dict, it is filled with the per-candidate arrays of the
+    surviving candidates (objectId, coord_ra, coord_dec, p_sbw, half-light a, q, phi) for display."""
     out = {"n_cand": len(c), "n_cand_radius": 0, "n_cut_point_source": 0, "n_cut_unusable": 0, "n_cut_quality": 0,
            "n_cand_used": 0, "true_in_cand": False, "true_host_status": "absent", "n_sib_true": -1,
            "sbw_objectId": -1, "p_sbw_max": np.nan, "p_sbw_true": np.nan, "rank_true": -1, "n_sib_sbw": -1,
@@ -340,6 +342,9 @@ def associate_one(sn_ra, sn_dec, host_objectId, c, band, profile, radius, dlr_ma
     p = np.nan_to_num(np.asarray(res.p_sbw, dtype=float))
     flb = np.asarray(res.frac_light_beyond, dtype=float)
     m = np.asarray(res.m, dtype=float)
+    if details is not None:
+        details.update(objectId=oid, coord_ra=c["coord_ra"].to_numpy(), coord_dec=c["coord_dec"].to_numpy(),
+                       p_sbw=p, a=a, q=q, phi=phi)
     out["flb_max"] = float(np.nanmax(flb)) if np.isfinite(flb).any() else np.nan
     out["p_top"] = np.sort(p[p > P_TOP_MIN])[::-1].astype(np.float32).tolist()
     k = int(np.argmax(p))
@@ -477,6 +482,46 @@ def dlr_in_sbw_set(df, t):
     """The DLR host is in SBW's credible set (P_SBW(DLR host) >= t): the method-agreement analogue of
     sbw_success, replacing 'SBW most probable host = DLR host'."""
     return p_dlr(df) >= t
+
+
+def sbw_credible_sets(rows, cand, attrs, t, with_ellipse=False):
+    """For each row of ``rows`` (sn_id, sn_ra, sn_dec, host_objectId), the other members of SBW's credible set:
+    every surviving candidate with P_SBW >= t except the most probable one (drawn separately), encoded for the
+    gallery as ``"ra,dec,p[,a,b,phi];..."`` (degrees, probability, half-light semi-axes in arcsec and the angle in
+    degrees from +x = West toward North).  ``attrs`` are an associations table's metadata (band, profile,
+    search_radius, dlr_max, dlr_radius, extendedness, candidate_quality); ``cand`` holds the candidates of these
+    SNe.  Re-running the association here keeps the set consistent with the table the cases came from."""
+    cfg = dict(band=attrs["band"], profile=attrs["profile"], radius=RADIUS[attrs["search_radius"]],
+               dlr_max=DLR_MAX[attrs["dlr_max"]], dlr_radius=attrs["dlr_radius"], extendedness=attrs["extendedness"],
+               quality=attrs.get("candidate_quality", "none"))
+    cand = cand.sort_values(["sn_id", "sep_arcsec"], kind="stable")
+    groups = {k: g for k, g in cand.groupby("sn_id", sort=False)}
+    out = []
+    for r in rows.itertuples():
+        d = {}
+        g = groups.get(r.sn_id)
+        if g is not None and len(g):
+            associate_one(float(r.sn_ra), float(r.sn_dec), int(r.host_objectId), g, details=d, **cfg)
+        if not d:
+            out.append("")
+            continue
+        p = d["p_sbw"]
+        keep = np.flatnonzero((p >= t) & (np.arange(len(p)) != int(np.argmax(p))))
+        keep = keep[np.argsort(-p[keep], kind="stable")]
+        parts = []
+        for i in keep:
+            s = f"{d['coord_ra'][i]:.7f},{d['coord_dec'][i]:.7f},{p[i]:.4f}"
+            if with_ellipse:
+                s += f",{d['a'][i]:.4g},{d['a'][i] * d['q'][i]:.4g},{d['phi'][i]:.3f}"
+            parts.append(s)
+        out.append(";".join(parts))
+    return out
+
+
+def table_attrs(path):
+    """The association run's settings stored as parquet metadata (band, profile, ... candidate_quality)."""
+    md = pq.read_schema(path).metadata or {}
+    return {k.decode(): v.decode() for k, v in md.items() if not k.startswith(b"pandas")}
 
 
 def prob_rows(df, cut, t):

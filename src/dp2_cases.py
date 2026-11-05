@@ -1,5 +1,6 @@
 """DP2 disagreement cases for the cutout gallery: a seeded draw of transients per class, with the positions
-and half-light ellipses of the SBW most probable host and the DLR host.
+and half-light ellipses of the SBW most probable host and the DLR host, and in sbw_set the other members of SBW's
+credible set (P_SBW >= t) with their P and half-light ellipses.
 
 Classes (headline band and profile; SBW hostless = flb_best < cut, DLR hostless = no d_DLR <= dlr_max):
 sbw_ne_dlr (both name a host, different objects), sbw_hostless_only, dlr_hostless_only, and band_flip (SBW
@@ -18,7 +19,7 @@ import pyarrow.parquet as pq
 
 import dp02_lib as L
 import dp2_lib
-from dp02_lib import BANDS, HOSTLESS_CUT, sbw_hostless
+from dp02_lib import BANDS, HOSTLESS_CUT, P_TRUE, sbw_credible_sets, sbw_hostless
 
 N_PER_CLASS = 12
 SEED = 20261028
@@ -41,6 +42,7 @@ def main(argv=None):
     ap.add_argument("--candidates", required=True)
     ap.add_argument("--hostless-cut", required=True, choices=sorted(HOSTLESS_CUT))
     ap.add_argument("--exclude-suspect", choices=["keep", "drop"], default="keep")
+    ap.add_argument("--p-threshold", required=True, choices=sorted(P_TRUE), help="credible set: P_SBW >= t")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     dp2_lib.install(a.exclude_suspect)
@@ -76,6 +78,10 @@ def main(argv=None):
 
     cand = L.load_candidates(a.candidates, bands=band)
     cand = cand[cand.sn_id.isin(c.sn_id)].drop_duplicates(["sn_id", "objectId"]).reset_index(drop=True)
+    thr = P_TRUE[a.p_threshold]
+    c["sbw_set"] = sbw_credible_sets(c.assign(host_objectId=c.get("host_objectId", -1)), cand, attrs, thr,
+                                     with_ellipse=True)
+    c["sbw_set_t"] = thr
     cand = pd.concat([cand[["sn_id", "objectId", "coord_ra", "coord_dec"]], ellipses(cand, band, profile, dlr_radius)],
                      axis=1).set_index(["sn_id", "objectId"])
     for name, col in [("sbw", "sbw_objectId"), ("dlr", "dlr_objectId"), ("flip", "flip_objectId")]:
@@ -91,7 +97,7 @@ def main(argv=None):
                                                        c.d_dlr_min, c.flip_band)]
     cols = (["case_id", "class", "class_n", "sn_id", "sn_ra", "sn_dec", "label"]
             + [f"{n}_{k}" for n in ("sbw", "dlr", "flip") for k in ("ra", "dec", "a", "b", "phi")]
-            + ["p_sbw_max", "p_sbw_dlr", "flb_best", "d_dlr_min", "d_dlr_sbw", "sep_sbw", "sep_dlr", "n_cand_used",
+            + ["sbw_set", "sbw_set_t", "p_sbw_max", "p_sbw_dlr", "flb_best", "d_dlr_min", "d_dlr_sbw", "sep_sbw", "sep_dlr", "n_cand_used",
                "flip_band", "sbw_objectId", "dlr_objectId", "flip_objectId", "z"])
     c[[k for k in cols if k in c.columns]].to_csv(a.output, index=False, float_format="%.10g")
 

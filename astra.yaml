@@ -67,6 +67,13 @@ inputs:
     description: >-
       The script that draws Fig 9, declared as an input of dp2_cross_method_matrix
       so a layout edit remakes it (4 Nov 2026).
+  - id: dp02_gallery_script
+    type: data
+    source: src/dp02_gallery.py
+    description: >-
+      The cutout-gallery renderer (also imported by src/des_gallery.py),
+      declared as an input of the four galleries so a drawing change remakes
+      them; it draws the other members of SBW's credible set faded (5 Nov 2026).
   - id: dp02_miss_script
     type: data
     source: src/dp02_miss.py
@@ -655,6 +662,8 @@ outputs:
       come from the one sample (dp02_sample always carries both), so a single
       universe's associations suffice.
       A sixth class, true_host_not_in_catalogue, draws SNe whose host has no DP0.2 object and to which SBW still assigned one (31 Oct 2026).
+      sbw_set lists the other members of SBW's credible set (P_SBW >= p_true_threshold, the most probable
+      host excluded) as ra,dec,P; sbw_set_t is the threshold (5 Nov 2026).
     inputs: [dp02_associations, dp02_candidates, dp02_lib_script]
     decisions: [p_true_threshold]
     recipe:
@@ -667,11 +676,11 @@ outputs:
       DP0.2 deep-coadd cutouts (30 arcsec, headline band, north up, east left)
       of dp02_disagreement_cases, one page per class, with markers for the SN,
       the host truth position, both truth matchers' objects, the SBW most
-      probable host and the DLR host. Made with src/dp02_gallery.py (the
+      probable host and the DLR host, and the other members of SBW's credible set (every candidate with P_SBW >= p_true_threshold other than the most probable one, which keeps its solid marker) drawn in the SBW style with transparency, each with its P. Made with src/dp02_gallery.py (the
       cutout prototype's gallery.py, with the SBW marker relabelled "SBW most
       probable") over the RSP cutout service, from a NERSC compute node with
       the rsp_token on NERSC.
-    inputs: [dp02_disagreement_cases, rsp_token]
+    inputs: [dp02_disagreement_cases, rsp_token, dp02_gallery_script]
     decisions: [band]
     recipe:
       command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp02_disagreement_cases} --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp02_cutouts"'
@@ -1225,9 +1234,9 @@ outputs:
     description: >-
       DES DR2 coadd cutouts (30 arcsec, headline band, north up, east left; NOIRLab Data Lab SIA des_dr2) of
       des_disagreement_cases, one page per class, with the SBW most probable host and its half-light ellipse
-      (solid), the DLR host and its DLR ellipse (dashed), both at 4 x their axes, and the published DES-SN host
-      position (black diamond); src/des_gallery.py, throttled, cached under $TMPDIR.
-    inputs: [des_disagreement_cases]
+      (solid), the DLR host and its DLR ellipse (dashed), both at 4 x their axes, the published DES-SN host
+      position (black diamond), and the other members of SBW's credible set (every candidate with P_SBW >= p_true_threshold other than the most probable one, which keeps its solid marker) drawn in the SBW style with transparency, each with its P; src/des_gallery.py, throttled, cached under $TMPDIR.
+    inputs: [des_disagreement_cases, dp02_gallery_script]
     decisions: [band]
     recipe:
       command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/des_gallery.py {inputs.des_disagreement_cases} --ellipse-scale 4 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --cache-dir "$T/des_cutouts"'
@@ -1325,11 +1334,11 @@ outputs:
       dlr_ne_published (DLR names another host), sbw_hostless_published_hosted (SBW hostless while the published
       host is a DR2 object) and sbw_ne_dlr; columns as dp2_disagreement_cases plus the published host position
       (pub_ra, pub_dec), P_SBW, flb and d_DLR of the published host, its published d_DLR, DR2 class and
-      candidate status.
-    inputs: [des_associations, des_sample, des_candidates]
-    decisions: [sbw_hostless_cut]
+      candidate status; sbw_set / sbw_set_t as dp2_disagreement_cases (5 Nov 2026).
+    inputs: [des_associations, des_sample, des_candidates, dp02_lib_script]
+    decisions: [sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/des_cases.py --associations {inputs.des_associations} --sample {inputs.des_sample} --candidates {inputs.des_candidates} --hostless-cut {decisions.sbw_hostless_cut} --output {output}
+      command: python src/des_cases.py --associations {inputs.des_associations} --sample {inputs.des_sample} --candidates {inputs.des_candidates} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: des_angle_check
     type: figure
     format: pdf
@@ -1559,11 +1568,15 @@ outputs:
       (flip) the position and ellipse (_ra, _dec, _a, _b, _phi in arcsec and
       degrees from West toward North; SBW: the profile's half-light ellipse,
       DLR: the ellipse d_DLR is measured on), plus p_sbw_max, p_sbw_dlr,
-      flb_best, d_dlr_min, separations, flip_band, the objectIds and z.
-    inputs: [dp2_associations, dp2_association_sweep, dp2_candidates]
-    decisions: [sbw_hostless_cut, exclude_suspect]
+      flb_best, d_dlr_min, separations, flip_band, the objectIds and z, and
+      sbw_set: the other members of SBW's credible set (P_SBW >=
+      p_true_threshold, the most probable host excluded) as
+      ra,dec,P,a,b,phi with their half-light ellipses; sbw_set_t is the
+      threshold (5 Nov 2026).
+    inputs: [dp2_associations, dp2_association_sweep, dp2_candidates, dp02_lib_script]
+    decisions: [sbw_hostless_cut, exclude_suspect, p_true_threshold]
     recipe:
-      command: python src/dp2_cases.py --associations {inputs.dp2_associations} --sweep {inputs.dp2_association_sweep} --candidates {inputs.dp2_candidates} --hostless-cut {decisions.sbw_hostless_cut} --exclude-suspect {decisions.exclude_suspect} --output {output}
+      command: python src/dp2_cases.py --associations {inputs.dp2_associations} --sweep {inputs.dp2_association_sweep} --candidates {inputs.dp2_candidates} --hostless-cut {decisions.sbw_hostless_cut} --exclude-suspect {decisions.exclude_suspect} --p-threshold {decisions.p_true_threshold} --output {output}
   - id: dp2_disagreement_gallery
     type: figure
     format: pdf
@@ -1572,12 +1585,12 @@ outputs:
       of dp2_disagreement_cases, one page per class, with the SBW most
       probable host and its half-light ellipse (solid), the DLR host and its
       DLR ellipse (dashed), both drawn at 4 x their axes (d_DLR = 4 for the
-      DLR one, the DLR hostless boundary), and, for band flips, the other
-      band's SBW host;
+      DLR one, the DLR hostless boundary), for band flips, the other
+      band's SBW host, and the other members of SBW's credible set (every candidate with P_SBW >= p_true_threshold other than the most probable one, which keeps its solid marker) drawn in the SBW style with transparency, each with its P;
       src/dp02_gallery.py --tier dp2 over ivoa.ObsCore (obs_collection
       LSST.DP2, lsst.deep_coadd) and the RSP cutout service, from a NERSC
       compute node with the rsp_token.
-    inputs: [dp2_disagreement_cases, rsp_token]
+    inputs: [dp2_disagreement_cases, rsp_token, dp02_gallery_script]
     decisions: [band]
     recipe:
       command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_disagreement_cases} --tier dp2 --ellipse-scale 4 --workers 4 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'
@@ -1695,11 +1708,12 @@ outputs:
       sn_ra, sn_dec, image_survey, label, the SBW and DLR host positions and
       ellipses (as dp2_disagreement_cases), the raw DELIGHT and DELIGHT-SEx
       positions (delight_ra/dec, sex_ra/dec), P_SBW of the SBW, DLR and
-      DELIGHT hosts, flb_best, separations and the objectIds.
-    inputs: [dp2_ddf_associations, dp2_ddf_candidates, dp2_delight_yjkang]
-    decisions: [reference_match, sbw_hostless_cut]
+      DELIGHT hosts, flb_best, separations and the objectIds, and sbw_set /
+      sbw_set_t as dp2_disagreement_cases (5 Nov 2026).
+    inputs: [dp2_ddf_associations, dp2_ddf_candidates, dp2_delight_yjkang, dp02_lib_script]
+    decisions: [reference_match, sbw_hostless_cut, p_true_threshold]
     recipe:
-      command: python src/dp2_cross_method.py cases --associations {inputs.dp2_ddf_associations} --candidates {inputs.dp2_ddf_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --workers 16 --output {output}
+      command: python src/dp2_cross_method.py cases --associations {inputs.dp2_ddf_associations} --candidates {inputs.dp2_ddf_candidates} --delight {inputs.dp2_delight_yjkang} --reference-match {decisions.reference_match} --hostless-cut {decisions.sbw_hostless_cut} --p-threshold {decisions.p_true_threshold} --workers 16 --output {output}
   - id: dp2_delight_gallery
     type: figure
     format: pdf
@@ -1708,9 +1722,9 @@ outputs:
       of dp2_delight_cases (the DDF chain), one page per class, with the SBW most probable
       host and its half-light ellipse (solid), the DLR host and its DLR
       ellipse (dashed), both at 4 x their axes, the DELIGHT CNN position and
-      the DELIGHT-SEx position; the panel title names the survey whose cutout
+      the DELIGHT-SEx position, and the other members of SBW's credible set (every candidate with P_SBW >= p_true_threshold other than the most probable one, which keeps its solid marker) drawn in the SBW style with transparency, each with its P; the panel title names the survey whose cutout
       DELIGHT used. src/dp02_gallery.py --tier dp2, as dp2_disagreement_gallery.
-    inputs: [dp2_delight_cases, rsp_token]
+    inputs: [dp2_delight_cases, rsp_token, dp02_gallery_script]
     decisions: [band]
     recipe:
       command: bash -c 'T=$TMPDIR; [ -n "$T" ] || T=/tmp; python src/dp02_gallery.py {inputs.dp2_delight_cases} --tier dp2 --ellipse-scale 4 --workers 2 --min-interval 1.5 --output {output} --band {decisions.band} --size 30 --ncol 4 --per-page 12 --token-file {inputs.rsp_token} --cache-dir "$T/dp2_cutouts"'

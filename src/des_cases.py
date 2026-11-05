@@ -1,5 +1,6 @@
 """DES disagreement cases for the cutout gallery: a seeded draw of SNe per class, with the published host position
-and the positions and ellipses of the SBW most probable host and the DLR host.
+and the positions and ellipses of the SBW most probable host and the DLR host, and in sbw_set the other members
+of SBW's credible set (P_SBW >= t) with their P and half-light ellipses.
 
 Classes (headline band and profile; SBW hostless = flb_best < cut, DLR hostless = no d_DLR <= dlr_max; the
 published host is the DES-SN DLR assignment matched to DR2): sbw_ne_published (SBW names a host that is not the
@@ -21,7 +22,7 @@ import des_lib
 des_lib.install()
 
 import dp02_lib as L   # noqa: E402
-from dp02_lib import HOSTLESS_CUT, sbw_hostless   # noqa: E402
+from dp02_lib import HOSTLESS_CUT, P_TRUE, sbw_credible_sets, sbw_hostless   # noqa: E402
 from dp2_cases import ellipses   # noqa: E402
 
 N_PER_CLASS = 12
@@ -35,6 +36,7 @@ def main(argv=None):
     ap.add_argument("--sample", required=True)
     ap.add_argument("--candidates", required=True)
     ap.add_argument("--hostless-cut", required=True, choices=sorted(HOSTLESS_CUT))
+    ap.add_argument("--p-threshold", required=True, choices=sorted(P_TRUE), help="credible set: P_SBW >= t")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     t = pq.read_table(a.associations)
@@ -58,6 +60,9 @@ def main(argv=None):
 
     cand = L.load_candidates(a.candidates, bands=band)
     cand = cand[cand.sn_id.isin(c.sn_id)].drop_duplicates(["sn_id", "objectId"]).reset_index(drop=True)
+    thr = P_TRUE[a.p_threshold]
+    c["sbw_set"] = sbw_credible_sets(c, cand, attrs, thr, with_ellipse=True)
+    c["sbw_set_t"] = thr
     cand = pd.concat([cand[["sn_id", "objectId", "coord_ra", "coord_dec"]], ellipses(cand, band, profile, dlr_radius)],
                      axis=1).set_index(["sn_id", "objectId"])
     for name, col in [("sbw", "sbw_objectId"), ("dlr", "dlr_objectId")]:
@@ -74,7 +79,7 @@ def main(argv=None):
                       c.flb_best, c.d_dlr_min, c.host_ddlr_published, c.host_extended_class_coadd, c.true_host_status)]
     cols = (["case_id", "class", "class_n", "sn_id", "sn_ra", "sn_dec", "label", "pub_ra", "pub_dec"]
             + [f"{n}_{k}" for n in ("sbw", "dlr") for k in ("ra", "dec", "a", "b", "phi")]
-            + ["p_sbw_max", "p_sbw_true", "p_sbw_dlr", "flb_best", "flb_true", "d_dlr_min", "d_dlr_sbw", "d_dlr_true",
+            + ["sbw_set", "sbw_set_t", "p_sbw_max", "p_sbw_true", "p_sbw_dlr", "flb_best", "flb_true", "d_dlr_min", "d_dlr_sbw", "d_dlr_true",
                "host_ddlr_published", "sep_sbw", "sep_dlr", "sep_true", "n_cand_used", "true_host_status",
                "host_extended_class_coadd", "sbw_objectId", "dlr_objectId", "host_objectId", "sn_redshift", "field"])
     c[cols].to_csv(a.output, index=False, float_format="%.10g")
