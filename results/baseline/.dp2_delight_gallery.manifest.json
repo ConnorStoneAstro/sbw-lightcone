@@ -5,15 +5,16 @@
   "recipe": "bash -c 'T=$TMPDIR; [ -n \"$T\" ] || T=/tmp; python src/dp02_gallery.py results/baseline/dp2_delight_cases.csv --tier dp2 --ellipse-scale 4 --workers 2 --min-interval 1.5 --output results/baseline/dp2_delight_gallery.pdf --band r --size 30 --ncol 4 --per-page 12 --token-file /global/cfs/cdirs/m1727/cstone/.rsp_image_tap_token --cache-dir \"$T/dp2_cutouts\"'",
   "definition_version": "sha256:4e838747f042e9f709fb80881ad5daebd066bbbdb45e1da4be6a1d85fd7cc8ea",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:d7f0da48d60489d5eb5bbd3a69d82cb233f4327084355648fc08239b58f3d032",
+  "data_version": "sha256:43ccd75e12d7297fcff87f639a43866f38e02ca974c45bf09248de03b034306a",
   "decisions": {
     "band": "r"
   },
   "input_versions": {
-    "dp2_delight_cases": "sha256:52812a0d73846b1babb901810f8a29f29bc098fe0856be20a6b8533350466608",
-    "rsp_token": "sha256:d6aedc2ab8e8dc19ed5d0f1e3b7543ff5db26f78ac2895ff1b1b7ccf9eceb3c6"
+    "dp2_delight_cases": "sha256:589d3a6911b8e2c062bac0b0a754be5d79e787d8c98349db98807362e02a478c",
+    "rsp_token": "sha256:d6aedc2ab8e8dc19ed5d0f1e3b7543ff5db26f78ac2895ff1b1b7ccf9eceb3c6",
+    "dp02_gallery_script": "sha256:cbfca15e3fc8c46915a9168aaf64d8f5336800216a54dbbace34750bd8eef529"
   },
-  "git_sha": "51552d940d13be72129315717d32cc204a4d1710",
+  "git_sha": "8a6a0deaf47df2b9918381990b849131cedfd804",
   "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
@@ -23,8 +24,8 @@
     "landlock_abi": null,
     "exec_allowlist_version": null
   },
-  "started_at": "2026-11-04T16:35:35.498+00:00",
-  "finished_at": "2026-11-04T16:40:32.504+00:00",
+  "started_at": "2026-11-05T15:29:30.716+00:00",
+  "finished_at": "2026-11-05T15:34:45.115+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
