@@ -2,30 +2,32 @@
   "schema_version": 1,
   "output_id": "des_disagreement_cases",
   "universe_id": "baseline",
-  "recipe": "python src/des_cases.py --associations results/baseline/des_associations.parquet --sample results/baseline/des_sample.parquet --candidates results/baseline/des_candidates.parquet --hostless-cut flb01 --output results/baseline/des_disagreement_cases.csv",
-  "definition_version": "sha256:7e669b6343155c364306647323cbb1c0fddc0f5c18f4fdfce7057fdae317261a",
+  "recipe": "python src/des_cases.py --associations results/baseline/des_associations.parquet --sample results/baseline/des_sample.parquet --candidates results/baseline/des_candidates.parquet --hostless-cut flb01 --p-threshold p005 --output results/baseline/des_disagreement_cases.csv",
+  "definition_version": "sha256:231ebbd0d7dbf7b65abbe48f1044b946b326b4506eaab2ec30e3447e7d54b4c8",
   "env_version": "sha256:46f8eaca660cd29fa092a65ea2e5d50b6fa392f4bc7207c967bb4a3d0b5cfd7b",
-  "data_version": "sha256:4c697e13394543a1c98fb072ccd2261dea6363c87f2c904c598cdbc52a970855",
+  "data_version": "sha256:d6987956b18a4989d448f970a5faceb129ff0a46f6e89b516cef378d8a86d78f",
   "decisions": {
-    "sbw_hostless_cut": "flb01"
+    "sbw_hostless_cut": "flb01",
+    "p_true_threshold": "p005"
   },
   "input_versions": {
     "des_associations": "sha256:2c44ceb2fa70ad3b2e594cee3f4936271fd311ae649a477658e5a5485d921f64",
     "des_sample": "sha256:a44667fe8e194246c9c8c08e0dc6f6900dbcad58d1660c9494318ed18c09e93b",
-    "des_candidates": "sha256:4ce3a3570ad9a8d63ffcca59cb59945e906e3cf7a5b95d12a06eead76f7d8318"
+    "des_candidates": "sha256:4ce3a3570ad9a8d63ffcca59cb59945e906e3cf7a5b95d12a06eead76f7d8318",
+    "dp02_lib_script": "sha256:7d9386d1ef4701e840ad11bccf161b79d43d911eb1c2f2f4fb1c05a6eee26613"
   },
-  "git_sha": "5dbb6cfcbfa004e2b9ed23930308bb29ccf5b95d",
-  "git_remote": "git@github.com:ConnorStoneAstro/sbw-lightcone.git",
+  "git_sha": "8a6a0deaf47df2b9918381990b849131cedfd804",
+  "git_remote": "/global/cfs/cdirs/m1727/cstone/host_association/paper.git",
   "lc_version": "0.5.0",
   "hermeticity": {
-    "mechanism": "landlock",
-    "fs": "declared",
+    "mechanism": "none",
+    "fs": "open",
     "network": "allowed",
-    "landlock_abi": 4,
-    "exec_allowlist_version": 1
+    "landlock_abi": null,
+    "exec_allowlist_version": null
   },
-  "started_at": "2026-11-03T02:21:59.915+00:00",
-  "finished_at": "2026-11-03T02:22:17.613+00:00",
+  "started_at": "2026-11-05T15:28:24.032+00:00",
+  "finished_at": "2026-11-05T15:28:43.789+00:00",
   "uv_version": "0.13.5",
   "image": null
 }
